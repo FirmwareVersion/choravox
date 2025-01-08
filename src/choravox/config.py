@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +43,24 @@ class MeetingConfig:
             raise ValueError("overlap_ratio must be in [0, 1]")
         if not 0.0 <= self.silence_ratio < 1.0:
             raise ValueError("silence_ratio must be in [0, 1)")
+
+
+def config_to_json(config: AudioConfig | MeetingConfig) -> str:
+    """Encode a configuration with an explicit kind discriminator."""
+    payload = {"kind": type(config).__name__, "values": asdict(config)}
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def config_from_json(text: str) -> AudioConfig | MeetingConfig:
+    """Decode a configuration and reject unknown or malformed kinds."""
+    payload: Any = json.loads(text)
+    if not isinstance(payload, dict) or set(payload) != {"kind", "values"}:
+        raise ValueError("configuration envelope must contain kind and values")
+    kinds = {"AudioConfig": AudioConfig, "MeetingConfig": MeetingConfig}
+    cls = kinds.get(payload["kind"])
+    if cls is None or not isinstance(payload["values"], dict):
+        raise ValueError("unknown configuration kind")
+    return cls(**payload["values"])
 
 
 # -- extensions --

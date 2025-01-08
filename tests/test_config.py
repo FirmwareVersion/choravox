@@ -29,4 +29,19 @@ def test_meeting_config_rejects_impossible_population() -> None:
         config_mod.MeetingConfig(silence_ratio=1.0)
 
 
+@pytest.mark.parametrize(
+    "value",
+    [config_mod.AudioConfig(sample_rate=8_000), config_mod.MeetingConfig(seed=19)],
+)
+def test_configuration_json_roundtrip(value: object) -> None:
+    encoded = config_mod.config_to_json(value)  # type: ignore[arg-type]
+    assert config_mod.config_from_json(encoded) == value
+    assert " " not in encoded
+
+
+def test_configuration_json_rejects_unknown_kind() -> None:
+    with pytest.raises(ValueError, match="unknown"):
+        config_mod.config_from_json('{"kind":"RoomConfig","values":{}}')
+
+
 # -- extensions --
