@@ -57,4 +57,26 @@ class Word:
             raise ValueError("confidence must be in [0, 1]")
 
 
+@dataclass(frozen=True, slots=True)
+class Transcript:
+    """Chronological speaker-attributed words."""
+
+    words: tuple[Word, ...]
+
+    def __post_init__(self) -> None:
+        pairs = zip(self.words, self.words[1:], strict=False)
+        if any(right.start < left.start for left, right in pairs):
+            raise ValueError("transcript words must be ordered by start time")
+
+    def text(self, speaker: str | None = None) -> str:
+        """Join all words or only words attributed to one speaker."""
+        return " ".join(
+            word.text for word in self.words if speaker is None or word.speaker == speaker
+        )
+
+    @property
+    def speakers(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(word.speaker for word in self.words))
+
+
 # -- extensions --

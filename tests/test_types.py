@@ -42,4 +42,22 @@ def test_word_rejects_whitespace_and_out_of_range_confidence() -> None:
         types_mod.Word("word", 0.0, 1.0, "a", 1.01)
 
 
+def test_transcript_filters_text_without_reordering() -> None:
+    words = (
+        types_mod.Word("hello", 0.0, 0.2, "a"),
+        types_mod.Word("yes", 0.1, 0.3, "b"),
+        types_mod.Word("again", 0.4, 0.6, "a"),
+    )
+    transcript = types_mod.Transcript(words)
+    assert transcript.text() == "hello yes again"
+    assert transcript.text("a") == "hello again"
+    assert transcript.speakers == ("a", "b")
+
+
+def test_transcript_rejects_reverse_chronology() -> None:
+    words = (types_mod.Word("late", 1.0, 2.0, "a"), types_mod.Word("early", 0.0, 0.5, "b"))
+    with pytest.raises(ValueError, match="ordered"):
+        types_mod.Transcript(words)
+
+
 # -- extensions --
