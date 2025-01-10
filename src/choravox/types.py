@@ -38,4 +38,23 @@ def clip_segment(segment: Segment, start: float, end: float) -> Segment | None:
     return replace(segment, start=clipped_start, end=clipped_end)
 
 
+@dataclass(frozen=True, order=True, slots=True)
+class Word:
+    """A normalized token with time, speaker, and calibrated confidence."""
+
+    text: str
+    start: float
+    end: float
+    speaker: str
+    confidence: float = 1.0
+
+    def __post_init__(self) -> None:
+        if not self.text or any(char.isspace() for char in self.text):
+            raise ValueError("word text must be a nonempty token")
+        if self.start < 0 or self.end <= self.start:
+            raise ValueError("word requires 0 <= start < end")
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("confidence must be in [0, 1]")
+
+
 # -- extensions --

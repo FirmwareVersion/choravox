@@ -30,4 +30,16 @@ def test_clip_segment_preserves_label_and_handles_empty_result() -> None:
     assert types_mod.clip_segment(segment, 3.0, 4.0) is None
 
 
+def test_word_accepts_confidence_boundaries() -> None:
+    assert types_mod.Word("yes", 0.0, 0.1, "a", 0.0).confidence == 0.0
+    assert types_mod.Word("no", 0.1, 0.2, "b", 1.0).confidence == 1.0
+
+
+def test_word_rejects_whitespace_and_out_of_range_confidence() -> None:
+    with pytest.raises(ValueError, match="token"):
+        types_mod.Word("two words", 0.0, 1.0, "a")
+    with pytest.raises(ValueError, match="confidence"):
+        types_mod.Word("word", 0.0, 1.0, "a", 1.01)
+
+
 # -- extensions --
