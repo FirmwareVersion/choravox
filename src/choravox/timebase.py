@@ -17,4 +17,19 @@ def seconds_to_samples(seconds: float, sample_rate: int) -> int:
     return int(seconds * sample_rate + 0.5)
 
 
+def frame_spans(
+    length: int, frame_length: int, hop_length: int, *, pad_end: bool = False
+) -> tuple[tuple[int, int], ...]:
+    """Return half-open frame spans, optionally including a padded tail."""
+    if length < 0 or frame_length <= 0 or hop_length <= 0:
+        raise ValueError("invalid frame geometry")
+    if length == 0:
+        return ()
+    starts = range(0, length if pad_end else max(0, length - frame_length + 1), hop_length)
+    spans = tuple((start, min(start + frame_length, length)) for start in starts)
+    if not pad_end:
+        return tuple(span for span in spans if span[1] - span[0] == frame_length)
+    return spans
+
+
 # -- extensions --
