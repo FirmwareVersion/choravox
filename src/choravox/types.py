@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
 
@@ -77,6 +78,24 @@ class Transcript:
     @property
     def speakers(self) -> tuple[str, ...]:
         return tuple(dict.fromkeys(word.speaker for word in self.words))
+
+
+def merge_segments(segments: Iterable[Segment], max_gap: float = 0.0) -> tuple[Segment, ...]:
+    """Merge ordered same-speaker regions separated by at most max_gap."""
+    if max_gap < 0:
+        raise ValueError("max_gap must be nonnegative")
+    output: list[Segment] = []
+    for segment in sorted(segments):
+        if (
+            output
+            and output[-1].speaker == segment.speaker
+            and segment.start - output[-1].end <= max_gap
+        ):
+            previous = output.pop()
+            output.append(Segment(previous.start, max(previous.end, segment.end), segment.speaker))
+        else:
+            output.append(segment)
+    return tuple(output)
 
 
 # -- extensions --

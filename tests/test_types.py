@@ -60,4 +60,22 @@ def test_transcript_rejects_reverse_chronology() -> None:
         types_mod.Transcript(words)
 
 
+def test_merge_segments_respects_speaker_and_gap() -> None:
+    segments = [
+        types_mod.Segment(0.0, 0.5, "a"),
+        types_mod.Segment(0.6, 1.0, "a"),
+        types_mod.Segment(1.0, 1.5, "b"),
+    ]
+    assert types_mod.merge_segments(segments, 0.1) == (
+        types_mod.Segment(0.0, 1.0, "a"),
+        types_mod.Segment(1.0, 1.5, "b"),
+    )
+
+
+def test_merge_segments_is_stable_for_empty_input() -> None:
+    assert types_mod.merge_segments([]) == ()
+    with pytest.raises(ValueError, match="nonnegative"):
+        types_mod.merge_segments([], -0.1)
+
+
 # -- extensions --
