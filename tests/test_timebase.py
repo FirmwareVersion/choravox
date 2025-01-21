@@ -42,4 +42,14 @@ def test_quantize_time_rejects_ambiguous_mode() -> None:
         timebase.quantize_time(1.0, 0.1, mode="truncate")
 
 
+def test_union_duration_counts_overlap_once() -> None:
+    assert timebase.union_duration([(0.0, 1.0), (0.5, 2.0), (3.0, 4.0)]) == 3.0
+    assert timebase.union_duration([]) == 0.0
+
+
+def test_union_duration_is_order_independent() -> None:
+    intervals = [(2.0, 3.0), (0.0, 0.5), (0.5, 1.0)]
+    assert timebase.union_duration(intervals) == timebase.union_duration(reversed(intervals)) == 2.0
+
+
 # -- extensions --

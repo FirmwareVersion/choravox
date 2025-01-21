@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 
 def samples_to_seconds(samples: int, sample_rate: int) -> float:
     """Convert a nonnegative sample boundary to quantized seconds."""
@@ -46,6 +48,26 @@ def quantize_time(value: float, quantum: float, *, mode: str = "nearest") -> flo
     else:
         raise ValueError("mode must be floor, ceil, or nearest")
     return round(units * quantum, 9)
+
+
+def union_duration(intervals: Iterable[tuple[float, float]]) -> float:
+    """Measure the union of valid half-open intervals."""
+    ordered = sorted(intervals)
+    if any(start < 0 or end <= start for start, end in ordered):
+        raise ValueError("intervals require 0 <= start < end")
+    total = 0.0
+    current_start = current_end = 0.0
+    for index, (start, end) in enumerate(ordered):
+        if index == 0:
+            current_start, current_end = start, end
+        elif start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            total += current_end - current_start
+            current_start, current_end = start, end
+    if ordered:
+        total += current_end - current_start
+    return round(total, 6)
 
 
 # -- extensions --
