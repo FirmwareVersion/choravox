@@ -31,4 +31,15 @@ def test_empty_signal_has_no_frames() -> None:
         timebase.frame_spans(10, 0, 2)
 
 
+def test_quantize_time_supports_directional_modes() -> None:
+    assert timebase.quantize_time(0.026, 0.01, mode="floor") == 0.02
+    assert timebase.quantize_time(0.026, 0.01, mode="ceil") == 0.03
+    assert timebase.quantize_time(0.026, 0.01) == 0.03
+
+
+def test_quantize_time_rejects_ambiguous_mode() -> None:
+    with pytest.raises(ValueError, match="floor, ceil, or nearest"):
+        timebase.quantize_time(1.0, 0.1, mode="truncate")
+
+
 # -- extensions --

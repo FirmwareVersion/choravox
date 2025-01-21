@@ -32,4 +32,20 @@ def frame_spans(
     return spans
 
 
+def quantize_time(value: float, quantum: float, *, mode: str = "nearest") -> float:
+    """Quantize a nonnegative time with stable floor, ceil, or nearest behavior."""
+    if value < 0 or quantum <= 0:
+        raise ValueError("value must be nonnegative and quantum positive")
+    scaled = value / quantum
+    if mode == "floor":
+        units = int(scaled)
+    elif mode == "ceil":
+        units = int(-(-value // quantum))
+    elif mode == "nearest":
+        units = int(scaled + 0.5)
+    else:
+        raise ValueError("mode must be floor, ceil, or nearest")
+    return round(units * quantum, 9)
+
+
 # -- extensions --
