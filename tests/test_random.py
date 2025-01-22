@@ -20,4 +20,18 @@ def test_derived_generators_separate_components() -> None:
         random_mod.derive_seed(0, "")
 
 
+def test_deterministic_split_covers_every_index_once() -> None:
+    parts = random_mod.deterministic_split(23, (0.6, 0.2, 0.2), seed=5)
+    combined = np.concatenate(parts)
+    assert sorted(combined.tolist()) == list(range(23))
+    assert [len(part) for part in parts] == [14, 5, 4]
+
+
+def test_deterministic_split_handles_empty_population() -> None:
+    parts = random_mod.deterministic_split(0, (1.0, 1.0), seed=0)
+    assert tuple(map(len, parts)) == (0, 0)
+    with pytest.raises(ValueError, match="positive"):
+        random_mod.deterministic_split(3, (0.0, 0.0), seed=0)
+
+
 # -- extensions --
