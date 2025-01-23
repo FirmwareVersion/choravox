@@ -57,4 +57,11 @@ def test_meeting_configuration_has_stable_golden_encoding() -> None:
     )
 
 
+def test_configuration_decoder_reports_document_errors() -> None:
+    with pytest.raises(ValueError, match="valid JSON"):
+        config_mod.config_from_json("{")
+    with pytest.raises(ValueError, match="kind and values"):
+        config_mod.config_from_json("[]")
+
+
 # -- extensions --

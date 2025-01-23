@@ -53,7 +53,10 @@ def config_to_json(config: AudioConfig | MeetingConfig) -> str:
 
 def config_from_json(text: str) -> AudioConfig | MeetingConfig:
     """Decode a configuration and reject unknown or malformed kinds."""
-    payload: Any = json.loads(text)
+    try:
+        payload: Any = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError("configuration must be valid JSON") from error
     if not isinstance(payload, dict) or set(payload) != {"kind", "values"}:
         raise ValueError("configuration envelope must contain kind and values")
     kinds = {"AudioConfig": AudioConfig, "MeetingConfig": MeetingConfig}
