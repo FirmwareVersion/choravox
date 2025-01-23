@@ -52,4 +52,14 @@ def test_union_duration_is_order_independent() -> None:
     assert timebase.union_duration(intervals) == timebase.union_duration(reversed(intervals)) == 2.0
 
 
+@pytest.mark.parametrize("sample_rate", [8_000, 16_000, 44_100, 48_000])
+def test_common_sample_rates_roundtrip_one_second(sample_rate: int) -> None:
+    assert timebase.samples_to_seconds(sample_rate, sample_rate) == 1.0
+    assert timebase.seconds_to_samples(1.0, sample_rate) == sample_rate
+
+
+def test_touching_intervals_do_not_inflate_union() -> None:
+    assert timebase.union_duration([(0.0, 0.1), (0.1, 0.2), (0.2, 0.3)]) == 0.3
+
+
 # -- extensions --

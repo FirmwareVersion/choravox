@@ -78,4 +78,15 @@ def test_merge_segments_is_stable_for_empty_input() -> None:
         types_mod.merge_segments([], -0.1)
 
 
+def test_overlapped_words_remain_valid_in_chronological_order() -> None:
+    transcript = types_mod.Transcript(
+        (
+            types_mod.Word("one", 0.0, 1.0, "a"),
+            types_mod.Word("two", 0.5, 0.75, "b"),
+        )
+    )
+    assert transcript.text() == "one two"
+    assert transcript.speakers == ("a", "b")
+
+
 # -- extensions --
