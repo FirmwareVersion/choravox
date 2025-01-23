@@ -44,4 +44,17 @@ def test_configuration_json_rejects_unknown_kind() -> None:
         config_mod.config_from_json('{"kind":"RoomConfig","values":{}}')
 
 
+def test_audio_configuration_has_stable_golden_encoding() -> None:
+    assert config_mod.config_to_json(config_mod.AudioConfig()) == (
+        '{"kind":"AudioConfig","values":{"frame_ms":25.0,"hop_ms":10.0,"sample_rate":16000}}'
+    )
+
+
+def test_meeting_configuration_has_stable_golden_encoding() -> None:
+    assert config_mod.config_to_json(config_mod.MeetingConfig()) == (
+        '{"kind":"MeetingConfig","values":{"duration_s":8.0,"overlap_ratio":0.1,'
+        '"seed":0,"silence_ratio":0.15,"speakers":2}}'
+    )
+
+
 # -- extensions --

@@ -20,4 +20,9 @@ def test_schema_envelope_detects_identity_and_content_drift() -> None:
         schema.validate_envelope(replace(envelope, payload=["changed"]), "choravox.words", {1})
 
 
+def test_envelope_digest_has_stable_golden_value() -> None:
+    envelope = schema.make_envelope("choravox.example", 1, {"seed": 7, "labels": ["a", "b"]})
+    assert envelope.digest == "1e6667528640a9a1ec6ed01d21d75246c570a82d6ffd22aa5073fca736854c97"
+
+
 # -- extensions --
