@@ -20,4 +20,22 @@ def as_waveform(samples: ArrayLike) -> FloatArray:
     return waveform
 
 
+def to_mono(samples: ArrayLike, weights: ArrayLike | None = None) -> FloatArray:
+    """Downmix samples-first audio without changing an existing mono signal."""
+    waveform = as_waveform(samples)
+    if waveform.ndim == 1:
+        if weights is not None:
+            raise ValueError("weights are only valid for multi-channel audio")
+        return waveform.copy()
+    channel_weights = (
+        np.ones(waveform.shape[1]) if weights is None else np.asarray(weights, dtype=np.float64)
+    )
+    if channel_weights.shape != (waveform.shape[1],) or not np.all(np.isfinite(channel_weights)):
+        raise ValueError("weights must contain one finite value per channel")
+    total = float(np.sum(channel_weights))
+    if total == 0.0:
+        raise ValueError("channel weights must not sum to zero")
+    return np.asarray(waveform @ (channel_weights / total), dtype=np.float64)
+
+
 # -- extensions --
