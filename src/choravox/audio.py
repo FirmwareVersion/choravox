@@ -68,4 +68,15 @@ def dbfs(samples: ArrayLike, *, floor_db: float = -120.0) -> float:
     return round(max(float(floor_db), 20.0 * float(np.log10(level))), 6)
 
 
+def normalize_peak(samples: ArrayLike, target: float = 0.99) -> FloatArray:
+    """Scale audio to a peak target while preserving exact silence."""
+    if not 0.0 < target <= 1.0:
+        raise ValueError("target must be in (0, 1]")
+    waveform = as_waveform(samples)
+    peak = peak_amplitude(waveform)
+    if peak == 0.0:
+        return waveform.copy()
+    return np.asarray(waveform * (target / peak), dtype=np.float64)
+
+
 # -- extensions --

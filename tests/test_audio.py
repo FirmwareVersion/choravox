@@ -66,4 +66,16 @@ def test_dbfs_honors_a_declared_floor() -> None:
         audio.dbfs([1.0], floor_db=1.0)
 
 
+def test_peak_normalization_reaches_target_and_preserves_ratios() -> None:
+    normalized = audio.normalize_peak([0.25, -0.5], 0.8)
+    np.testing.assert_allclose(normalized, [0.4, -0.8])
+    assert audio.peak_amplitude(normalized) == 0.8
+
+
+def test_peak_normalization_leaves_silence_unchanged() -> None:
+    np.testing.assert_array_equal(audio.normalize_peak(np.zeros(3)), np.zeros(3))
+    with pytest.raises(ValueError, match=r"\(0, 1\]"):
+        audio.normalize_peak([1.0], 0.0)
+
+
 # -- extensions --
