@@ -33,4 +33,15 @@ def test_to_mono_rejects_mismatched_weights() -> None:
         audio.to_mono(np.zeros((4, 2)), [1.0, -1.0])
 
 
+def test_peak_and_rms_have_hand_computed_values() -> None:
+    signal = np.array([-1.0, 0.0, 1.0])
+    assert audio.peak_amplitude(signal) == 1.0
+    assert audio.rms(signal) == pytest.approx(np.sqrt(2.0 / 3.0), abs=1e-12)
+
+
+def test_level_measures_define_empty_audio_as_silence() -> None:
+    assert audio.peak_amplitude([]) == 0.0
+    assert audio.rms([]) == 0.0
+
+
 # -- extensions --

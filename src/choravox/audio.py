@@ -38,4 +38,24 @@ def to_mono(samples: ArrayLike, weights: ArrayLike | None = None) -> FloatArray:
     return np.asarray(waveform @ (channel_weights / total), dtype=np.float64)
 
 
+def peak_amplitude(samples: ArrayLike) -> float:
+    """Return the largest absolute sample, or zero for empty audio."""
+    waveform = as_waveform(samples)
+    return 0.0 if waveform.size == 0 else round(float(np.max(np.abs(waveform))), 12)
+
+
+def rms(samples: ArrayLike, *, axis: int | None = None) -> float | FloatArray:
+    """Compute root-mean-square amplitude globally or along one axis."""
+    waveform = as_waveform(samples)
+    if waveform.size == 0:
+        if axis is None:
+            return 0.0
+        shape = tuple(size for index, size in enumerate(waveform.shape) if index != axis)
+        return np.zeros(shape, dtype=np.float64)
+    value = np.sqrt(np.mean(np.square(waveform), axis=axis))
+    if np.ndim(value) == 0:
+        return round(float(value), 12)
+    return np.round(np.asarray(value, dtype=np.float64), 12)
+
+
 # -- extensions --
