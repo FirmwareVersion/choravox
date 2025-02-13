@@ -54,4 +54,16 @@ def test_peak_amplitude_is_sign_invariant() -> None:
     assert audio.peak_amplitude(signal) == audio.peak_amplitude(-signal) == 0.75
 
 
+def test_dbfs_maps_full_scale_and_silence() -> None:
+    assert audio.dbfs(np.ones(8)) == 0.0
+    assert audio.dbfs(np.zeros(8)) == -120.0
+    assert audio.dbfs(np.full(8, 0.5)) == pytest.approx(-6.0206, abs=1e-5)
+
+
+def test_dbfs_honors_a_declared_floor() -> None:
+    assert audio.dbfs(np.full(4, 1e-8), floor_db=-80.0) == -80.0
+    with pytest.raises(ValueError, match="must not be positive"):
+        audio.dbfs([1.0], floor_db=1.0)
+
+
 # -- extensions --

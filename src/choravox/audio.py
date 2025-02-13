@@ -58,4 +58,14 @@ def rms(samples: ArrayLike, *, axis: int | None = None) -> float | FloatArray:
     return np.round(np.asarray(value, dtype=np.float64), 12)
 
 
+def dbfs(samples: ArrayLike, *, floor_db: float = -120.0) -> float:
+    """Measure RMS decibels relative to a full-scale amplitude of one."""
+    if floor_db > 0:
+        raise ValueError("floor_db must not be positive")
+    level = float(rms(samples))
+    if level <= 0:
+        return float(floor_db)
+    return round(max(float(floor_db), 20.0 * float(np.log10(level))), 6)
+
+
 # -- extensions --
