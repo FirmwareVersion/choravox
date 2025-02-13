@@ -44,4 +44,14 @@ def test_level_measures_define_empty_audio_as_silence() -> None:
     assert audio.rms([]) == 0.0
 
 
+def test_rms_can_measure_each_channel_independently() -> None:
+    stereo = np.array([[1.0, 0.0], [-1.0, 0.0], [1.0, 0.0]])
+    np.testing.assert_allclose(audio.rms(stereo, axis=0), [1.0, 0.0])
+
+
+def test_peak_amplitude_is_sign_invariant() -> None:
+    signal = np.array([0.25, -0.75, 0.5])
+    assert audio.peak_amplitude(signal) == audio.peak_amplitude(-signal) == 0.75
+
+
 # -- extensions --
