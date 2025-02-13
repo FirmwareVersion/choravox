@@ -79,4 +79,19 @@ def normalize_peak(samples: ArrayLike, target: float = 0.99) -> FloatArray:
     return np.asarray(waveform * (target / peak), dtype=np.float64)
 
 
+def normalize_rms(samples: ArrayLike, target: float, *, peak_limit: float = 1.0) -> FloatArray:
+    """Scale toward target RMS and reduce gain when the peak ceiling binds."""
+    if target <= 0 or not 0 < peak_limit <= 1:
+        raise ValueError("target and peak_limit must be positive, with peak_limit <= 1")
+    waveform = as_waveform(samples)
+    current = float(rms(waveform))
+    if current == 0.0:
+        return waveform.copy()
+    gain = target / current
+    peak = peak_amplitude(waveform)
+    if peak > 0:
+        gain = min(gain, peak_limit / peak)
+    return np.asarray(waveform * gain, dtype=np.float64)
+
+
 # -- extensions --

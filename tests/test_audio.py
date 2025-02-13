@@ -78,4 +78,15 @@ def test_peak_normalization_leaves_silence_unchanged() -> None:
         audio.normalize_peak([1.0], 0.0)
 
 
+def test_rms_normalization_hits_reachable_target() -> None:
+    normalized = audio.normalize_rms([0.25, -0.25], 0.5)
+    assert audio.rms(normalized) == 0.5
+
+
+def test_rms_normalization_obeys_peak_limit() -> None:
+    normalized = audio.normalize_rms([1.0, 0.0], 0.9, peak_limit=0.7)
+    assert audio.peak_amplitude(normalized) == 0.7
+    assert audio.rms(normalized) < 0.9
+
+
 # -- extensions --
