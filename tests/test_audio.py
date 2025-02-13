@@ -89,4 +89,15 @@ def test_rms_normalization_obeys_peak_limit() -> None:
     assert audio.rms(normalized) < 0.9
 
 
+def test_peak_normalization_is_idempotent() -> None:
+    once = audio.normalize_peak([0.1, -0.4, 0.2], 0.8)
+    twice = audio.normalize_peak(once, 0.8)
+    np.testing.assert_allclose(once, twice, atol=1e-12)
+
+
+def test_rms_normalization_preserves_shape_for_stereo() -> None:
+    stereo = np.array([[0.1, -0.2], [0.2, -0.4]])
+    assert audio.normalize_rms(stereo, 0.2).shape == stereo.shape
+
+
 # -- extensions --
