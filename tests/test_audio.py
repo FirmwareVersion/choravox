@@ -100,4 +100,15 @@ def test_rms_normalization_preserves_shape_for_stereo() -> None:
     assert audio.normalize_rms(stereo, 0.2).shape == stereo.shape
 
 
+def test_clipping_fraction_counts_both_polarities() -> None:
+    assert audio.clipping_fraction([-2.0, -1.0, 0.0, 0.5, 1.0]) == 0.6
+    assert audio.clipping_fraction([]) == 0.0
+
+
+def test_hard_clip_is_symmetric_and_bounded() -> None:
+    np.testing.assert_array_equal(audio.hard_clip([-2.0, -0.5, 2.0]), [-1.0, -0.5, 1.0])
+    with pytest.raises(ValueError, match="positive"):
+        audio.hard_clip([0.0], 0.0)
+
+
 # -- extensions --

@@ -94,4 +94,21 @@ def normalize_rms(samples: ArrayLike, target: float, *, peak_limit: float = 1.0)
     return np.asarray(waveform * gain, dtype=np.float64)
 
 
+def clipping_fraction(samples: ArrayLike, limit: float = 1.0) -> float:
+    """Return the fraction of samples at or beyond an absolute limit."""
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    waveform = as_waveform(samples)
+    if waveform.size == 0:
+        return 0.0
+    return round(float(np.mean(np.abs(waveform) >= limit)), 6)
+
+
+def hard_clip(samples: ArrayLike, limit: float = 1.0) -> FloatArray:
+    """Clamp samples symmetrically to an absolute limit."""
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    return np.asarray(np.clip(as_waveform(samples), -limit, limit), dtype=np.float64)
+
+
 # -- extensions --
