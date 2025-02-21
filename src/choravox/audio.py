@@ -120,4 +120,11 @@ def soft_clip(samples: ArrayLike, drive: float = 1.0) -> FloatArray:
     return np.asarray(np.tanh(waveform * drive) / scale, dtype=np.float64)
 
 
+def apply_gain(samples: ArrayLike, gain_db: float) -> FloatArray:
+    """Apply an amplitude gain expressed in decibels."""
+    if not np.isfinite(gain_db):
+        raise ValueError("gain_db must be finite")
+    return np.asarray(as_waveform(samples) * (10.0 ** (gain_db / 20.0)), dtype=np.float64)
+
+
 # -- extensions --

@@ -122,4 +122,15 @@ def test_soft_clip_compresses_over_range_audio() -> None:
     assert np.max(np.abs(output)) < 1.04
 
 
+def test_gain_roundtrip_restores_waveform() -> None:
+    signal = np.array([0.1, -0.2, 0.3])
+    restored = audio.apply_gain(audio.apply_gain(signal, 6.0), -6.0)
+    np.testing.assert_allclose(restored, signal, rtol=1e-12, atol=1e-12)
+
+
+def test_gain_changes_dbfs_by_declared_amount() -> None:
+    signal = np.full(8, 0.1)
+    assert audio.dbfs(audio.apply_gain(signal, 10.0)) - audio.dbfs(signal) == pytest.approx(10.0)
+
+
 # -- extensions --
