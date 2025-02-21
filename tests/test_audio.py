@@ -133,4 +133,16 @@ def test_gain_changes_dbfs_by_declared_amount() -> None:
     assert audio.dbfs(audio.apply_gain(signal, 10.0)) - audio.dbfs(signal) == pytest.approx(10.0)
 
 
+def test_hard_clip_reports_no_residual_clipping_below_strict_threshold() -> None:
+    limited = audio.hard_clip([-3.0, 3.0], limit=0.99)
+    assert audio.clipping_fraction(limited, limit=1.0) == 0.0
+
+
+def test_zero_gain_is_an_identity_copy() -> None:
+    signal = np.array([0.2, -0.4])
+    output = audio.apply_gain(signal, 0.0)
+    np.testing.assert_array_equal(output, signal)
+    assert output is not signal
+
+
 # -- extensions --
