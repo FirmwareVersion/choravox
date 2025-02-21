@@ -111,4 +111,15 @@ def test_hard_clip_is_symmetric_and_bounded() -> None:
         audio.hard_clip([0.0], 0.0)
 
 
+def test_soft_clip_is_odd_and_maps_full_scale_to_full_scale() -> None:
+    values = np.array([0.0, 0.25, 1.0])
+    np.testing.assert_allclose(audio.soft_clip(-values), -audio.soft_clip(values))
+    assert audio.soft_clip([1.0])[0] == pytest.approx(1.0)
+
+
+def test_soft_clip_compresses_over_range_audio() -> None:
+    output = audio.soft_clip([-10.0, 10.0], drive=2.0)
+    assert np.max(np.abs(output)) < 1.04
+
+
 # -- extensions --

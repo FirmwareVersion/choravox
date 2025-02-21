@@ -111,4 +111,13 @@ def hard_clip(samples: ArrayLike, limit: float = 1.0) -> FloatArray:
     return np.asarray(np.clip(as_waveform(samples), -limit, limit), dtype=np.float64)
 
 
+def soft_clip(samples: ArrayLike, drive: float = 1.0) -> FloatArray:
+    """Apply tanh saturation normalized to preserve the full-scale endpoint."""
+    if drive <= 0:
+        raise ValueError("drive must be positive")
+    waveform = as_waveform(samples)
+    scale = float(np.tanh(drive))
+    return np.asarray(np.tanh(waveform * drive) / scale, dtype=np.float64)
+
+
 # -- extensions --
