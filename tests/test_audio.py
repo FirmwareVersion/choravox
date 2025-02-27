@@ -145,4 +145,15 @@ def test_zero_gain_is_an_identity_copy() -> None:
     assert output is not signal
 
 
+def test_pad_or_trim_has_exact_requested_length() -> None:
+    np.testing.assert_array_equal(audio.pad_or_trim([1.0, 2.0], 4), [1.0, 2.0, 0.0, 0.0])
+    np.testing.assert_array_equal(audio.pad_or_trim([1.0, 2.0], 1), [1.0])
+
+
+def test_pad_or_trim_preserves_channel_count() -> None:
+    stereo = np.ones((2, 2))
+    assert audio.pad_or_trim(stereo, 5).shape == (5, 2)
+    assert audio.pad_or_trim(stereo, 0).shape == (0, 2)
+
+
 # -- extensions --

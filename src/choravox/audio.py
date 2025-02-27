@@ -127,4 +127,16 @@ def apply_gain(samples: ArrayLike, gain_db: float) -> FloatArray:
     return np.asarray(as_waveform(samples) * (10.0 ** (gain_db / 20.0)), dtype=np.float64)
 
 
+def pad_or_trim(samples: ArrayLike, length: int, *, value: float = 0.0) -> FloatArray:
+    """Return exactly length samples while preserving channel geometry."""
+    if length < 0 or not np.isfinite(value):
+        raise ValueError("length must be nonnegative and value finite")
+    waveform = as_waveform(samples)
+    if waveform.shape[0] >= length:
+        return waveform[:length].copy()
+    shape = (length - waveform.shape[0], *waveform.shape[1:])
+    padding = np.full(shape, value, dtype=np.float64)
+    return np.concatenate((waveform, padding), axis=0)
+
+
 # -- extensions --
