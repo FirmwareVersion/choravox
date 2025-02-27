@@ -156,4 +156,16 @@ def test_pad_or_trim_preserves_channel_count() -> None:
     assert audio.pad_or_trim(stereo, 0).shape == (0, 2)
 
 
+def test_mix_sums_sources_and_applies_independent_gains() -> None:
+    result = audio.mix([[1.0, 0.0], [0.0, 1.0]], [0.0, -6.020599913])
+    np.testing.assert_allclose(result, [1.0, 0.5], atol=1e-9)
+
+
+def test_mix_rejects_shape_and_gain_mismatch() -> None:
+    with pytest.raises(ValueError, match="same shape"):
+        audio.mix([[1.0], [1.0, 2.0]])
+    with pytest.raises(ValueError, match="source count"):
+        audio.mix([[1.0]], [0.0, 1.0])
+
+
 # -- extensions --

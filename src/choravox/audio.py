@@ -139,4 +139,20 @@ def pad_or_trim(samples: ArrayLike, length: int, *, value: float = 0.0) -> Float
     return np.concatenate((waveform, padding), axis=0)
 
 
+def mix(sources: list[ArrayLike], gains_db: list[float] | None = None) -> FloatArray:
+    """Sum equally shaped sources after optional independent gains."""
+    if not sources:
+        raise ValueError("at least one source is required")
+    waveforms = [as_waveform(source) for source in sources]
+    if any(waveform.shape != waveforms[0].shape for waveform in waveforms[1:]):
+        raise ValueError("all sources must have the same shape")
+    gains = [0.0] * len(waveforms) if gains_db is None else gains_db
+    if len(gains) != len(waveforms):
+        raise ValueError("gains_db must match the source count")
+    output = np.zeros_like(waveforms[0])
+    for waveform, gain in zip(waveforms, gains, strict=True):
+        output += apply_gain(waveform, gain)
+    return output
+
+
 # -- extensions --
