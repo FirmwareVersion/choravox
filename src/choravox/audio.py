@@ -170,4 +170,19 @@ def snr_db(reference: ArrayLike, estimate: ArrayLike, *, floor_db: float = -120.
     return round(max(floor_db, 10.0 * float(np.log10(signal_power / noise_power))), 6)
 
 
+def add_noise_at_snr(signal: ArrayLike, noise: ArrayLike, target_db: float) -> FloatArray:
+    """Add zero-mean noise scaled to a requested power SNR."""
+    clean = as_waveform(signal)
+    disturbance = as_waveform(noise)
+    if clean.shape != disturbance.shape:
+        raise ValueError("signal and noise must have the same shape")
+    disturbance = disturbance - np.mean(disturbance, axis=0, keepdims=disturbance.ndim == 2)
+    signal_level = float(rms(clean))
+    noise_level = float(rms(disturbance))
+    if signal_level == 0.0 or noise_level == 0.0:
+        raise ValueError("signal and noise must both have nonzero RMS")
+    desired = signal_level / (10.0 ** (target_db / 20.0))
+    return np.asarray(clean + disturbance * (desired / noise_level), dtype=np.float64)
+
+
 # -- extensions --

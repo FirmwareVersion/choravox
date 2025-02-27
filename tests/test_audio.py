@@ -180,4 +180,16 @@ def test_snr_defines_perfect_and_silent_cases() -> None:
     assert audio.snr_db([0.0], [1.0], floor_db=-90.0) == -90.0
 
 
+def test_add_noise_reaches_requested_snr() -> None:
+    clean = np.sin(np.linspace(0, 8 * np.pi, 1_000, endpoint=False))
+    noise = np.tile([-1.0, 1.0], 500)
+    mixture = audio.add_noise_at_snr(clean, noise, 6.0)
+    assert audio.snr_db(clean, mixture) == pytest.approx(6.0, abs=1e-5)
+
+
+def test_add_noise_rejects_silent_components() -> None:
+    with pytest.raises(ValueError, match="nonzero RMS"):
+        audio.add_noise_at_snr(np.ones(4), np.zeros(4), 0.0)
+
+
 # -- extensions --
