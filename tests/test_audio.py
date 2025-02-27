@@ -168,4 +168,16 @@ def test_mix_rejects_shape_and_gain_mismatch() -> None:
         audio.mix([[1.0]], [0.0, 1.0])
 
 
+def test_snr_has_hand_computed_power_ratio() -> None:
+    clean = np.ones(4)
+    observed = clean + np.full(4, 0.1)
+    assert audio.snr_db(clean, observed) == 20.0
+
+
+def test_snr_defines_perfect_and_silent_cases() -> None:
+    assert audio.snr_db([1.0], [1.0]) == float("inf")
+    assert audio.snr_db([0.0], [0.0]) == 0.0
+    assert audio.snr_db([0.0], [1.0], floor_db=-90.0) == -90.0
+
+
 # -- extensions --

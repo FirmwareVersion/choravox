@@ -155,4 +155,19 @@ def mix(sources: list[ArrayLike], gains_db: list[float] | None = None) -> FloatA
     return output
 
 
+def snr_db(reference: ArrayLike, estimate: ArrayLike, *, floor_db: float = -120.0) -> float:
+    """Measure power SNR where estimate equals reference plus noise."""
+    clean = as_waveform(reference)
+    observed = as_waveform(estimate)
+    if clean.shape != observed.shape:
+        raise ValueError("reference and estimate must have the same shape")
+    signal_power = float(np.mean(np.square(clean))) if clean.size else 0.0
+    noise_power = float(np.mean(np.square(observed - clean))) if clean.size else 0.0
+    if noise_power == 0.0:
+        return float("inf") if signal_power > 0 else 0.0
+    if signal_power == 0.0:
+        return float(floor_db)
+    return round(max(floor_db, 10.0 * float(np.log10(signal_power / noise_power))), 6)
+
+
 # -- extensions --
