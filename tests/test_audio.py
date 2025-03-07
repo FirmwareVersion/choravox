@@ -203,4 +203,15 @@ def test_snr_rejects_unaligned_signals() -> None:
         audio.snr_db(np.zeros(2), np.zeros(3))
 
 
+def test_remove_dc_centers_every_channel() -> None:
+    stereo = np.array([[1.0, 2.0], [3.0, 6.0], [5.0, 10.0]])
+    centered = audio.remove_dc(stereo)
+    np.testing.assert_allclose(np.mean(centered, axis=0), [0.0, 0.0], atol=1e-15)
+
+
+def test_remove_dc_is_idempotent() -> None:
+    centered = audio.remove_dc([1.0, 2.0, 8.0])
+    np.testing.assert_allclose(audio.remove_dc(centered), centered, atol=1e-15)
+
+
 # -- extensions --

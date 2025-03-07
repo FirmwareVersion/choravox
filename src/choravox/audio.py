@@ -185,4 +185,12 @@ def add_noise_at_snr(signal: ArrayLike, noise: ArrayLike, target_db: float) -> F
     return np.asarray(clean + disturbance * (desired / noise_level), dtype=np.float64)
 
 
+def remove_dc(samples: ArrayLike) -> FloatArray:
+    """Subtract the mean independently from each channel."""
+    waveform = as_waveform(samples)
+    if waveform.shape[0] == 0:
+        return waveform.copy()
+    return np.asarray(waveform - np.mean(waveform, axis=0), dtype=np.float64)
+
+
 # -- extensions --
