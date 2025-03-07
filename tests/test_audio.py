@@ -192,4 +192,15 @@ def test_add_noise_rejects_silent_components() -> None:
         audio.add_noise_at_snr(np.ones(4), np.zeros(4), 0.0)
 
 
+def test_noise_scaling_preserves_multichannel_shape() -> None:
+    clean = np.column_stack((np.ones(20), np.full(20, 0.5)))
+    noise = np.column_stack((np.tile([-1.0, 1.0], 10), np.tile([1.0, -1.0], 10)))
+    assert audio.add_noise_at_snr(clean, noise, 10.0).shape == (20, 2)
+
+
+def test_snr_rejects_unaligned_signals() -> None:
+    with pytest.raises(ValueError, match="same shape"):
+        audio.snr_db(np.zeros(2), np.zeros(3))
+
+
 # -- extensions --
