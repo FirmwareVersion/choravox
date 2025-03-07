@@ -214,4 +214,14 @@ def test_remove_dc_is_idempotent() -> None:
     np.testing.assert_allclose(audio.remove_dc(centered), centered, atol=1e-15)
 
 
+def test_preemphasis_and_deemphasis_roundtrip() -> None:
+    signal = np.array([0.1, 0.2, -0.1, 0.3])
+    np.testing.assert_allclose(audio.deemphasis(audio.preemphasis(signal)), signal, atol=1e-12)
+
+
+def test_preemphasis_operates_per_channel() -> None:
+    stereo = np.array([[1.0, 2.0], [2.0, 4.0]])
+    np.testing.assert_allclose(audio.preemphasis(stereo, 0.5), [[1.0, 2.0], [1.5, 3.0]])
+
+
 # -- extensions --

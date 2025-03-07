@@ -193,4 +193,26 @@ def remove_dc(samples: ArrayLike) -> FloatArray:
     return np.asarray(waveform - np.mean(waveform, axis=0), dtype=np.float64)
 
 
+def preemphasis(samples: ArrayLike, coefficient: float = 0.97) -> FloatArray:
+    """Apply first-order pre-emphasis along the sample axis."""
+    if not 0.0 <= coefficient < 1.0:
+        raise ValueError("coefficient must be in [0, 1)")
+    waveform = as_waveform(samples)
+    output = waveform.copy()
+    if waveform.shape[0] > 1:
+        output[1:] = waveform[1:] - coefficient * waveform[:-1]
+    return output
+
+
+def deemphasis(samples: ArrayLike, coefficient: float = 0.97) -> FloatArray:
+    """Invert first-order pre-emphasis along the sample axis."""
+    if not 0.0 <= coefficient < 1.0:
+        raise ValueError("coefficient must be in [0, 1)")
+    waveform = as_waveform(samples)
+    output = waveform.copy()
+    for index in range(1, waveform.shape[0]):
+        output[index] += coefficient * output[index - 1]
+    return output
+
+
 # -- extensions --
