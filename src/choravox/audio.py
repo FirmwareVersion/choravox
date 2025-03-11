@@ -231,4 +231,11 @@ def fade(samples: ArrayLike, fade_in: int = 0, fade_out: int = 0) -> FloatArray:
     return np.asarray(waveform * envelope, dtype=np.float64)
 
 
+def duration_seconds(samples: ArrayLike, sample_rate: int) -> float:
+    """Return sample-axis duration with input validation."""
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    return round(as_waveform(samples).shape[0] / sample_rate, 9)
+
+
 # -- extensions --

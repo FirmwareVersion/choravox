@@ -249,4 +249,14 @@ def test_downmix_identical_channels_conserves_waveform() -> None:
     np.testing.assert_array_equal(audio.to_mono(stereo), signal)
 
 
+def test_duration_uses_sample_axis_not_total_values() -> None:
+    assert audio.duration_seconds(np.zeros((16_000, 2)), 16_000) == 1.0
+    assert audio.duration_seconds(np.zeros(0), 16_000) == 0.0
+
+
+def test_duration_rejects_invalid_sample_rate() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        audio.duration_seconds([0.0], 0)
+
+
 # -- extensions --
