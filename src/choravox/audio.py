@@ -215,4 +215,20 @@ def deemphasis(samples: ArrayLike, coefficient: float = 0.97) -> FloatArray:
     return output
 
 
+def fade(samples: ArrayLike, fade_in: int = 0, fade_out: int = 0) -> FloatArray:
+    """Apply linear fades whose endpoint samples reach zero or one exactly."""
+    waveform = as_waveform(samples)
+    length = waveform.shape[0]
+    if fade_in < 0 or fade_out < 0 or fade_in + fade_out > length:
+        raise ValueError("fade lengths must be nonnegative and fit the signal")
+    envelope = np.ones(length, dtype=np.float64)
+    if fade_in:
+        envelope[:fade_in] = np.linspace(0.0, 1.0, fade_in)
+    if fade_out:
+        envelope[-fade_out:] = np.linspace(1.0, 0.0, fade_out)
+    if waveform.ndim == 2:
+        envelope = envelope[:, None]
+    return np.asarray(waveform * envelope, dtype=np.float64)
+
+
 # -- extensions --

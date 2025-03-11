@@ -224,4 +224,14 @@ def test_preemphasis_operates_per_channel() -> None:
     np.testing.assert_allclose(audio.preemphasis(stereo, 0.5), [[1.0, 2.0], [1.5, 3.0]])
 
 
+def test_fade_reaches_exact_endpoints() -> None:
+    np.testing.assert_allclose(audio.fade(np.ones(6), 3, 3), [0.0, 0.5, 1.0, 1.0, 0.5, 0.0])
+
+
+def test_fade_rejects_overlapping_envelopes() -> None:
+    with pytest.raises(ValueError, match="fit"):
+        audio.fade(np.ones(4), 3, 2)
+    assert audio.fade(np.ones(0)).shape == (0,)
+
+
 # -- extensions --
