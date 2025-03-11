@@ -234,4 +234,19 @@ def test_fade_rejects_overlapping_envelopes() -> None:
     assert audio.fade(np.ones(0)).shape == (0,)
 
 
+def test_preemphasis_roundtrip_conserves_energy() -> None:
+    generator = np.random.default_rng(41)
+    signal = generator.normal(size=512)
+    restored = audio.deemphasis(audio.preemphasis(signal))
+    original_energy = float(np.sum(signal * signal))
+    restored_energy = float(np.sum(restored * restored))
+    assert restored_energy == pytest.approx(original_energy, rel=1e-12)
+
+
+def test_downmix_identical_channels_conserves_waveform() -> None:
+    signal = np.linspace(-1.0, 1.0, 128)
+    stereo = np.column_stack((signal, signal))
+    np.testing.assert_array_equal(audio.to_mono(stereo), signal)
+
+
 # -- extensions --
