@@ -259,6 +259,18 @@ def test_duration_rejects_invalid_sample_rate() -> None:
         audio.duration_seconds([0.0], 0)
 
 
+def test_audio_utilities_reject_nonfinite_controls() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        audio.apply_gain([1.0], np.nan)
+    with pytest.raises(ValueError, match="finite"):
+        audio.pad_or_trim([1.0], 2, value=np.inf)
+
+
+def test_mono_weights_are_rejected_for_mono_input() -> None:
+    with pytest.raises(ValueError, match="multi-channel"):
+        audio.to_mono([0.0, 1.0], [1.0])
+
+
 # -- extensions --
 def test_noise_centering_does_not_change_mono_rank() -> None:
     signal = np.ones(10)
