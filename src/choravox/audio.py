@@ -176,7 +176,7 @@ def add_noise_at_snr(signal: ArrayLike, noise: ArrayLike, target_db: float) -> F
     disturbance = as_waveform(noise)
     if clean.shape != disturbance.shape:
         raise ValueError("signal and noise must have the same shape")
-    disturbance = disturbance - np.mean(disturbance, axis=0, keepdims=disturbance.ndim == 2)
+    disturbance = disturbance - np.mean(disturbance, axis=0)
     signal_level = float(rms(clean))
     noise_level = float(rms(disturbance))
     if signal_level == 0.0 or noise_level == 0.0:

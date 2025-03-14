@@ -260,3 +260,17 @@ def test_duration_rejects_invalid_sample_rate() -> None:
 
 
 # -- extensions --
+def test_noise_centering_does_not_change_mono_rank() -> None:
+    signal = np.ones(10)
+    noise = np.arange(10, dtype=np.float64)
+    mixture = audio.add_noise_at_snr(signal, noise, 3.0)
+    assert mixture.shape == (10,)
+
+
+def test_noise_centering_removes_constant_bias() -> None:
+    signal = np.ones(8)
+    base = np.tile([-1.0, 1.0], 4)
+    np.testing.assert_allclose(
+        audio.add_noise_at_snr(signal, base, 6.0),
+        audio.add_noise_at_snr(signal, base + 100.0, 6.0),
+    )
