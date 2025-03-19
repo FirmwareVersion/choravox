@@ -23,4 +23,16 @@ def test_frame_signal_rejects_invalid_geometry() -> None:
         features.frame_signal([1.0], 1, 1, end="mirror")  # type: ignore[arg-type]
 
 
+def test_overlap_add_inverts_complete_overlapping_frames() -> None:
+    signal = np.arange(8, dtype=np.float64)
+    frames = features.frame_signal(signal, 4, 2)
+    np.testing.assert_array_equal(features.overlap_add(frames, 2), signal)
+
+
+def test_overlap_add_respects_requested_trim_and_padding() -> None:
+    frames = features.frame_signal([1.0, 2.0, 3.0], 2, 1)
+    np.testing.assert_array_equal(features.overlap_add(frames, 1, length=2), [1.0, 2.0])
+    np.testing.assert_array_equal(features.overlap_add(frames, 1, length=5), [1, 2, 3, 0, 0])
+
+
 # -- extensions --
