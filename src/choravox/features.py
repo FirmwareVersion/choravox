@@ -99,4 +99,38 @@ def analysis_window(length: int, kind: WindowKind = "hann", *, periodic: bool = 
     return np.asarray(values[:length], dtype=np.float64)
 
 
+SpectrumScale = Literal["magnitude", "power"]
+
+
+def frame_spectrum(
+    frames: ArrayLike,
+    *,
+    n_fft: int | None = None,
+    window: ArrayLike | None = None,
+    scale: SpectrumScale = "power",
+) -> FloatArray:
+    """Compute a one-sided real FFT spectrum along each frame's sample axis."""
+    values = np.asarray(frames, dtype=np.float64)
+    if values.ndim not in (2, 3) or values.shape[1] == 0:
+        raise ValueError("frames must have shape (frames, samples[, channels])")
+    if not np.all(np.isfinite(values)):
+        raise ValueError("frames must be finite")
+    fft_size = values.shape[1] if n_fft is None else _positive_size(n_fft, "n_fft")
+    if fft_size < values.shape[1]:
+        raise ValueError("n_fft must be at least the frame length")
+    if window is not None:
+        weights = np.asarray(window, dtype=np.float64)
+        if weights.shape != (values.shape[1],) or not np.all(np.isfinite(weights)):
+            raise ValueError("window must contain one finite weight per frame sample")
+        weights = weights[:, None] if values.ndim == 3 else weights
+        values = values * weights
+    transformed = np.fft.rfft(values, n=fft_size, axis=1)
+    magnitude = np.abs(transformed)
+    if scale == "magnitude":
+        return np.asarray(magnitude, dtype=np.float64)
+    if scale == "power":
+        return np.asarray(np.square(magnitude), dtype=np.float64)
+    raise ValueError("scale must be 'magnitude' or 'power'")
+
+
 # -- extensions --

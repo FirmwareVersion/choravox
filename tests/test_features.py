@@ -79,4 +79,18 @@ def test_sample_sizes_reject_fractional_and_boolean_values() -> None:
         features.analysis_window(True)  # type: ignore[arg-type]
 
 
+def test_frame_spectrum_places_a_bin_centered_tone() -> None:
+    tone = np.sin(2 * np.pi * np.arange(16) * 3 / 16)
+    spectrum = features.frame_spectrum(tone[None, :], scale="magnitude")
+    assert int(np.argmax(spectrum[0])) == 3
+    assert spectrum.shape == (1, 9)
+
+
+def test_frame_spectrum_power_is_squared_magnitude() -> None:
+    frames = np.array([[1.0, -0.5, 0.25, 0.0]])
+    magnitude = features.frame_spectrum(frames, n_fft=8, scale="magnitude")
+    power = features.frame_spectrum(frames, n_fft=8, scale="power")
+    np.testing.assert_allclose(power, magnitude**2, rtol=1e-14, atol=1e-14)
+
+
 # -- extensions --
