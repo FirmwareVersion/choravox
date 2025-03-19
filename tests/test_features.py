@@ -72,4 +72,11 @@ def test_analysis_window_validates_kind_and_length() -> None:
         features.analysis_window(8, "triangle")  # type: ignore[arg-type]
 
 
+def test_sample_sizes_reject_fractional_and_boolean_values() -> None:
+    with pytest.raises(ValueError, match="positive integer"):
+        features.frame_signal([1.0], 1.5, 1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="positive integer"):
+        features.analysis_window(True)  # type: ignore[arg-type]
+
+
 # -- extensions --

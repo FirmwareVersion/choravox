@@ -13,6 +13,16 @@ from choravox.audio import as_waveform
 FloatArray = NDArray[np.float64]
 
 
+def _positive_size(value: int, name: str) -> int:
+    if (
+        not isinstance(value, (int, np.integer))
+        or isinstance(value, (bool, np.bool_))
+        or value <= 0
+    ):
+        raise ValueError(f"{name} must be a positive integer")
+    return int(value)
+
+
 def frame_signal(
     samples: ArrayLike,
     frame_length: int,
@@ -22,8 +32,8 @@ def frame_signal(
     pad_value: float = 0.0,
 ) -> FloatArray:
     """Slice a samples-first waveform into frames without copying channels together."""
-    if frame_length <= 0 or hop_length <= 0:
-        raise ValueError("frame_length and hop_length must be positive")
+    frame_length = _positive_size(frame_length, "frame_length")
+    hop_length = _positive_size(hop_length, "hop_length")
     if end not in {"drop", "pad"}:
         raise ValueError("end must be 'drop' or 'pad'")
     if not np.isfinite(pad_value):
@@ -51,8 +61,7 @@ def overlap_add(frames: ArrayLike, hop_length: int, *, length: int | None = None
         raise ValueError("frames must have shape (frames, samples[, channels])")
     if not np.all(np.isfinite(values)):
         raise ValueError("frames must be finite")
-    if hop_length <= 0:
-        raise ValueError("hop_length must be positive")
+    hop_length = _positive_size(hop_length, "hop_length")
     if length is not None and length < 0:
         raise ValueError("length must be nonnegative")
     natural = 0 if values.shape[0] == 0 else (values.shape[0] - 1) * hop_length + values.shape[1]
@@ -75,8 +84,7 @@ WindowKind = Literal["rectangular", "hann", "hamming", "blackman"]
 
 def analysis_window(length: int, kind: WindowKind = "hann", *, periodic: bool = True) -> FloatArray:
     """Create a standard analysis window with explicit periodicity."""
-    if length <= 0:
-        raise ValueError("window length must be positive")
+    length = _positive_size(length, "window length")
     if kind == "rectangular" or length == 1:
         return np.ones(length, dtype=np.float64)
     size = length + 1 if periodic else length
