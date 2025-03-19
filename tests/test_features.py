@@ -54,4 +54,22 @@ def test_overlap_add_rejects_malformed_or_nonfinite_frames() -> None:
         features.overlap_add([[0.0, np.nan]], 1)
 
 
+def test_symmetric_hann_has_zero_endpoints() -> None:
+    window = features.analysis_window(5, "hann", periodic=False)
+    np.testing.assert_allclose(window, [0.0, 0.5, 1.0, 0.5, 0.0], atol=1e-15)
+
+
+def test_periodic_window_does_not_duplicate_its_first_endpoint() -> None:
+    window = features.analysis_window(8, "hann", periodic=True)
+    assert window[0] == 0.0
+    assert window[-1] > 0.0
+
+
+def test_analysis_window_validates_kind_and_length() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        features.analysis_window(0)
+    with pytest.raises(ValueError, match="unknown"):
+        features.analysis_window(8, "triangle")  # type: ignore[arg-type]
+
+
 # -- extensions --

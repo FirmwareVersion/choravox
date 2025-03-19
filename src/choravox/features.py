@@ -70,4 +70,25 @@ def overlap_add(frames: ArrayLike, hop_length: int, *, length: int | None = None
     return np.asarray(output[:requested], dtype=np.float64)
 
 
+WindowKind = Literal["rectangular", "hann", "hamming", "blackman"]
+
+
+def analysis_window(length: int, kind: WindowKind = "hann", *, periodic: bool = True) -> FloatArray:
+    """Create a standard analysis window with explicit periodicity."""
+    if length <= 0:
+        raise ValueError("window length must be positive")
+    if kind == "rectangular" or length == 1:
+        return np.ones(length, dtype=np.float64)
+    size = length + 1 if periodic else length
+    if kind == "hann":
+        values = np.hanning(size)
+    elif kind == "hamming":
+        values = np.hamming(size)
+    elif kind == "blackman":
+        values = np.blackman(size)
+    else:
+        raise ValueError(f"unknown window kind: {kind}")
+    return np.asarray(values[:length], dtype=np.float64)
+
+
 # -- extensions --
