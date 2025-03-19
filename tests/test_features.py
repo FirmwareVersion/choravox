@@ -35,4 +35,23 @@ def test_overlap_add_respects_requested_trim_and_padding() -> None:
     np.testing.assert_array_equal(features.overlap_add(frames, 1, length=5), [1, 2, 3, 0, 0])
 
 
+def test_multichannel_frame_roundtrip_preserves_each_channel() -> None:
+    stereo = np.column_stack((np.arange(6), -np.arange(6)))
+    frames = features.frame_signal(stereo, 3, 1)
+    assert frames.shape == (4, 3, 2)
+    np.testing.assert_array_equal(features.overlap_add(frames, 1), stereo)
+
+
+def test_empty_framing_retains_rank_and_channel_count() -> None:
+    assert features.frame_signal([], 4, 2).shape == (0, 4)
+    assert features.frame_signal(np.empty((0, 2)), 4, 2).shape == (0, 4, 2)
+
+
+def test_overlap_add_rejects_malformed_or_nonfinite_frames() -> None:
+    with pytest.raises(ValueError, match="shape"):
+        features.overlap_add([1.0, 2.0], 1)
+    with pytest.raises(ValueError, match="finite"):
+        features.overlap_add([[0.0, np.nan]], 1)
+
+
 # -- extensions --
