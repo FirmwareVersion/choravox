@@ -93,4 +93,28 @@ def test_frame_spectrum_power_is_squared_magnitude() -> None:
     np.testing.assert_allclose(power, magnitude**2, rtol=1e-14, atol=1e-14)
 
 
+@pytest.mark.parametrize("n_fft", [15, 16])
+def test_one_sided_power_obeys_parseval(n_fft: int) -> None:
+    generator = np.random.default_rng(101)
+    frame = generator.normal(size=n_fft)
+    power = features.frame_spectrum(frame[None, :], scale="power")[0]
+    edge = power[0] + (power[-1] if n_fft % 2 == 0 else 0.0)
+    stop = -1 if n_fft % 2 == 0 else None
+    spectral_energy = (edge + 2.0 * np.sum(power[1:stop])) / n_fft
+    assert spectral_energy == pytest.approx(float(np.sum(frame**2)), rel=1e-12)
+
+
+def test_spectrum_applies_window_per_channel() -> None:
+    frames = np.ones((1, 4, 2))
+    spectrum = features.frame_spectrum(frames, window=[1.0, 0.0, 0.0, 0.0])
+    np.testing.assert_allclose(spectrum, np.ones((1, 3, 2)))
+
+
+def test_spectrum_rejects_short_fft_and_bad_window() -> None:
+    with pytest.raises(ValueError, match="at least"):
+        features.frame_spectrum(np.ones((1, 8)), n_fft=4)
+    with pytest.raises(ValueError, match="one finite"):
+        features.frame_spectrum(np.ones((1, 8)), window=np.ones(7))
+
+
 # -- extensions --
