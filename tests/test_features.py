@@ -136,4 +136,19 @@ def test_mel_transforms_reject_negative_domain() -> None:
         features.mel_to_hz([-1.0])
 
 
+def test_mel_filterbank_has_ordered_normalized_triangles() -> None:
+    bank = features.mel_filterbank(16_000, 512, 24)
+    assert bank.shape == (24, 257)
+    np.testing.assert_allclose(np.sum(bank, axis=1), np.ones(24), atol=1e-15)
+    assert np.all(bank >= 0.0)
+    assert np.all(np.diff(np.argmax(bank, axis=1)) > 0)
+
+
+def test_mel_filterbank_honors_frequency_bounds() -> None:
+    bank = features.mel_filterbank(16_000, 512, 8, min_hz=1000.0, max_hz=4000.0)
+    frequencies = np.linspace(0.0, 8000.0, 257)
+    assert np.all(bank[:, frequencies < 1000.0] == 0.0)
+    assert np.all(bank[:, frequencies > 4000.0] == 0.0)
+
+
 # -- extensions --

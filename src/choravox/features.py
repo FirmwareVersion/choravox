@@ -164,4 +164,40 @@ def mel_to_hz(mels: ArrayLike, scale: MelScale = "slaney") -> FloatArray:
     return np.asarray(np.where(values >= 15.0, logarithmic, linear), dtype=np.float64)
 
 
+def mel_filterbank(
+    sample_rate: int,
+    n_fft: int,
+    n_mels: int,
+    *,
+    min_hz: float = 0.0,
+    max_hz: float | None = None,
+    scale: MelScale = "slaney",
+    normalize: bool = True,
+) -> FloatArray:
+    """Construct triangular mel filters over one-sided FFT bins."""
+    sample_rate = _positive_size(sample_rate, "sample_rate")
+    n_fft = _positive_size(n_fft, "n_fft")
+    n_mels = _positive_size(n_mels, "n_mels")
+    upper = sample_rate / 2.0 if max_hz is None else float(max_hz)
+    if not np.isfinite(min_hz) or not np.isfinite(upper) or min_hz < 0 or upper <= min_hz:
+        raise ValueError("mel frequency bounds must be finite and increasing")
+    if upper > sample_rate / 2.0:
+        raise ValueError("max_hz must not exceed the Nyquist frequency")
+    mel_edges = np.linspace(hz_to_mel(min_hz, scale), hz_to_mel(upper, scale), n_mels + 2)
+    edges = mel_to_hz(mel_edges, scale)
+    bins = np.linspace(0.0, sample_rate / 2.0, n_fft // 2 + 1)
+    bank = np.zeros((n_mels, bins.size), dtype=np.float64)
+    for index in range(n_mels):
+        left, center, right = edges[index : index + 3]
+        bank[index] = np.maximum(
+            0.0, np.minimum((bins - left) / (center - left), (right - bins) / (right - center))
+        )
+    if normalize:
+        totals = np.sum(bank, axis=1)
+        if np.any(totals == 0.0):
+            raise ValueError("n_fft is too small to resolve every requested mel band")
+        bank /= totals[:, None]
+    return bank
+
+
 # -- extensions --
