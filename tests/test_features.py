@@ -151,4 +151,26 @@ def test_mel_filterbank_honors_frequency_bounds() -> None:
     assert np.all(bank[:, frequencies > 4000.0] == 0.0)
 
 
+def test_filterbank_rejects_bounds_above_nyquist() -> None:
+    with pytest.raises(ValueError, match="Nyquist"):
+        features.mel_filterbank(16_000, 512, 20, max_hz=9000.0)
+
+
+def test_filterbank_rejects_unresolvable_band_count() -> None:
+    with pytest.raises(ValueError, match="too small"):
+        features.mel_filterbank(16_000, 8, 40)
+
+
+def test_filterbank_is_byte_deterministic() -> None:
+    first = features.mel_filterbank(16_000, 400, 20, min_hz=80.0, max_hz=7600.0)
+    second = features.mel_filterbank(16_000, 400, 20, min_hz=80.0, max_hz=7600.0)
+    assert first.tobytes() == second.tobytes()
+
+
+def test_filterbank_without_normalization_retains_triangle_peaks() -> None:
+    bank = features.mel_filterbank(8_000, 1024, 4, scale="htk", normalize=False)
+    assert np.all(np.max(bank, axis=1) > 0.98)
+    assert not np.allclose(np.sum(bank, axis=1), 1.0)
+
+
 # -- extensions --
