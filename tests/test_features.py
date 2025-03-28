@@ -117,4 +117,23 @@ def test_spectrum_rejects_short_fft_and_bad_window() -> None:
         features.frame_spectrum(np.ones((1, 8)), window=np.ones(7))
 
 
+@pytest.mark.parametrize("scale", ["slaney", "htk"])
+def test_mel_frequency_transforms_roundtrip(scale: features.MelScale) -> None:
+    frequencies = np.array([0.0, 100.0, 999.0, 1000.0, 8000.0])
+    restored = features.mel_to_hz(features.hz_to_mel(frequencies, scale), scale)
+    np.testing.assert_allclose(restored, frequencies, rtol=1e-12, atol=1e-12)
+
+
+def test_slaney_scale_is_continuous_at_one_kilohertz() -> None:
+    assert features.hz_to_mel(1000.0).item() == pytest.approx(15.0)
+    assert features.mel_to_hz(15.0).item() == pytest.approx(1000.0)
+
+
+def test_mel_transforms_reject_negative_domain() -> None:
+    with pytest.raises(ValueError, match="nonnegative"):
+        features.hz_to_mel([-1.0])
+    with pytest.raises(ValueError, match="nonnegative"):
+        features.mel_to_hz([-1.0])
+
+
 # -- extensions --

@@ -133,4 +133,35 @@ def frame_spectrum(
     raise ValueError("scale must be 'magnitude' or 'power'")
 
 
+MelScale = Literal["slaney", "htk"]
+
+
+def hz_to_mel(frequencies: ArrayLike, scale: MelScale = "slaney") -> FloatArray:
+    """Map nonnegative frequencies to the selected mel convention."""
+    values = np.asarray(frequencies, dtype=np.float64)
+    if not np.all(np.isfinite(values)) or np.any(values < 0):
+        raise ValueError("frequencies must be finite and nonnegative")
+    if scale == "htk":
+        return np.asarray(2595.0 * np.log10(1.0 + values / 700.0), dtype=np.float64)
+    if scale != "slaney":
+        raise ValueError("scale must be 'slaney' or 'htk'")
+    linear = values / (200.0 / 3.0)
+    logarithmic = 15.0 + np.log(np.maximum(values, 1000.0) / 1000.0) / (np.log(6.4) / 27.0)
+    return np.asarray(np.where(values >= 1000.0, logarithmic, linear), dtype=np.float64)
+
+
+def mel_to_hz(mels: ArrayLike, scale: MelScale = "slaney") -> FloatArray:
+    """Invert the selected mel convention for nonnegative mel values."""
+    values = np.asarray(mels, dtype=np.float64)
+    if not np.all(np.isfinite(values)) or np.any(values < 0):
+        raise ValueError("mels must be finite and nonnegative")
+    if scale == "htk":
+        return np.asarray(700.0 * (10.0 ** (values / 2595.0) - 1.0), dtype=np.float64)
+    if scale != "slaney":
+        raise ValueError("scale must be 'slaney' or 'htk'")
+    linear = values * (200.0 / 3.0)
+    logarithmic = 1000.0 * np.exp((values - 15.0) * (np.log(6.4) / 27.0))
+    return np.asarray(np.where(values >= 15.0, logarithmic, linear), dtype=np.float64)
+
+
 # -- extensions --
