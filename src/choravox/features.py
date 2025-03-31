@@ -235,4 +235,30 @@ def log_compress(energies: ArrayLike, *, floor: float = 1e-10, base: LogBase = "
     return np.asarray(result, dtype=np.float64)
 
 
+def cmvn(
+    feature_matrix: ArrayLike,
+    *,
+    normalize_variance: bool = True,
+    mask: ArrayLike | None = None,
+    epsilon: float = 1e-8,
+) -> FloatArray:
+    """Apply utterance mean and optional variance normalization over selected frames."""
+    values = np.asarray(feature_matrix, dtype=np.float64)
+    if values.ndim not in (2, 3) or values.shape[0] == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("features must be a nonempty finite frame matrix")
+    if not np.isfinite(epsilon) or epsilon <= 0.0:
+        raise ValueError("epsilon must be finite and positive")
+    selected = np.ones(values.shape[0], dtype=np.bool_)
+    if mask is not None:
+        selected = np.asarray(mask, dtype=np.bool_)
+        if selected.shape != (values.shape[0],) or not np.any(selected):
+            raise ValueError("mask must select at least one feature frame")
+    reference = values[selected]
+    centered = values - np.mean(reference, axis=0)
+    if not normalize_variance:
+        return np.asarray(centered, dtype=np.float64)
+    deviation = np.std(reference, axis=0)
+    return np.asarray(centered / np.maximum(deviation, epsilon), dtype=np.float64)
+
+
 # -- extensions --

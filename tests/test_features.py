@@ -214,4 +214,16 @@ def test_silent_log_mel_vector_is_finite() -> None:
     assert np.all(np.isfinite(features.log_compress(energies)))
 
 
+def test_cmvn_centers_and_scales_each_feature() -> None:
+    matrix = np.array([[1.0, 10.0], [2.0, 12.0], [3.0, 14.0]])
+    normalized = features.cmvn(matrix)
+    np.testing.assert_allclose(np.mean(normalized, axis=0), [0.0, 0.0], atol=1e-15)
+    np.testing.assert_allclose(np.std(normalized, axis=0), [1.0, 1.0], atol=1e-15)
+
+
+def test_cmvn_can_only_remove_the_mean() -> None:
+    centered = features.cmvn([[1.0], [3.0]], normalize_variance=False)
+    np.testing.assert_allclose(centered[:, 0], [-1.0, 1.0])
+
+
 # -- extensions --
