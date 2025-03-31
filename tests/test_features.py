@@ -194,4 +194,24 @@ def test_log_compression_supports_base_ten() -> None:
     np.testing.assert_allclose(features.log_compress([0.01, 1.0], base="10"), [-2.0, 0.0])
 
 
+def test_filterbank_projection_rejects_bin_mismatch_and_negative_power() -> None:
+    with pytest.raises(ValueError, match="bins"):
+        features.apply_filterbank(np.ones((2, 4)), np.ones((3, 5)))
+    with pytest.raises(ValueError, match="nonnegative"):
+        features.apply_filterbank(np.array([[1.0, -1.0]]), np.ones((1, 2)))
+
+
+def test_log_compression_rejects_invalid_floor_and_base() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        features.log_compress([1.0], floor=0.0)
+    with pytest.raises(ValueError, match="base"):
+        features.log_compress([1.0], base="two")  # type: ignore[arg-type]
+
+
+def test_silent_log_mel_vector_is_finite() -> None:
+    bank = features.mel_filterbank(16_000, 512, 20)
+    energies = features.apply_filterbank(np.zeros((4, 257)), bank)
+    assert np.all(np.isfinite(features.log_compress(energies)))
+
+
 # -- extensions --
