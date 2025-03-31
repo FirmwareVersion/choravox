@@ -215,4 +215,24 @@ def apply_filterbank(spectra: ArrayLike, filters: ArrayLike) -> FloatArray:
     return np.asarray(np.einsum("fbc,mb->fmc", values, bank), dtype=np.float64)
 
 
+LogBase = Literal["e", "10"]
+
+
+def log_compress(energies: ArrayLike, *, floor: float = 1e-10, base: LogBase = "e") -> FloatArray:
+    """Floor nonnegative energies before deterministic log compression."""
+    values = np.asarray(energies, dtype=np.float64)
+    if not np.all(np.isfinite(values)) or np.any(values < 0.0):
+        raise ValueError("energies must be finite and nonnegative")
+    if not np.isfinite(floor) or floor <= 0.0:
+        raise ValueError("floor must be finite and positive")
+    bounded = np.maximum(values, floor)
+    if base == "e":
+        result = np.log(bounded)
+    elif base == "10":
+        result = np.log10(bounded)
+    else:
+        raise ValueError("base must be 'e' or '10'")
+    return np.asarray(result, dtype=np.float64)
+
+
 # -- extensions --

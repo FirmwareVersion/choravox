@@ -185,4 +185,13 @@ def test_filterbank_projection_preserves_channels() -> None:
     assert projected.shape == (3, 3, 2)
 
 
+def test_log_compression_floors_silence() -> None:
+    compressed = features.log_compress([0.0, 1e-12, 1.0], floor=1e-6)
+    np.testing.assert_allclose(compressed, [np.log(1e-6), np.log(1e-6), 0.0])
+
+
+def test_log_compression_supports_base_ten() -> None:
+    np.testing.assert_allclose(features.log_compress([0.01, 1.0], base="10"), [-2.0, 0.0])
+
+
 # -- extensions --
