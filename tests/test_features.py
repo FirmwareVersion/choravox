@@ -173,4 +173,16 @@ def test_filterbank_without_normalization_retains_triangle_peaks() -> None:
     assert not np.allclose(np.sum(bank, axis=1), 1.0)
 
 
+def test_filterbank_projection_has_hand_computed_values() -> None:
+    spectra = np.array([[1.0, 2.0, 4.0], [2.0, 0.0, 1.0]])
+    bank = np.array([[1.0, 0.0, 0.0], [0.0, 0.25, 0.75]])
+    np.testing.assert_allclose(features.apply_filterbank(spectra, bank), [[1.0, 3.5], [2.0, 0.75]])
+
+
+def test_filterbank_projection_preserves_channels() -> None:
+    spectra = np.ones((3, 5, 2))
+    projected = features.apply_filterbank(spectra, np.eye(5)[::2])
+    assert projected.shape == (3, 3, 2)
+
+
 # -- extensions --

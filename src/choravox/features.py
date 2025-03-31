@@ -200,4 +200,19 @@ def mel_filterbank(
     return bank
 
 
+def apply_filterbank(spectra: ArrayLike, filters: ArrayLike) -> FloatArray:
+    """Project frame spectra onto filters while preserving optional channels."""
+    values = np.asarray(spectra, dtype=np.float64)
+    bank = np.asarray(filters, dtype=np.float64)
+    if values.ndim not in (2, 3) or bank.ndim != 2 or values.shape[1] != bank.shape[1]:
+        raise ValueError("spectra bins must match a two-dimensional filterbank")
+    if not np.all(np.isfinite(values)) or not np.all(np.isfinite(bank)):
+        raise ValueError("spectra and filters must be finite")
+    if np.any(values < 0.0) or np.any(bank < 0.0):
+        raise ValueError("spectra and filters must be nonnegative")
+    if values.ndim == 2:
+        return np.asarray(np.einsum("fb,mb->fm", values, bank), dtype=np.float64)
+    return np.asarray(np.einsum("fbc,mb->fmc", values, bank), dtype=np.float64)
+
+
 # -- extensions --
