@@ -255,4 +255,14 @@ def test_cmvn_preserves_frame_and_feature_geometry() -> None:
     assert features.cmvn(matrix).shape == matrix.shape
 
 
+def test_delta_features_recover_linear_interior_slope() -> None:
+    matrix = np.arange(7, dtype=np.float64)[:, None] * np.array([[1.0, -2.0]])
+    deltas = features.delta_features(matrix, width=2)
+    np.testing.assert_allclose(deltas[2:-2], np.tile([1.0, -2.0], (3, 1)))
+
+
+def test_delta_features_are_zero_for_constant_sequences() -> None:
+    np.testing.assert_array_equal(features.delta_features(np.ones((5, 3))), np.zeros((5, 3)))
+
+
 # -- extensions --

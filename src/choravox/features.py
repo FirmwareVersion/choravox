@@ -264,4 +264,21 @@ def cmvn(
     return np.asarray(normalized, dtype=np.float64)
 
 
+def delta_features(feature_matrix: ArrayLike, *, width: int = 2) -> FloatArray:
+    """Estimate regression deltas along time using replicated boundary frames."""
+    values = np.asarray(feature_matrix, dtype=np.float64)
+    if values.ndim < 2 or values.shape[0] == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("features must be a nonempty finite frame matrix")
+    width = _positive_size(width, "delta width")
+    padded = np.pad(values, ((width, width), *((0, 0),) * (values.ndim - 1)), mode="edge")
+    output = np.zeros_like(values)
+    for offset in range(1, width + 1):
+        output += offset * (
+            padded[width + offset : width + offset + values.shape[0]]
+            - padded[width - offset : width - offset + values.shape[0]]
+        )
+    output /= 2.0 * sum(offset * offset for offset in range(1, width + 1))
+    return output
+
+
 # -- extensions --
