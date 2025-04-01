@@ -236,4 +236,23 @@ def test_cmvn_constant_multichannel_plane_is_stable() -> None:
     np.testing.assert_array_equal(features.cmvn(matrix), np.zeros_like(matrix))
 
 
+def test_cmvn_estimates_statistics_from_masked_frames() -> None:
+    matrix = np.array([[0.0], [2.0], [100.0]])
+    normalized = features.cmvn(matrix, mask=[True, True, False])
+    np.testing.assert_allclose(normalized[:, 0], [-1.0, 1.0, 99.0])
+
+
+def test_cmvn_rejects_empty_or_mismatched_masks() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        features.cmvn(np.ones((2, 3)), mask=[False, False])
+    with pytest.raises(ValueError, match="at least one"):
+        features.cmvn(np.ones((2, 3)), mask=[True])
+
+
+def test_cmvn_preserves_frame_and_feature_geometry() -> None:
+    generator = np.random.default_rng(7)
+    matrix = generator.normal(size=(9, 4, 2))
+    assert features.cmvn(matrix).shape == matrix.shape
+
+
 # -- extensions --
