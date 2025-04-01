@@ -226,4 +226,14 @@ def test_cmvn_can_only_remove_the_mean() -> None:
     np.testing.assert_allclose(centered[:, 0], [-1.0, 1.0])
 
 
+def test_cmvn_maps_constant_dimensions_to_exact_zero() -> None:
+    normalized = features.cmvn([[1.0, 4.0], [2.0, 4.0], [3.0, 4.0]])
+    np.testing.assert_array_equal(normalized[:, 1], np.zeros(3))
+
+
+def test_cmvn_constant_multichannel_plane_is_stable() -> None:
+    matrix = np.ones((3, 2, 2))
+    np.testing.assert_array_equal(features.cmvn(matrix), np.zeros_like(matrix))
+
+
 # -- extensions --

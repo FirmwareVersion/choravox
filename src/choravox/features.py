@@ -258,7 +258,10 @@ def cmvn(
     if not normalize_variance:
         return np.asarray(centered, dtype=np.float64)
     deviation = np.std(reference, axis=0)
-    return np.asarray(centered / np.maximum(deviation, epsilon), dtype=np.float64)
+    constant = deviation < epsilon
+    normalized = centered / np.where(constant, 1.0, deviation)
+    normalized[..., constant] = 0.0
+    return np.asarray(normalized, dtype=np.float64)
 
 
 # -- extensions --
