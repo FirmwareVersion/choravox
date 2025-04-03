@@ -315,4 +315,24 @@ def test_log_mel_pipeline_downmixes_identical_channels() -> None:
     np.testing.assert_array_equal(mono, stereo)
 
 
+def test_log_mel_is_byte_deterministic_for_seeded_input() -> None:
+    generator = np.random.default_rng(419)
+    signal = generator.normal(0.0, 0.1, 3200)
+    first = features.extract_log_mel(signal)
+    second = features.extract_log_mel(signal)
+    assert first.tobytes() == second.tobytes()
+
+
+def test_log_mel_silence_becomes_exact_zero_after_cmvn() -> None:
+    extracted = features.extract_log_mel(np.zeros(800))
+    np.testing.assert_array_equal(extracted, np.zeros_like(extracted))
+
+
+def test_log_mel_empty_input_has_declared_feature_width() -> None:
+    from choravox.config import FeatureConfig
+
+    config = FeatureConfig(n_mels=7, delta_order=1)
+    assert features.extract_log_mel([], config).shape == (0, 14)
+
+
 # -- extensions --
