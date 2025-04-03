@@ -8,7 +8,8 @@ from typing import Literal
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from choravox.audio import as_waveform
+from choravox.audio import as_waveform, to_mono
+from choravox.config import FeatureConfig
 
 FloatArray = NDArray[np.float64]
 
@@ -294,6 +295,28 @@ def stack_feature_orders(
     for _ in range(order):
         components.append(delta_features(components[-1], width=width))
     return np.concatenate(components, axis=1)
+
+
+def extract_log_mel(samples: ArrayLike, config: FeatureConfig | None = None) -> FloatArray:
+    """Run the complete deterministic mono log-mel front end."""
+    settings = FeatureConfig() if config is None else config
+    waveform = to_mono(samples)
+    frames = frame_signal(waveform, settings.frame_length, settings.hop_length, end="pad")
+    if frames.shape[0] == 0:
+        return np.empty((0, settings.n_mels * (settings.delta_order + 1)), dtype=np.float64)
+    window = analysis_window(settings.frame_length)
+    power = frame_spectrum(frames, n_fft=settings.n_fft, window=window, scale="power")
+    bank = mel_filterbank(
+        settings.sample_rate,
+        settings.n_fft,
+        settings.n_mels,
+        min_hz=settings.min_hz,
+        max_hz=settings.max_hz,
+    )
+    static = log_compress(apply_filterbank(power, bank), floor=settings.log_floor)
+    normalized = cmvn(static)
+    stacked = stack_feature_orders(normalized, order=settings.delta_order)
+    return np.round(stacked, 6)
 
 
 # -- extensions --

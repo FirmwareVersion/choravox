@@ -298,4 +298,21 @@ def test_feature_order_rejects_unsupported_rank_and_order() -> None:
         features.stack_feature_orders(np.ones((2, 3)), order=3)
 
 
+def test_log_mel_pipeline_has_configured_geometry() -> None:
+    from choravox.config import FeatureConfig
+
+    config = FeatureConfig(n_mels=12, delta_order=2)
+    signal = np.sin(2 * np.pi * 220 * np.arange(1600) / config.sample_rate)
+    extracted = features.extract_log_mel(signal, config)
+    assert extracted.shape == (9, 36)
+    assert np.all(np.isfinite(extracted))
+
+
+def test_log_mel_pipeline_downmixes_identical_channels() -> None:
+    signal = np.sin(np.linspace(0.0, 20.0, 1200))
+    mono = features.extract_log_mel(signal)
+    stereo = features.extract_log_mel(np.column_stack((signal, signal)))
+    np.testing.assert_array_equal(mono, stereo)
+
+
 # -- extensions --
