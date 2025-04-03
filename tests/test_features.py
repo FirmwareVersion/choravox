@@ -280,4 +280,22 @@ def test_zero_order_returns_an_equal_independent_matrix() -> None:
     assert output is not matrix
 
 
+def test_delta_boundary_replication_halves_unit_slope_at_width_one() -> None:
+    deltas = features.delta_features(np.arange(4, dtype=np.float64)[:, None], width=1)
+    np.testing.assert_allclose(deltas[:, 0], [0.5, 1.0, 1.0, 0.5])
+
+
+def test_second_order_features_vanish_inside_a_linear_sequence() -> None:
+    matrix = np.arange(9, dtype=np.float64)[:, None]
+    stacked = features.stack_feature_orders(matrix, order=2, width=1)
+    np.testing.assert_allclose(stacked[2:-2, 2], 0.0, atol=1e-15)
+
+
+def test_feature_order_rejects_unsupported_rank_and_order() -> None:
+    with pytest.raises(ValueError, match="shape"):
+        features.stack_feature_orders(np.ones((2, 3, 1)))
+    with pytest.raises(ValueError, match="0, 1, or 2"):
+        features.stack_feature_orders(np.ones((2, 3)), order=3)
+
+
 # -- extensions --
