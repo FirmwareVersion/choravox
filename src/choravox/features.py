@@ -281,4 +281,19 @@ def delta_features(feature_matrix: ArrayLike, *, width: int = 2) -> FloatArray:
     return output
 
 
+def stack_feature_orders(
+    feature_matrix: ArrayLike, *, order: int = 2, width: int = 2
+) -> FloatArray:
+    """Concatenate static features with successive temporal derivatives."""
+    values = np.asarray(feature_matrix, dtype=np.float64)
+    if values.ndim != 2:
+        raise ValueError("stacked features must have shape (frames, dimensions)")
+    if order not in (0, 1, 2):
+        raise ValueError("order must be 0, 1, or 2")
+    components = [values]
+    for _ in range(order):
+        components.append(delta_features(components[-1], width=width))
+    return np.concatenate(components, axis=1)
+
+
 # -- extensions --

@@ -265,4 +265,19 @@ def test_delta_features_are_zero_for_constant_sequences() -> None:
     np.testing.assert_array_equal(features.delta_features(np.ones((5, 3))), np.zeros((5, 3)))
 
 
+def test_feature_order_stacking_has_predictable_layout() -> None:
+    matrix = np.arange(10, dtype=np.float64).reshape(5, 2)
+    stacked = features.stack_feature_orders(matrix, order=2, width=1)
+    assert stacked.shape == (5, 6)
+    np.testing.assert_array_equal(stacked[:, :2], matrix)
+    np.testing.assert_allclose(stacked[:, 2:4], features.delta_features(matrix, width=1))
+
+
+def test_zero_order_returns_an_equal_independent_matrix() -> None:
+    matrix = np.ones((3, 2))
+    output = features.stack_feature_orders(matrix, order=0)
+    np.testing.assert_array_equal(output, matrix)
+    assert output is not matrix
+
+
 # -- extensions --
