@@ -19,6 +19,7 @@ def test_foundational_public_api_is_explicit() -> None:
 
     assert choravox.__all__ == [
         "AudioConfig",
+        "FeatureConfig",
         "MeetingConfig",
         "Segment",
         "Transcript",
@@ -26,6 +27,7 @@ def test_foundational_public_api_is_explicit() -> None:
         "__version__",
     ]
     assert choravox.AudioConfig().sample_rate == 16_000
+    assert choravox.FeatureConfig().n_mels == 40
 
 
 def test_cli_reports_version(capsys: object) -> None:

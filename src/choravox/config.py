@@ -25,6 +25,40 @@ class AudioConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class FeatureConfig:
+    """Parameters for deterministic log-mel and dynamic features."""
+
+    sample_rate: int = 16_000
+    frame_ms: float = 25.0
+    hop_ms: float = 10.0
+    n_fft: int = 512
+    n_mels: int = 40
+    min_hz: float = 20.0
+    max_hz: float = 7600.0
+    log_floor: float = 1e-10
+    delta_order: int = 0
+
+    def __post_init__(self) -> None:
+        if self.sample_rate <= 0 or self.frame_ms <= 0 or self.hop_ms <= 0:
+            raise ValueError("feature timing values must be positive")
+        frame_length = round(self.sample_rate * self.frame_ms / 1000.0)
+        if self.hop_ms > self.frame_ms or self.n_fft < frame_length:
+            raise ValueError("feature FFT and hop must accommodate each frame")
+        if self.n_mels <= 0 or not 0 <= self.min_hz < self.max_hz <= self.sample_rate / 2:
+            raise ValueError("mel bands and frequency bounds are invalid")
+        if self.log_floor <= 0 or self.delta_order not in (0, 1, 2):
+            raise ValueError("log_floor and delta_order are invalid")
+
+    @property
+    def frame_length(self) -> int:
+        return round(self.sample_rate * self.frame_ms / 1000.0)
+
+    @property
+    def hop_length(self) -> int:
+        return round(self.sample_rate * self.hop_ms / 1000.0)
+
+
+@dataclass(frozen=True, slots=True)
 class MeetingConfig:
     """High-level controls for planted synthetic meetings."""
 
@@ -45,13 +79,13 @@ class MeetingConfig:
             raise ValueError("silence_ratio must be in [0, 1)")
 
 
-def config_to_json(config: AudioConfig | MeetingConfig) -> str:
+def config_to_json(config: AudioConfig | FeatureConfig | MeetingConfig) -> str:
     """Encode a configuration with an explicit kind discriminator."""
     payload = {"kind": type(config).__name__, "values": asdict(config)}
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def config_from_json(text: str) -> AudioConfig | MeetingConfig:
+def config_from_json(text: str) -> AudioConfig | FeatureConfig | MeetingConfig:
     """Decode a configuration and reject unknown or malformed kinds."""
     try:
         payload: Any = json.loads(text)
@@ -59,7 +93,11 @@ def config_from_json(text: str) -> AudioConfig | MeetingConfig:
         raise ValueError("configuration must be valid JSON") from error
     if not isinstance(payload, dict) or set(payload) != {"kind", "values"}:
         raise ValueError("configuration envelope must contain kind and values")
-    kinds = {"AudioConfig": AudioConfig, "MeetingConfig": MeetingConfig}
+    kinds = {
+        "AudioConfig": AudioConfig,
+        "FeatureConfig": FeatureConfig,
+        "MeetingConfig": MeetingConfig,
+    }
     cls = kinds.get(payload["kind"])
     if cls is None or not isinstance(payload["values"], dict):
         raise ValueError("unknown configuration kind")

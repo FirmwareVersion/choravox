@@ -64,4 +64,21 @@ def test_configuration_decoder_reports_document_errors() -> None:
         config_mod.config_from_json("[]")
 
 
+def test_feature_config_derives_integer_sample_geometry() -> None:
+    config = config_mod.FeatureConfig(sample_rate=16_000, frame_ms=25.0, hop_ms=10.0)
+    assert (config.frame_length, config.hop_length) == (400, 160)
+
+
+def test_feature_config_roundtrips_through_public_codec() -> None:
+    config = config_mod.FeatureConfig(n_mels=24, delta_order=2)
+    assert config_mod.config_from_json(config_mod.config_to_json(config)) == config
+
+
+def test_feature_config_rejects_fft_and_frequency_mismatch() -> None:
+    with pytest.raises(ValueError, match="accommodate"):
+        config_mod.FeatureConfig(n_fft=128)
+    with pytest.raises(ValueError, match="frequency"):
+        config_mod.FeatureConfig(max_hz=9000.0)
+
+
 # -- extensions --
