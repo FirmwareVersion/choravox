@@ -38,4 +38,17 @@ def test_pcm16_rejects_incomplete_channel_frames() -> None:
         audio_io.decode_pcm16(b"", channels=0)
 
 
+def test_float32_codec_preserves_representable_values() -> None:
+    values = np.array([-1.5, -0.0, 0.25, 2.0], dtype=np.float32)
+    encoded = audio_io.encode_float32(values)
+    assert encoded == struct.pack("<4f", *values)
+    np.testing.assert_array_equal(audio_io.decode_float32(encoded), values.astype(np.float64))
+
+
+def test_float32_codec_keeps_multichannel_geometry() -> None:
+    stereo = np.array([[0.1, 0.2], [0.3, 0.4]], dtype=np.float32)
+    restored = audio_io.decode_float32(audio_io.encode_float32(stereo), channels=2)
+    np.testing.assert_array_equal(restored, stereo.astype(np.float64))
+
+
 # -- extensions --

@@ -30,4 +30,21 @@ def decode_pcm16(data: bytes, *, channels: int = 1) -> FloatArray:
     return values if channels == 1 else values.reshape(-1, channels)
 
 
+def encode_float32(samples: ArrayLike) -> bytes:
+    """Encode finite audio as interleaved little-endian IEEE float32 values."""
+    return as_waveform(samples).astype("<f4").tobytes(order="C")
+
+
+def decode_float32(data: bytes, *, channels: int = 1) -> FloatArray:
+    """Decode interleaved little-endian float32 audio into float64 processing values."""
+    if channels <= 0:
+        raise ValueError("channels must be positive")
+    if len(data) % (4 * channels):
+        raise ValueError("float PCM byte count must contain complete channel frames")
+    values = np.frombuffer(data, dtype="<f4").astype(np.float64)
+    if not np.all(np.isfinite(values)):
+        raise ValueError("float PCM samples must be finite")
+    return values if channels == 1 else values.reshape(-1, channels)
+
+
 # -- extensions --
