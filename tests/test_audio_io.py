@@ -51,4 +51,21 @@ def test_float32_codec_keeps_multichannel_geometry() -> None:
     np.testing.assert_array_equal(restored, stereo.astype(np.float64))
 
 
+def test_float32_decoder_rejects_nonfinite_payloads() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        audio_io.decode_float32(struct.pack("<f", float("nan")))
+
+
+def test_float32_decoder_rejects_partial_samples_and_frames() -> None:
+    with pytest.raises(ValueError, match="complete"):
+        audio_io.decode_float32(b"\x00\x00")
+    with pytest.raises(ValueError, match="complete"):
+        audio_io.decode_float32(struct.pack("<f", 1.0), channels=2)
+
+
+def test_float_encoder_rejects_nonfinite_source() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        audio_io.encode_float32([np.inf])
+
+
 # -- extensions --
