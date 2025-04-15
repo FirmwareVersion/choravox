@@ -85,4 +85,21 @@ def test_wav_writer_marks_float_encoding_and_channels() -> None:
     assert (format_tag, channels) == (3, 2)
 
 
+@pytest.mark.parametrize("encoding", ["pcm16", "float32"])
+def test_wave_codec_roundtrips_multichannel_audio(encoding: audio_io.Encoding) -> None:
+    stereo = np.array([[0.0, 0.25], [-0.5, 0.75]])
+    decoded = audio_io.parse_wav(audio_io.wav_bytes(stereo, 22_050, encoding=encoding))
+    assert (decoded.sample_rate, decoded.encoding) == (22_050, encoding)
+    tolerance = 1 / 32768 if encoding == "pcm16" else 1e-7
+    np.testing.assert_allclose(decoded.samples, stereo, atol=tolerance)
+
+
+def test_wave_file_reader_restores_written_audio(tmp_path: object) -> None:
+    from pathlib import Path
+
+    target = Path(str(tmp_path)) / "stereo.wav"
+    audio_io.write_wav(target, np.zeros((8, 2)), 16_000)
+    assert audio_io.read_wav(target).samples.shape == (8, 2)
+
+
 # -- extensions --

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import struct
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -79,6 +80,60 @@ def write_wav(
 ) -> None:
     """Write a canonical wave file to disk."""
     Path(path).write_bytes(wav_bytes(samples, sample_rate, encoding=encoding))
+
+
+@dataclass(frozen=True, slots=True)
+class WaveAudio:
+    """Decoded wave samples and format metadata."""
+
+    samples: FloatArray
+    sample_rate: int
+    encoding: Encoding
+
+
+def parse_wav(document: bytes) -> WaveAudio:
+    """Parse PCM16 or IEEE float32 RIFF/WAVE bytes with strict size checks."""
+    if len(document) < 12 or document[:4] != b"RIFF" or document[8:12] != b"WAVE":
+        raise ValueError("audio is not a RIFF/WAVE document")
+    if struct.unpack("<I", document[4:8])[0] + 8 != len(document):
+        raise ValueError("RIFF size does not match the document")
+    offset = 12
+    format_data: bytes | None = None
+    sample_data: bytes | None = None
+    while offset + 8 <= len(document):
+        chunk_id = document[offset : offset + 4]
+        size = struct.unpack("<I", document[offset + 4 : offset + 8])[0]
+        start, stop = offset + 8, offset + 8 + size
+        if stop > len(document):
+            raise ValueError("wave chunk extends beyond the document")
+        if chunk_id == b"fmt ":
+            format_data = document[start:stop]
+        elif chunk_id == b"data":
+            sample_data = document[start:stop]
+        offset = stop + (size % 2)
+    if format_data is None or sample_data is None or len(format_data) < 16:
+        raise ValueError("wave document requires fmt and data chunks")
+    format_tag, channels, sample_rate, byte_rate, block_align, bits = struct.unpack(
+        "<HHIIHH", format_data[:16]
+    )
+    if channels <= 0 or sample_rate <= 0 or block_align != channels * bits // 8:
+        raise ValueError("wave format geometry is invalid")
+    if byte_rate != sample_rate * block_align:
+        raise ValueError("wave byte rate is inconsistent")
+    if format_tag == 1 and bits == 16:
+        encoding: Encoding = "pcm16"
+        samples = decode_pcm16(sample_data, channels=channels)
+    elif format_tag == 3 and bits == 32:
+        encoding = "float32"
+        samples = decode_float32(sample_data, channels=channels)
+    else:
+        raise ValueError("wave encoding is unsupported")
+    return WaveAudio(samples, sample_rate, encoding)
+
+
+def read_wav(path: str | os.PathLike[str]) -> WaveAudio:
+    """Read and parse a local RIFF/WAVE file."""
+    return parse_wav(Path(path).read_bytes())
 
 
 # -- extensions --
