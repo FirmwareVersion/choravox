@@ -102,4 +102,24 @@ def test_wave_file_reader_restores_written_audio(tmp_path: object) -> None:
     assert audio_io.read_wav(target).samples.shape == (8, 2)
 
 
+def test_wave_parser_rejects_truncated_and_spoofed_sizes() -> None:
+    valid = audio_io.wav_bytes([0.0], 8000)
+    with pytest.raises(ValueError, match="RIFF/WAVE"):
+        audio_io.parse_wav(b"not wave")
+    with pytest.raises(ValueError, match="size"):
+        audio_io.parse_wav(valid[:-1])
+
+
+def test_wave_parser_rejects_unsupported_encoding() -> None:
+    document = bytearray(audio_io.wav_bytes([0.0], 8000))
+    document[20:22] = struct.pack("<H", 6)
+    with pytest.raises(ValueError, match="unsupported"):
+        audio_io.parse_wav(bytes(document))
+
+
+def test_wave_writer_rejects_unknown_encoding() -> None:
+    with pytest.raises(ValueError, match="encoding"):
+        audio_io.wav_bytes([0.0], 8000, encoding="mulaw")  # type: ignore[arg-type]
+
+
 # -- extensions --
