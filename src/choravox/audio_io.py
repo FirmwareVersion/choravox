@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import struct
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -45,6 +48,37 @@ def decode_float32(data: bytes, *, channels: int = 1) -> FloatArray:
     if not np.all(np.isfinite(values)):
         raise ValueError("float PCM samples must be finite")
     return values if channels == 1 else values.reshape(-1, channels)
+
+
+def wav_bytes(samples: ArrayLike, sample_rate: int, *, encoding: Encoding = "pcm16") -> bytes:
+    """Build a canonical RIFF/WAVE document from mono or samples-first channels."""
+    waveform = as_waveform(samples)
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    channels = 1 if waveform.ndim == 1 else waveform.shape[1]
+    if encoding == "pcm16":
+        format_tag, bits, payload = 1, 16, encode_pcm16(waveform)
+    elif encoding == "float32":
+        format_tag, bits, payload = 3, 32, encode_float32(waveform)
+    else:
+        raise ValueError("encoding must be 'pcm16' or 'float32'")
+    block_align = channels * bits // 8
+    byte_rate = sample_rate * block_align
+    fmt = struct.pack("<HHIIHH", format_tag, channels, sample_rate, byte_rate, block_align, bits)
+    body = b"WAVE" + b"fmt " + struct.pack("<I", len(fmt)) + fmt
+    body += b"data" + struct.pack("<I", len(payload)) + payload
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
+def write_wav(
+    path: str | os.PathLike[str],
+    samples: ArrayLike,
+    sample_rate: int,
+    *,
+    encoding: Encoding = "pcm16",
+) -> None:
+    """Write a canonical wave file to disk."""
+    Path(path).write_bytes(wav_bytes(samples, sample_rate, encoding=encoding))
 
 
 # -- extensions --

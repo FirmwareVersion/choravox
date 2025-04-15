@@ -68,4 +68,21 @@ def test_float_encoder_rejects_nonfinite_source() -> None:
         audio_io.encode_float32([np.inf])
 
 
+def test_wav_writer_emits_canonical_header(tmp_path: object) -> None:
+    from pathlib import Path
+
+    target = Path(str(tmp_path)) / "tone.wav"
+    audio_io.write_wav(target, [0.0, 0.5], 8000)
+    document = target.read_bytes()
+    assert document[:12] == b"RIFF" + struct.pack("<I", 40) + b"WAVE"
+    assert document[12:36] == b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, 8000, 16000, 2, 16)
+    assert document[36:44] == b"data" + struct.pack("<I", 4)
+
+
+def test_wav_writer_marks_float_encoding_and_channels() -> None:
+    document = audio_io.wav_bytes(np.zeros((3, 2)), 16_000, encoding="float32")
+    format_tag, channels = struct.unpack("<HH", document[20:24])
+    assert (format_tag, channels) == (3, 2)
+
+
 # -- extensions --
