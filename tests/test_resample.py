@@ -61,4 +61,27 @@ def test_resampler_rejects_invalid_rates_and_kernel_width() -> None:
         resample.resample_polyphase([1.0], 8000, 16_000, half_width=1)
 
 
+def test_resample_then_inverse_is_stable_for_bandlimited_tone() -> None:
+    time = np.arange(1600) / 16_000
+    signal = 0.6 * np.sin(2 * np.pi * 440 * time) + 0.2 * np.sin(2 * np.pi * 1200 * time)
+    lower = resample.resample_polyphase(signal, 16_000, 8000)
+    restored = resample.resample_polyphase(lower, 8000, 16_000)
+    error = restored[40:-40] - signal[40:-40]
+    assert np.sqrt(np.mean(error**2)) < 0.005
+
+
+def test_resampling_preserves_interior_rms_for_low_frequency_audio() -> None:
+    time = np.arange(1200) / 12_000
+    signal = np.sin(2 * np.pi * 300 * time)
+    converted = resample.resample_polyphase(signal, 12_000, 16_000)
+    source_rms = np.sqrt(np.mean(signal[30:-30] ** 2))
+    target_rms = np.sqrt(np.mean(converted[40:-40] ** 2))
+    assert target_rms == pytest.approx(source_rms, rel=0.005)
+
+
+def test_empty_audio_resamples_with_channel_rank_intact() -> None:
+    assert resample.resample_polyphase([], 8000, 16_000).shape == (0,)
+    assert resample.resample_polyphase(np.empty((0, 2)), 8000, 16_000).shape == (0, 2)
+
+
 # -- extensions --
