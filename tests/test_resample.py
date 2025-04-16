@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from choravox import resample
 
@@ -40,6 +41,24 @@ def test_identity_resampling_returns_an_equal_copy() -> None:
     converted = resample.resample_polyphase(signal, 16_000, 16_000)
     np.testing.assert_array_equal(converted, signal)
     assert converted is not signal
+
+
+def test_downsampling_attenuates_energy_above_target_nyquist() -> None:
+    times = np.arange(800) / 8000
+    low = np.sin(2 * np.pi * 500 * times)
+    high = np.sin(2 * np.pi * 3000 * times)
+    low_output = resample.resample_polyphase(low, 8000, 4000)
+    high_output = resample.resample_polyphase(high, 8000, 4000)
+    low_rms = np.sqrt(np.mean(low_output[20:-20] ** 2))
+    high_rms = np.sqrt(np.mean(high_output[20:-20] ** 2))
+    assert high_rms < low_rms * 0.02
+
+
+def test_resampler_rejects_invalid_rates_and_kernel_width() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        resample.resample_polyphase([1.0], 0, 8000)
+    with pytest.raises(ValueError, match="at least two"):
+        resample.resample_polyphase([1.0], 8000, 16_000, half_width=1)
 
 
 # -- extensions --
