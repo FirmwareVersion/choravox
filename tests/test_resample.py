@@ -28,4 +28,18 @@ def test_downsampling_kernel_has_lower_cutoff_than_upsampling() -> None:
     assert np.sum(np.abs(np.diff(down))) < np.sum(np.abs(np.diff(up)))
 
 
+def test_resampler_preserves_duration_and_channel_geometry() -> None:
+    stereo = np.column_stack((np.ones(80), -np.ones(80)))
+    converted = resample.resample_polyphase(stereo, 8000, 16_000)
+    assert converted.shape == (160, 2)
+    np.testing.assert_allclose(converted, np.tile(stereo[0], (160, 1)), atol=1e-14)
+
+
+def test_identity_resampling_returns_an_equal_copy() -> None:
+    signal = np.arange(8, dtype=np.float64)
+    converted = resample.resample_polyphase(signal, 16_000, 16_000)
+    np.testing.assert_array_equal(converted, signal)
+    assert converted is not signal
+
+
 # -- extensions --

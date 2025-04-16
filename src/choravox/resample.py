@@ -6,7 +6,9 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
+
+from choravox.audio import as_waveform
 
 FloatArray = NDArray[np.float64]
 
@@ -53,6 +55,37 @@ def polyphase_kernel(source_rate: int, target_rate: int, *, half_width: int = 16
         taps = cutoff * np.sinc(cutoff * distance) * window
         phases[phase] = taps / np.sum(taps)
     return phases
+
+
+def resample_polyphase(
+    samples: ArrayLike,
+    source_rate: int,
+    target_rate: int,
+    *,
+    half_width: int = 16,
+) -> FloatArray:
+    """Resample mono or multichannel audio with a reusable rational phase bank."""
+    waveform = as_waveform(samples)
+    ratio = sampling_ratio(source_rate, target_rate)
+    if source_rate == target_rate:
+        return waveform.copy()
+    output_length = resampled_length(waveform.shape[0], source_rate, target_rate)
+    if output_length == 0:
+        return np.empty((0, *waveform.shape[1:]), dtype=np.float64)
+    kernel = polyphase_kernel(source_rate, target_rate, half_width=half_width)
+    offsets = np.arange(-half_width + 1, half_width + 1)
+    output = np.empty((output_length, *waveform.shape[1:]), dtype=np.float64)
+    for output_index in range(output_length):
+        numerator = output_index * ratio.down
+        center, phase = divmod(numerator, ratio.up)
+        indices = np.clip(center + offsets, 0, waveform.shape[0] - 1)
+        selected = waveform[indices]
+        weights = kernel[phase]
+        if waveform.ndim == 2:
+            output[output_index] = np.sum(selected * weights[:, None], axis=0)
+        else:
+            output[output_index] = np.sum(selected * weights)
+    return output
 
 
 # -- extensions --
