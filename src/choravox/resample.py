@@ -35,4 +35,24 @@ def resampled_length(sample_count: int, source_rate: int, target_rate: int) -> i
     return (sample_count * target_rate + source_rate // 2) // source_rate
 
 
+def polyphase_kernel(source_rate: int, target_rate: int, *, half_width: int = 16) -> FloatArray:
+    """Create normalized Hann-windowed sinc taps for every rational phase."""
+    ratio = sampling_ratio(source_rate, target_rate)
+    if half_width < 2:
+        raise ValueError("half_width must be at least two")
+    offsets = np.arange(-half_width + 1, half_width + 1, dtype=np.float64)
+    phases = np.empty((ratio.up, offsets.size), dtype=np.float64)
+    cutoff = min(1.0, target_rate / source_rate) * 0.94
+    for phase in range(ratio.up):
+        distance = phase / ratio.up - offsets
+        window = np.where(
+            np.abs(distance) < half_width,
+            0.5 + 0.5 * np.cos(np.pi * distance / half_width),
+            0.0,
+        )
+        taps = cutoff * np.sinc(cutoff * distance) * window
+        phases[phase] = taps / np.sum(taps)
+    return phases
+
+
 # -- extensions --
