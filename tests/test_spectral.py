@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from choravox import spectral
 
@@ -31,6 +32,26 @@ def test_inverse_stft_restores_channels_independently() -> None:
     transformed = spectral.stft(signal, 40, 20)
     restored = spectral.istft(transformed, 40, 20, length=200)
     np.testing.assert_allclose(restored, signal, atol=1e-12)
+
+
+def test_stft_pads_short_audio_across_centered_boundary_frames() -> None:
+    transformed = spectral.stft([1.0], 8, 4)
+    assert transformed.shape == (2, 5)
+
+
+def test_stft_rejects_short_fft_and_invalid_hop() -> None:
+    with pytest.raises(ValueError, match="at least"):
+        spectral.stft(np.ones(8), 8, 4, n_fft=4)
+    with pytest.raises(ValueError, match="positive"):
+        spectral.stft(np.ones(8), 8, 0)
+
+
+def test_inverse_stft_rejects_nonfinite_and_overlong_requests() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        spectral.istft(np.array([[1.0, np.nan]]), 2, 1)
+    transformed = spectral.stft(np.ones(16), 8, 4)
+    with pytest.raises(ValueError, match="fit"):
+        spectral.istft(transformed, 8, 4, length=100)
 
 
 # -- extensions --
