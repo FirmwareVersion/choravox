@@ -54,4 +54,12 @@ def test_inverse_stft_rejects_nonfinite_and_overlong_requests() -> None:
         spectral.istft(transformed, 8, 4, length=100)
 
 
+@pytest.mark.parametrize("length", [1, 31, 32, 33, 95, 96, 97])
+def test_centered_transform_retains_requested_tail(length: int) -> None:
+    signal = np.linspace(-0.75, 0.75, length)
+    transformed = spectral.stft(signal, 32, 16)
+    restored = spectral.istft(transformed, 32, 16, length=length)
+    np.testing.assert_allclose(restored, signal, atol=1e-12)
+
+
 # -- extensions --

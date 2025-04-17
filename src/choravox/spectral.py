@@ -83,7 +83,7 @@ def istft(
         )
     if center:
         width = frame_length // 2
-        output = output[width:-width] if width else output
+        output = output[width:] if width else output
     if length is not None:
         if length < 0 or length > output.shape[0]:
             raise ValueError("length must fit the reconstructed signal")
