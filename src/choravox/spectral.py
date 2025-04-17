@@ -91,4 +91,31 @@ def istft(
     return np.asarray(output, dtype=np.float64)
 
 
+def periodogram(
+    samples: ArrayLike,
+    sample_rate: int,
+    *,
+    n_fft: int | None = None,
+    window: WindowKind = "hann",
+) -> tuple[FloatArray, FloatArray]:
+    """Estimate a one-sided power spectral density for one mono observation."""
+    waveform = as_waveform(samples)
+    if waveform.ndim != 1 or waveform.size == 0:
+        raise ValueError("periodogram input must be nonempty mono audio")
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    fft_size = waveform.size if n_fft is None else n_fft
+    if fft_size < waveform.size:
+        raise ValueError("n_fft must not truncate the observation")
+    weights = analysis_window(waveform.size, window, periodic=False)
+    transformed = np.fft.rfft(waveform * weights, n=fft_size)
+    density = np.square(np.abs(transformed)) / (sample_rate * np.sum(weights**2))
+    if fft_size % 2 == 0:
+        density[1:-1] *= 2.0
+    else:
+        density[1:] *= 2.0
+    frequencies = np.fft.rfftfreq(fft_size, 1.0 / sample_rate)
+    return np.asarray(frequencies, dtype=np.float64), np.asarray(density, dtype=np.float64)
+
+
 # -- extensions --

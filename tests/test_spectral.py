@@ -62,4 +62,16 @@ def test_centered_transform_retains_requested_tail(length: int) -> None:
     np.testing.assert_allclose(restored, signal, atol=1e-12)
 
 
+def test_periodogram_frequency_axis_reaches_nyquist() -> None:
+    frequencies, density = spectral.periodogram(np.ones(16), 8000, window="rectangular")
+    np.testing.assert_array_equal(frequencies, np.arange(9) * 500)
+    assert density.shape == frequencies.shape
+
+
+def test_periodogram_locates_tone_in_physical_units() -> None:
+    time = np.arange(800) / 8000
+    frequencies, density = spectral.periodogram(np.sin(2 * np.pi * 1000 * time), 8000)
+    assert frequencies[int(np.argmax(density))] == 1000.0
+
+
 # -- extensions --
