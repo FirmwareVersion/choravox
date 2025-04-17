@@ -18,4 +18,19 @@ def test_stft_preserves_optional_channel_axis() -> None:
     assert transformed.shape == (5, 17, 2)
 
 
+def test_stft_inverse_reconstructs_centered_audio() -> None:
+    generator = np.random.default_rng(91)
+    signal = generator.normal(size=513)
+    transformed = spectral.stft(signal, 64, 32)
+    restored = spectral.istft(transformed, 64, 32, length=signal.size)
+    np.testing.assert_allclose(restored, signal, atol=1e-12)
+
+
+def test_inverse_stft_restores_channels_independently() -> None:
+    signal = np.column_stack((np.linspace(-1.0, 1.0, 200), np.linspace(1.0, -1.0, 200)))
+    transformed = spectral.stft(signal, 40, 20)
+    restored = spectral.istft(transformed, 40, 20, length=200)
+    np.testing.assert_allclose(restored, signal, atol=1e-12)
+
+
 # -- extensions --
