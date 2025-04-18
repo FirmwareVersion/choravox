@@ -74,4 +74,24 @@ def test_periodogram_locates_tone_in_physical_units() -> None:
     assert frequencies[int(np.argmax(density))] == 1000.0
 
 
+def test_rectangular_periodogram_integrates_to_mean_square() -> None:
+    generator = np.random.default_rng(22)
+    signal = generator.normal(size=255)
+    frequencies, density = spectral.periodogram(signal, 16_000, window="rectangular")
+    bin_width = frequencies[1] - frequencies[0]
+    assert np.sum(density) * bin_width == pytest.approx(np.mean(signal**2), rel=1e-12)
+
+
+def test_periodogram_rejects_channels_and_empty_input() -> None:
+    with pytest.raises(ValueError, match="mono"):
+        spectral.periodogram(np.ones((8, 2)), 8000)
+    with pytest.raises(ValueError, match="nonempty"):
+        spectral.periodogram([], 8000)
+
+
+def test_periodogram_density_is_nonnegative_and_finite() -> None:
+    _, density = spectral.periodogram(np.arange(12), 12_000, n_fft=32)
+    assert np.all(density >= 0.0) and np.all(np.isfinite(density))
+
+
 # -- extensions --
