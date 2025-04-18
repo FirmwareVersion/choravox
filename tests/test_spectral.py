@@ -94,4 +94,18 @@ def test_periodogram_density_is_nonnegative_and_finite() -> None:
     assert np.all(density >= 0.0) and np.all(np.isfinite(density))
 
 
+def test_spectral_center_and_spread_have_hand_computed_values() -> None:
+    spectra = np.array([[0.0, 1.0, 0.0], [0.5, 0.0, 0.5]])
+    frequencies = np.array([0.0, 100.0, 200.0])
+    np.testing.assert_allclose(spectral.spectral_centroid(spectra, frequencies), [100, 100])
+    np.testing.assert_allclose(spectral.spectral_bandwidth(spectra, frequencies), [0, 100])
+
+
+def test_silent_spectrum_has_zero_centroid_and_bandwidth() -> None:
+    silent = np.zeros((2, 4))
+    axis = np.arange(4, dtype=np.float64)
+    np.testing.assert_array_equal(spectral.spectral_centroid(silent, axis), [0.0, 0.0])
+    np.testing.assert_array_equal(spectral.spectral_bandwidth(silent, axis), [0.0, 0.0])
+
+
 # -- extensions --

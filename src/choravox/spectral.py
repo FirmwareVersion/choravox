@@ -118,4 +118,36 @@ def periodogram(
     return np.asarray(frequencies, dtype=np.float64), np.asarray(density, dtype=np.float64)
 
 
+def spectral_centroid(spectra: ArrayLike, frequencies: ArrayLike) -> FloatArray:
+    """Return the energy-weighted center frequency of every frame."""
+    values, axis = _validate_descriptor_inputs(spectra, frequencies)
+    totals = np.sum(values, axis=1)
+    weighted = np.sum(values * axis[None, :], axis=1)
+    return np.divide(weighted, totals, out=np.zeros_like(weighted), where=totals > 0.0)
+
+
+def spectral_bandwidth(spectra: ArrayLike, frequencies: ArrayLike) -> FloatArray:
+    """Return the weighted standard deviation around each spectral centroid."""
+    values, axis = _validate_descriptor_inputs(spectra, frequencies)
+    centers = spectral_centroid(values, axis)
+    totals = np.sum(values, axis=1)
+    variance = np.sum(values * np.square(axis[None, :] - centers[:, None]), axis=1)
+    variance = np.divide(variance, totals, out=np.zeros_like(variance), where=totals > 0.0)
+    return np.sqrt(variance)
+
+
+def _validate_descriptor_inputs(
+    spectra: ArrayLike, frequencies: ArrayLike
+) -> tuple[FloatArray, FloatArray]:
+    values = np.asarray(spectra, dtype=np.float64)
+    axis = np.asarray(frequencies, dtype=np.float64)
+    if values.ndim != 2 or axis.shape != (values.shape[1],):
+        raise ValueError("spectra and frequency axis have incompatible shapes")
+    if not np.all(np.isfinite(values)) or not np.all(np.isfinite(axis)):
+        raise ValueError("spectral descriptor inputs must be finite")
+    if np.any(values < 0.0) or np.any(axis < 0.0) or np.any(np.diff(axis) < 0.0):
+        raise ValueError("spectra and frequencies must be nonnegative and ordered")
+    return values, axis
+
+
 # -- extensions --
