@@ -129,4 +129,14 @@ def test_single_bin_spectrum_has_no_bandwidth() -> None:
     np.testing.assert_array_equal(spectral.spectral_bandwidth(spectra, axis), np.zeros(5))
 
 
+def test_spectral_flux_responds_only_to_positive_arrivals() -> None:
+    spectra = np.array([[1.0, 0.0], [1.0, 2.0], [1.0, 1.0]])
+    np.testing.assert_allclose(spectral.spectral_flux(spectra, normalize=False), [0.0, 2.0, 0.0])
+
+
+def test_normalized_flux_ignores_uniform_gain() -> None:
+    spectra = np.array([[1.0, 2.0, 3.0], [2.0, 4.0, 6.0]])
+    np.testing.assert_allclose(spectral.spectral_flux(spectra), [0.0, 0.0], atol=1e-15)
+
+
 # -- extensions --

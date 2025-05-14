@@ -150,4 +150,19 @@ def _validate_descriptor_inputs(
     return values, axis
 
 
+def spectral_flux(spectra: ArrayLike, *, normalize: bool = True) -> FloatArray:
+    """Measure positive frame-to-frame spectral changes with a zero first frame."""
+    values = np.asarray(spectra, dtype=np.float64)
+    if values.ndim != 2 or not np.all(np.isfinite(values)) or np.any(values < 0.0):
+        raise ValueError("spectra must be a finite nonnegative frame matrix")
+    working = values.copy()
+    if normalize:
+        totals = np.sum(working, axis=1, keepdims=True)
+        working = np.divide(working, totals, out=np.zeros_like(working), where=totals > 0.0)
+    differences = np.maximum(working[1:] - working[:-1], 0.0)
+    output = np.zeros(values.shape[0], dtype=np.float64)
+    output[1:] = np.sqrt(np.sum(np.square(differences), axis=1))
+    return output
+
+
 # -- extensions --
