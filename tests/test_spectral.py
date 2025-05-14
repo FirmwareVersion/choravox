@@ -168,4 +168,23 @@ def test_dct_can_retain_a_compact_coefficient_prefix() -> None:
     assert spectral.dct_type2(matrix, 3).shape == (3, 3)
 
 
+def test_full_dct_inverse_restores_features() -> None:
+    generator = np.random.default_rng(71)
+    matrix = generator.normal(size=(12, 20))
+    restored = spectral.inverse_dct_type2(spectral.dct_type2(matrix))
+    np.testing.assert_allclose(restored, matrix, atol=1e-13)
+
+
+def test_dct_preserves_energy_by_parseval() -> None:
+    generator = np.random.default_rng(72)
+    matrix = generator.normal(size=(4, 9))
+    transformed = spectral.dct_type2(matrix)
+    np.testing.assert_allclose(np.sum(transformed**2), np.sum(matrix**2), rtol=1e-13)
+
+
+def test_dct_rejects_excess_coefficient_count() -> None:
+    with pytest.raises(ValueError, match="fit"):
+        spectral.dct_type2(np.ones((2, 3)), 4)
+
+
 # -- extensions --
