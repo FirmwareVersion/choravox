@@ -108,4 +108,25 @@ def test_silent_spectrum_has_zero_centroid_and_bandwidth() -> None:
     np.testing.assert_array_equal(spectral.spectral_bandwidth(silent, axis), [0.0, 0.0])
 
 
+def test_spectral_centroid_stays_within_frequency_axis() -> None:
+    generator = np.random.default_rng(5)
+    spectra = generator.uniform(size=(20, 17))
+    frequencies = np.linspace(0.0, 8000.0, 17)
+    centers = spectral.spectral_centroid(spectra, frequencies)
+    assert np.all((centers >= frequencies[0]) & (centers <= frequencies[-1]))
+
+
+def test_spectral_descriptors_reject_shape_and_order_errors() -> None:
+    with pytest.raises(ValueError, match="incompatible"):
+        spectral.spectral_centroid(np.ones((2, 3)), np.ones(2))
+    with pytest.raises(ValueError, match="ordered"):
+        spectral.spectral_bandwidth(np.ones((1, 3)), [0.0, 2.0, 1.0])
+
+
+def test_single_bin_spectrum_has_no_bandwidth() -> None:
+    spectra = np.eye(5)
+    axis = np.linspace(0.0, 4000.0, 5)
+    np.testing.assert_array_equal(spectral.spectral_bandwidth(spectra, axis), np.zeros(5))
+
+
 # -- extensions --
