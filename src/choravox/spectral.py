@@ -165,4 +165,34 @@ def spectral_flux(spectra: ArrayLike, *, normalize: bool = True) -> FloatArray:
     return output
 
 
+def dct_type2(feature_matrix: ArrayLike, n_coefficients: int | None = None) -> FloatArray:
+    """Apply an orthonormal DCT-II across the last feature dimension."""
+    values = np.asarray(feature_matrix, dtype=np.float64)
+    if values.ndim != 2 or values.shape[1] == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("features must be a finite nonempty matrix")
+    count = values.shape[1] if n_coefficients is None else n_coefficients
+    if not 1 <= count <= values.shape[1]:
+        raise ValueError("n_coefficients must fit the feature dimension")
+    positions = np.arange(values.shape[1], dtype=np.float64) + 0.5
+    orders = np.arange(count, dtype=np.float64)[:, None]
+    basis = np.cos(np.pi * orders * positions / values.shape[1])
+    basis[0] *= np.sqrt(1.0 / values.shape[1])
+    basis[1:] *= np.sqrt(2.0 / values.shape[1])
+    return np.asarray(values @ basis.T, dtype=np.float64)
+
+
+def inverse_dct_type2(coefficients: ArrayLike) -> FloatArray:
+    """Invert a full orthonormal DCT-II coefficient matrix."""
+    values = np.asarray(coefficients, dtype=np.float64)
+    if values.ndim != 2 or values.shape[1] == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("coefficients must be a finite nonempty matrix")
+    size = values.shape[1]
+    positions = np.arange(size, dtype=np.float64) + 0.5
+    orders = np.arange(size, dtype=np.float64)[:, None]
+    basis = np.cos(np.pi * orders * positions / size)
+    basis[0] *= np.sqrt(1.0 / size)
+    basis[1:] *= np.sqrt(2.0 / size)
+    return np.asarray(values @ basis, dtype=np.float64)
+
+
 # -- extensions --

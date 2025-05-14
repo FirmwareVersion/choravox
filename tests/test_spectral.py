@@ -158,4 +158,14 @@ def test_flux_rejects_negative_spectrum_values() -> None:
         spectral.spectral_flux([[1.0, -0.1]])
 
 
+def test_dct_has_known_constant_signal_coefficient() -> None:
+    transformed = spectral.dct_type2(np.ones((1, 4)))
+    np.testing.assert_allclose(transformed, [[2.0, 0.0, 0.0, 0.0]], atol=1e-14)
+
+
+def test_dct_can_retain_a_compact_coefficient_prefix() -> None:
+    matrix = np.arange(24, dtype=np.float64).reshape(3, 8)
+    assert spectral.dct_type2(matrix, 3).shape == (3, 3)
+
+
 # -- extensions --
