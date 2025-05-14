@@ -139,4 +139,23 @@ def test_normalized_flux_ignores_uniform_gain() -> None:
     np.testing.assert_allclose(spectral.spectral_flux(spectra), [0.0, 0.0], atol=1e-15)
 
 
+def test_flux_peaks_at_a_new_frequency_component() -> None:
+    spectra = np.zeros((6, 8))
+    spectra[:, 1] = 1.0
+    spectra[3:, 6] = 2.0
+    flux = spectral.spectral_flux(spectra, normalize=False)
+    assert int(np.argmax(flux)) == 3
+    assert np.count_nonzero(flux) == 1
+
+
+def test_flux_handles_silent_transitions_without_nan() -> None:
+    flux = spectral.spectral_flux(np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 0.0]]))
+    np.testing.assert_array_equal(flux, [0.0, 1.0, 0.0])
+
+
+def test_flux_rejects_negative_spectrum_values() -> None:
+    with pytest.raises(ValueError, match="nonnegative"):
+        spectral.spectral_flux([[1.0, -0.1]])
+
+
 # -- extensions --
