@@ -30,4 +30,23 @@ def test_fir_convolution_filters_channels_independently() -> None:
     np.testing.assert_array_equal(output, [[1.0, 0.0], [-1.0, 1.0], [0.0, -1.0]])
 
 
+def test_fir_modes_have_numpy_compatible_lengths() -> None:
+    signal = np.arange(7, dtype=np.float64)
+    kernel = np.ones(3)
+    assert filters.apply_fir(signal, kernel, mode="full").shape == (9,)
+    assert filters.apply_fir(signal, kernel, mode="same").shape == (7,)
+    assert filters.apply_fir(signal, kernel, mode="valid").shape == (5,)
+
+
+def test_fir_rejects_invalid_kernel_and_mode() -> None:
+    with pytest.raises(ValueError, match="nonempty"):
+        filters.apply_fir([1.0], [])
+    with pytest.raises(ValueError, match="mode"):
+        filters.apply_fir([1.0], [1.0], mode="causal")  # type: ignore[arg-type]
+
+
+def test_empty_same_convolution_preserves_channels() -> None:
+    assert filters.apply_fir(np.empty((0, 2)), [1.0]).shape == (0, 2)
+
+
 # -- extensions --
