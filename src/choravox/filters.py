@@ -65,4 +65,29 @@ def apply_fir(
     return np.asarray(np.column_stack(channels), dtype=np.float64)
 
 
+def highpass_kernel(
+    sample_rate: int, cutoff_hz: float, *, taps: int = 63, window: FilterWindow = "hamming"
+) -> FloatArray:
+    """Design a high-pass kernel by spectral inversion."""
+    kernel = -lowpass_kernel(sample_rate, cutoff_hz, taps=taps, window=window)
+    kernel[taps // 2] += 1.0
+    return kernel
+
+
+def bandpass_kernel(
+    sample_rate: int,
+    low_hz: float,
+    high_hz: float,
+    *,
+    taps: int = 63,
+    window: FilterWindow = "hamming",
+) -> FloatArray:
+    """Design a band-pass kernel as the difference of nested low-pass responses."""
+    if low_hz <= 0.0 or high_hz <= low_hz:
+        raise ValueError("band-pass bounds must be positive and increasing")
+    high = lowpass_kernel(sample_rate, high_hz, taps=taps, window=window)
+    low = lowpass_kernel(sample_rate, low_hz, taps=taps, window=window)
+    return np.asarray(high - low, dtype=np.float64)
+
+
 # -- extensions --

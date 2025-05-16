@@ -49,4 +49,17 @@ def test_empty_same_convolution_preserves_channels() -> None:
     assert filters.apply_fir(np.empty((0, 2)), [1.0]).shape == (0, 2)
 
 
+def test_highpass_has_zero_dc_and_unit_nyquist_response() -> None:
+    kernel = filters.highpass_kernel(16_000, 3000.0, taps=63)
+    assert np.sum(kernel) == pytest.approx(0.0, abs=1e-15)
+    response = np.sum(kernel * (-1.0) ** np.arange(kernel.size))
+    assert abs(response) == pytest.approx(1.0, abs=2e-3)
+
+
+def test_bandpass_is_symmetric_with_zero_dc() -> None:
+    kernel = filters.bandpass_kernel(16_000, 300.0, 3400.0, taps=127)
+    np.testing.assert_allclose(kernel, kernel[::-1], atol=1e-15)
+    assert np.sum(kernel) == pytest.approx(0.0, abs=1e-15)
+
+
 # -- extensions --
