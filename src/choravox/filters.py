@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Literal
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
+
+from choravox.audio import as_waveform
 
 FloatArray = NDArray[np.float64]
 FilterWindow = Literal["hann", "hamming", "blackman"]
@@ -36,6 +38,31 @@ def lowpass_kernel(
         raise ValueError(f"unknown filter window: {window}")
     kernel = ideal * weights
     return np.asarray(kernel / np.sum(kernel), dtype=np.float64)
+
+
+ConvolutionMode = Literal["full", "same", "valid"]
+
+
+def apply_fir(
+    samples: ArrayLike, kernel: ArrayLike, *, mode: ConvolutionMode = "same"
+) -> FloatArray:
+    """Convolve a finite FIR independently across every waveform channel."""
+    waveform = as_waveform(samples)
+    taps = np.asarray(kernel, dtype=np.float64)
+    if taps.ndim != 1 or taps.size == 0 or not np.all(np.isfinite(taps)):
+        raise ValueError("kernel must be a nonempty finite vector")
+    if mode not in {"full", "same", "valid"}:
+        raise ValueError("mode must be 'full', 'same', or 'valid'")
+    if waveform.shape[0] == 0:
+        if mode == "full":
+            raise ValueError("full convolution requires at least one sample")
+        return waveform.copy()
+    if waveform.ndim == 1:
+        return np.asarray(np.convolve(waveform, taps, mode=mode), dtype=np.float64)
+    channels = [
+        np.convolve(waveform[:, index], taps, mode=mode) for index in range(waveform.shape[1])
+    ]
+    return np.asarray(np.column_stack(channels), dtype=np.float64)
 
 
 # -- extensions --

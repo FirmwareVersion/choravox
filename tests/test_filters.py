@@ -19,4 +19,15 @@ def test_lowpass_kernel_validates_cutoff_and_odd_length() -> None:
         filters.lowpass_kernel(16_000, 3000.0, taps=32)
 
 
+def test_fir_convolution_has_hand_computed_impulse_response() -> None:
+    output = filters.apply_fir([1.0, 0.0, 0.0], [0.25, 0.5, 0.25], mode="full")
+    np.testing.assert_array_equal(output, [0.25, 0.5, 0.25, 0.0, 0.0])
+
+
+def test_fir_convolution_filters_channels_independently() -> None:
+    stereo = np.column_stack(([1.0, 0.0], [0.0, 1.0]))
+    output = filters.apply_fir(stereo, [1.0, -1.0], mode="full")
+    np.testing.assert_array_equal(output, [[1.0, 0.0], [-1.0, 1.0], [0.0, -1.0]])
+
+
 # -- extensions --
