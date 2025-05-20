@@ -83,4 +83,15 @@ def test_bandpass_rejects_reversed_bounds() -> None:
         filters.bandpass_kernel(16_000, 4000.0, 300.0)
 
 
+def test_group_delay_matches_symmetric_kernel_center() -> None:
+    kernel = filters.lowpass_kernel(8000, 1000.0, taps=31)
+    assert filters.fir_group_delay(kernel) == 15.0
+
+
+def test_compensated_filter_preserves_input_length() -> None:
+    signal = np.linspace(-1.0, 1.0, 100)
+    kernel = filters.lowpass_kernel(8000, 2000.0, taps=15)
+    assert filters.apply_fir_compensated(signal, kernel).shape == signal.shape
+
+
 # -- extensions --

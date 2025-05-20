@@ -90,4 +90,26 @@ def bandpass_kernel(
     return np.asarray(high - low, dtype=np.float64)
 
 
+def fir_group_delay(kernel: ArrayLike) -> float:
+    """Return the sample delay of a symmetric linear-phase FIR kernel."""
+    taps = np.asarray(kernel, dtype=np.float64)
+    if taps.ndim != 1 or taps.size == 0 or not np.allclose(taps, taps[::-1], atol=1e-12):
+        raise ValueError("group delay requires a nonempty symmetric kernel")
+    return (taps.size - 1) / 2.0
+
+
+def apply_fir_compensated(samples: ArrayLike, kernel: ArrayLike) -> FloatArray:
+    """Apply an odd symmetric FIR and remove its integer linear-phase delay."""
+    waveform = as_waveform(samples)
+    taps = np.asarray(kernel, dtype=np.float64)
+    delay = fir_group_delay(taps)
+    if not delay.is_integer():
+        raise ValueError("delay compensation requires an odd-length kernel")
+    if waveform.shape[0] == 0:
+        return waveform.copy()
+    full = apply_fir(waveform, taps, mode="full")
+    start = int(delay)
+    return np.asarray(full[start : start + waveform.shape[0]], dtype=np.float64)
+
+
 # -- extensions --
