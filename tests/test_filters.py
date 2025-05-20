@@ -62,4 +62,25 @@ def test_bandpass_is_symmetric_with_zero_dc() -> None:
     assert np.sum(kernel) == pytest.approx(0.0, abs=1e-15)
 
 
+def test_lowpass_rejects_high_tone_but_keeps_low_tone() -> None:
+    time = np.arange(3200) / 16_000
+    low = np.sin(2 * np.pi * 500 * time)
+    high = np.sin(2 * np.pi * 5000 * time)
+    kernel = filters.lowpass_kernel(16_000, 2000.0, taps=127, window="blackman")
+    low_output = filters.apply_fir(low, kernel)[100:-100]
+    high_output = filters.apply_fir(high, kernel)[100:-100]
+    assert np.sqrt(np.mean(high_output**2)) < np.sqrt(np.mean(low_output**2)) * 1e-3
+
+
+def test_voice_bandpass_keeps_midband_and_rejects_dc() -> None:
+    kernel = filters.bandpass_kernel(16_000, 200.0, 3800.0, taps=127)
+    dc_output = filters.apply_fir(np.ones(1000), kernel)[100:-100]
+    assert np.max(np.abs(dc_output)) < 1e-12
+
+
+def test_bandpass_rejects_reversed_bounds() -> None:
+    with pytest.raises(ValueError, match="increasing"):
+        filters.bandpass_kernel(16_000, 4000.0, 300.0)
+
+
 # -- extensions --
