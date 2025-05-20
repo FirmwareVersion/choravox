@@ -94,4 +94,25 @@ def test_compensated_filter_preserves_input_length() -> None:
     assert filters.apply_fir_compensated(signal, kernel).shape == signal.shape
 
 
+def test_compensated_impulse_response_is_centered_on_input_impulse() -> None:
+    signal = np.zeros(101)
+    signal[50] = 1.0
+    kernel = filters.lowpass_kernel(16_000, 3000.0, taps=31)
+    output = filters.apply_fir_compensated(signal, kernel)
+    assert int(np.argmax(np.abs(output))) == 50
+
+
+def test_delay_compensation_keeps_stereo_alignment() -> None:
+    stereo = np.zeros((80, 2))
+    stereo[20, 0] = 1.0
+    stereo[40, 1] = 1.0
+    output = filters.apply_fir_compensated(stereo, filters.lowpass_kernel(8000, 2000.0))
+    assert tuple(np.argmax(output, axis=0)) == (20, 40)
+
+
+def test_group_delay_rejects_asymmetric_kernels() -> None:
+    with pytest.raises(ValueError, match="symmetric"):
+        filters.fir_group_delay([1.0, 2.0, 0.0])
+
+
 # -- extensions --
