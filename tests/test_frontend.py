@@ -39,6 +39,28 @@ def test_timed_feature_extraction_is_byte_deterministic() -> None:
     assert first.starts_s.tobytes() == second.starts_s.tobytes()
 
 
+def test_cached_extractor_can_be_reused_without_state_drift() -> None:
+    extractor = LogMelExtractor(FeatureConfig(n_mels=10))
+    first_signal = np.sin(np.linspace(0.0, 10.0, 1200))
+    second_signal = np.cos(np.linspace(0.0, 10.0, 1200))
+    first = extractor.transform(first_signal)
+    extractor.transform(second_signal)
+    np.testing.assert_array_equal(extractor.transform(first_signal), first)
+
+
+def test_cached_extractor_downmixes_identical_stereo_exactly() -> None:
+    extractor = LogMelExtractor()
+    mono = np.sin(np.linspace(0.0, 30.0, 1600))
+    np.testing.assert_array_equal(
+        extractor.transform(mono), extractor.transform(np.column_stack((mono, mono)))
+    )
+
+
+def test_cached_extractor_exposes_its_validated_config() -> None:
+    config = FeatureConfig(n_mels=13)
+    assert LogMelExtractor(config).config is config
+
+
 # -- extensions --
 def test_cached_extractor_matches_functional_front_end() -> None:
     from choravox.features import extract_log_mel
