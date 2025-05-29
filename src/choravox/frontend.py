@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
@@ -72,6 +73,27 @@ def timed_log_mel(samples: ArrayLike, config: FeatureConfig | None = None) -> Fe
     duration = settings.frame_length / settings.sample_rate
     centers = starts + duration / 2.0
     return FeatureFrames(values, starts, centers, duration)
+
+
+def extract_batch(
+    recordings: Mapping[str, ArrayLike], config: FeatureConfig | None = None
+) -> dict[str, FeatureFrames]:
+    """Extract a name-sorted batch with one shared cached front end."""
+    if any(not isinstance(name, str) or not name for name in recordings):
+        raise ValueError("recording names must be nonempty strings")
+    settings = FeatureConfig() if config is None else config
+    extractor = LogMelExtractor(settings)
+    output: dict[str, FeatureFrames] = {}
+    for name in sorted(recordings):
+        values = extractor.transform(recordings[name])
+        starts = (
+            np.arange(values.shape[0], dtype=np.float64)
+            * settings.hop_length
+            / settings.sample_rate
+        )
+        duration = settings.frame_length / settings.sample_rate
+        output[name] = FeatureFrames(values, starts, starts + duration / 2.0, duration)
+    return output
 
 
 # -- extensions --

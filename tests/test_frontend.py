@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from choravox.config import FeatureConfig
-from choravox.frontend import LogMelExtractor, timed_log_mel
+from choravox.frontend import LogMelExtractor, extract_batch, timed_log_mel
 
 
 def test_timed_features_use_sample_accurate_geometry() -> None:
@@ -62,6 +62,17 @@ def test_cached_extractor_exposes_its_validated_config() -> None:
 
 
 # -- extensions --
+def test_feature_batch_uses_sorted_names_and_shared_geometry() -> None:
+    recordings = {"zeta": np.ones(800), "alpha": np.ones(1200)}
+    batch = extract_batch(recordings, FeatureConfig(n_mels=8))
+    assert list(batch) == ["alpha", "zeta"]
+    assert batch["alpha"].values.shape[1] == batch["zeta"].values.shape[1] == 8
+
+
+def test_empty_feature_batch_is_well_defined() -> None:
+    assert extract_batch({}) == {}
+
+
 def test_cached_extractor_matches_functional_front_end() -> None:
     from choravox.features import extract_log_mel
 
