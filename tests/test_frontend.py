@@ -61,6 +61,32 @@ def test_cached_extractor_exposes_its_validated_config() -> None:
     assert LogMelExtractor(config).config is config
 
 
+def test_batch_results_equal_independent_extraction() -> None:
+    recordings = {
+        "first": np.random.default_rng(1).normal(size=900),
+        "second": np.random.default_rng(2).normal(size=1300),
+    }
+    batch = extract_batch(recordings)
+    for name, signal in recordings.items():
+        np.testing.assert_array_equal(batch[name].values, timed_log_mel(signal).values)
+
+
+def test_batch_rejects_empty_and_nonstring_names() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="names"):
+        extract_batch({"": np.ones(20)})
+    with pytest.raises(ValueError, match="names"):
+        extract_batch({1: np.ones(20)})  # type: ignore[dict-item]
+
+
+def test_batch_input_mapping_is_not_mutated() -> None:
+    recordings = {"only": np.ones(500)}
+    original = recordings["only"].copy()
+    extract_batch(recordings)
+    np.testing.assert_array_equal(recordings["only"], original)
+
+
 # -- extensions --
 def test_feature_batch_uses_sorted_names_and_shared_geometry() -> None:
     recordings = {"zeta": np.ones(800), "alpha": np.ones(1200)}
