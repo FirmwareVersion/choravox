@@ -63,16 +63,19 @@ class LogMelExtractor:
         return np.round(stack_feature_orders(normalized, order=self.config.delta_order), 6)
 
 
-def timed_log_mel(samples: ArrayLike, config: FeatureConfig | None = None) -> FeatureFrames:
-    """Extract log-mel features and their sample-derived frame time axis."""
-    settings = FeatureConfig() if config is None else config
-    values = LogMelExtractor(settings).transform(samples)
+def _attach_times(values: FloatArray, settings: FeatureConfig) -> FeatureFrames:
     starts = (
         np.arange(values.shape[0], dtype=np.float64) * settings.hop_length / settings.sample_rate
     )
     duration = settings.frame_length / settings.sample_rate
-    centers = starts + duration / 2.0
-    return FeatureFrames(values, starts, centers, duration)
+    return FeatureFrames(values, starts, starts + duration / 2.0, duration)
+
+
+def timed_log_mel(samples: ArrayLike, config: FeatureConfig | None = None) -> FeatureFrames:
+    """Extract log-mel features and their sample-derived frame time axis."""
+    settings = FeatureConfig() if config is None else config
+    values = LogMelExtractor(settings).transform(samples)
+    return _attach_times(values, settings)
 
 
 def extract_batch(
@@ -86,13 +89,7 @@ def extract_batch(
     output: dict[str, FeatureFrames] = {}
     for name in sorted(recordings):
         values = extractor.transform(recordings[name])
-        starts = (
-            np.arange(values.shape[0], dtype=np.float64)
-            * settings.hop_length
-            / settings.sample_rate
-        )
-        duration = settings.frame_length / settings.sample_rate
-        output[name] = FeatureFrames(values, starts, starts + duration / 2.0, duration)
+        output[name] = _attach_times(values, settings)
     return output
 
 

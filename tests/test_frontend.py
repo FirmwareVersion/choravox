@@ -88,6 +88,15 @@ def test_batch_input_mapping_is_not_mutated() -> None:
 
 
 # -- extensions --
+def test_timed_and_batch_paths_share_identical_metadata() -> None:
+    signal = np.arange(1000, dtype=np.float64)
+    direct = timed_log_mel(signal)
+    batched = extract_batch({"signal": signal})["signal"]
+    np.testing.assert_array_equal(direct.starts_s, batched.starts_s)
+    np.testing.assert_array_equal(direct.centers_s, batched.centers_s)
+    assert direct.frame_duration_s == batched.frame_duration_s
+
+
 def test_feature_batch_uses_sorted_names_and_shared_geometry() -> None:
     recordings = {"zeta": np.ones(800), "alpha": np.ones(1200)}
     batch = extract_batch(recordings, FeatureConfig(n_mels=8))
