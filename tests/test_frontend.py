@@ -87,6 +87,26 @@ def test_batch_input_mapping_is_not_mutated() -> None:
     np.testing.assert_array_equal(recordings["only"], original)
 
 
+def test_feature_frame_arrays_align_on_frame_count() -> None:
+    for length in [0, 1, 399, 400, 401, 1600]:
+        result = timed_log_mel(np.zeros(length))
+        assert result.values.shape[0] == result.starts_s.shape[0] == result.centers_s.shape[0]
+
+
+def test_feature_times_are_nonnegative_and_strictly_ordered() -> None:
+    result = timed_log_mel(np.ones(2000))
+    assert np.all(result.starts_s >= 0.0)
+    assert np.all(np.diff(result.starts_s) > 0.0)
+    assert np.all(np.diff(result.centers_s) > 0.0)
+
+
+def test_feature_result_is_reproducible_across_fresh_extractors() -> None:
+    signal = np.random.default_rng(103).normal(size=2048)
+    first = LogMelExtractor().transform(signal)
+    second = LogMelExtractor().transform(signal)
+    assert first.tobytes() == second.tobytes()
+
+
 # -- extensions --
 def test_timed_and_batch_paths_share_identical_metadata() -> None:
     signal = np.arange(1000, dtype=np.float64)
