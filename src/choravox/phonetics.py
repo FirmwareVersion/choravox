@@ -130,4 +130,28 @@ def pitch_contour(
     return np.round(contour, 9)
 
 
+def glottal_source(
+    pitch_hz: NDArray[np.float64],
+    sample_rate: int,
+    *,
+    harmonics: int = 12,
+    spectral_tilt: float = 1.2,
+) -> FloatArray:
+    """Synthesize a harmonic glottal-like source from an instantaneous pitch track."""
+    contour = np.asarray(pitch_hz, dtype=np.float64)
+    if contour.ndim != 1 or not np.all(np.isfinite(contour)) or np.any(contour <= 0.0):
+        raise ValueError("pitch_hz must be a finite positive vector")
+    if sample_rate <= 0 or harmonics <= 0 or spectral_tilt <= 0.0:
+        raise ValueError("sample rate, harmonics, and spectral tilt must be positive")
+    if contour.size == 0:
+        return contour.copy()
+    phase = 2.0 * np.pi * np.cumsum(contour) / sample_rate
+    source = np.zeros_like(contour)
+    for harmonic in range(1, harmonics + 1):
+        active = harmonic * contour < sample_rate / 2.0
+        source += active * np.sin(harmonic * phase) / harmonic**spectral_tilt
+    peak = np.max(np.abs(source))
+    return np.round(source / peak if peak > 0.0 else source, 9)
+
+
 # -- extensions --

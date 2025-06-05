@@ -123,4 +123,18 @@ def test_pitch_contour_defines_empty_duration() -> None:
         phonetics.pitch_contour(-1.0, 16_000, profile, seed=0)
 
 
+def test_glottal_source_tracks_declared_fundamental() -> None:
+    contour = np.full(800, 100.0)
+    source = phonetics.glottal_source(contour, 8000)
+    spectrum = np.abs(np.fft.rfft(source))
+    frequencies = np.fft.rfftfreq(source.size, 1 / 8000)
+    assert frequencies[int(np.argmax(spectrum[1:]) + 1)] == 100.0
+
+
+def test_glottal_source_is_peak_normalized() -> None:
+    contour = np.linspace(100.0, 140.0, 1000)
+    source = phonetics.glottal_source(contour, 16_000)
+    assert np.max(np.abs(source)) == 1.0
+
+
 # -- extensions --
