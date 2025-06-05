@@ -55,4 +55,17 @@ def test_inventory_mapping_cannot_be_mutated() -> None:
         phonetics.PHONE_INVENTORY["x"] = phonetics.get_phone("s")  # type: ignore[index]
 
 
+def test_speaker_profiles_repeat_by_name_and_seed() -> None:
+    first = phonetics.speaker_profile("speaker-a", 17)
+    second = phonetics.speaker_profile("speaker-a", 17)
+    assert first == second
+
+
+def test_speaker_profiles_separate_named_streams() -> None:
+    first = phonetics.speaker_profile("speaker-a", 17)
+    second = phonetics.speaker_profile("speaker-b", 17)
+    assert first != second
+    assert first.speaker_id == "speaker-a" and second.speaker_id == "speaker-b"
+
+
 # -- extensions --

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal
 
+from choravox.random import rng
+
 Manner = Literal["vowel", "fricative", "stop", "nasal"]
 
 
@@ -55,6 +57,46 @@ def get_phone(symbol: str) -> Phone:
         return PHONE_INVENTORY[symbol]
     except KeyError as error:
         raise ValueError(f"unknown phone symbol: {symbol}") from error
+
+
+@dataclass(frozen=True, slots=True)
+class SpeakerProfile:
+    """Synthetic voice controls derived from a named deterministic stream."""
+
+    speaker_id: str
+    base_pitch_hz: float
+    pitch_range_semitones: float
+    formant_scale: float
+    breathiness: float
+    jitter: float
+
+    def __post_init__(self) -> None:
+        if not self.speaker_id:
+            raise ValueError("speaker_id must be nonempty")
+        if not 70.0 <= self.base_pitch_hz <= 320.0:
+            raise ValueError("base_pitch_hz must be in [70, 320]")
+        if not 0.0 <= self.pitch_range_semitones <= 12.0:
+            raise ValueError("pitch range must be in [0, 12]")
+        if not 0.75 <= self.formant_scale <= 1.3:
+            raise ValueError("formant_scale must be in [0.75, 1.3]")
+        if not 0.0 <= self.breathiness <= 1.0 or not 0.0 <= self.jitter <= 0.1:
+            raise ValueError("breathiness or jitter is outside its supported range")
+
+
+def speaker_profile(speaker_id: str, seed: int) -> SpeakerProfile:
+    """Derive a repeatable synthetic voice without claiming a real identity."""
+    if not speaker_id:
+        raise ValueError("speaker_id must be nonempty")
+    generator = rng(seed, f"speaker:{speaker_id}")
+    values = generator.uniform(size=5)
+    return SpeakerProfile(
+        speaker_id=speaker_id,
+        base_pitch_hz=round(95.0 + values[0] * 145.0, 6),
+        pitch_range_semitones=round(1.5 + values[1] * 4.5, 6),
+        formant_scale=round(0.88 + values[2] * 0.24, 6),
+        breathiness=round(0.02 + values[3] * 0.18, 6),
+        jitter=round(0.002 + values[4] * 0.018, 6),
+    )
 
 
 # -- extensions --
