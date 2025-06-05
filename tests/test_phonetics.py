@@ -102,4 +102,25 @@ def test_pitch_contour_repeats_exactly() -> None:
     np.testing.assert_array_equal(first, second)
 
 
+def test_flat_profile_produces_constant_pitch() -> None:
+    profile = phonetics.SpeakerProfile("flat", 120.0, 0.0, 1.0, 0.0, 0.0)
+    contour = phonetics.pitch_contour(0.1, 8000, profile, seed=1)
+    np.testing.assert_array_equal(contour, np.full(800, 120.0))
+
+
+def test_pitch_range_changes_contour_span() -> None:
+    narrow = phonetics.SpeakerProfile("voice", 140.0, 1.0, 1.0, 0.0, 0.0)
+    wide = phonetics.SpeakerProfile("voice", 140.0, 6.0, 1.0, 0.0, 0.0)
+    narrow_track = phonetics.pitch_contour(1.0, 1000, narrow, seed=2)
+    wide_track = phonetics.pitch_contour(1.0, 1000, wide, seed=2)
+    assert np.ptp(wide_track) > np.ptp(narrow_track) * 4.0
+
+
+def test_pitch_contour_defines_empty_duration() -> None:
+    profile = phonetics.speaker_profile("speaker-a", 0)
+    assert phonetics.pitch_contour(0.0, 16_000, profile, seed=0).shape == (0,)
+    with pytest.raises(ValueError, match="valid"):
+        phonetics.pitch_contour(-1.0, 16_000, profile, seed=0)
+
+
 # -- extensions --
