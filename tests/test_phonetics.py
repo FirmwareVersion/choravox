@@ -68,4 +68,23 @@ def test_speaker_profiles_separate_named_streams() -> None:
     assert first.speaker_id == "speaker-a" and second.speaker_id == "speaker-b"
 
 
+def test_generated_profiles_stay_inside_declared_voice_ranges() -> None:
+    profiles = [phonetics.speaker_profile(f"speaker-{index}", 44) for index in range(50)]
+    assert all(95.0 <= profile.base_pitch_hz <= 240.0 for profile in profiles)
+    assert all(1.5 <= profile.pitch_range_semitones <= 6.0 for profile in profiles)
+    assert all(0.88 <= profile.formant_scale <= 1.12 for profile in profiles)
+
+
+def test_profile_validation_rejects_nonphysical_controls() -> None:
+    with pytest.raises(ValueError, match="base_pitch"):
+        phonetics.SpeakerProfile("x", 30.0, 2.0, 1.0, 0.1, 0.01)
+    with pytest.raises(ValueError, match="speaker_id"):
+        phonetics.speaker_profile("", 1)
+
+
+def test_many_named_profiles_are_not_all_identical() -> None:
+    pitches = {phonetics.speaker_profile(f"s{index}", 5).base_pitch_hz for index in range(20)}
+    assert len(pitches) == 20
+
+
 # -- extensions --
