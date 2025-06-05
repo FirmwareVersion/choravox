@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import phonetics
@@ -85,6 +86,20 @@ def test_profile_validation_rejects_nonphysical_controls() -> None:
 def test_many_named_profiles_are_not_all_identical() -> None:
     pitches = {phonetics.speaker_profile(f"s{index}", 5).base_pitch_hz for index in range(20)}
     assert len(pitches) == 20
+
+
+def test_pitch_contour_has_sample_accurate_length() -> None:
+    profile = phonetics.speaker_profile("speaker-a", 9)
+    contour = phonetics.pitch_contour(0.125, 16_000, profile, seed=3)
+    assert contour.shape == (2000,)
+    assert np.all(contour > 0.0)
+
+
+def test_pitch_contour_repeats_exactly() -> None:
+    profile = phonetics.speaker_profile("speaker-a", 9)
+    first = phonetics.pitch_contour(0.2, 8000, profile, seed=11)
+    second = phonetics.pitch_contour(0.2, 8000, profile, seed=11)
+    np.testing.assert_array_equal(first, second)
 
 
 # -- extensions --

@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal
 
+import numpy as np
+from numpy.typing import NDArray
+
 from choravox.random import rng
 
 Manner = Literal["vowel", "fricative", "stop", "nasal"]
@@ -97,6 +100,34 @@ def speaker_profile(speaker_id: str, seed: int) -> SpeakerProfile:
         breathiness=round(0.02 + values[3] * 0.18, 6),
         jitter=round(0.002 + values[4] * 0.018, 6),
     )
+
+
+FloatArray = NDArray[np.float64]
+
+
+def pitch_contour(
+    duration_s: float,
+    sample_rate: int,
+    profile: SpeakerProfile,
+    *,
+    seed: int,
+    phrase_rate_hz: float = 1.7,
+) -> FloatArray:
+    """Generate a smooth sample-rate pitch track with seeded micro-jitter."""
+    if duration_s < 0.0 or sample_rate <= 0 or phrase_rate_hz <= 0.0:
+        raise ValueError("duration, sample rate, and phrase rate must be valid")
+    sample_count = round(duration_s * sample_rate)
+    if sample_count == 0:
+        return np.empty(0, dtype=np.float64)
+    times = np.arange(sample_count, dtype=np.float64) / sample_rate
+    generator = rng(seed, f"pitch:{profile.speaker_id}")
+    phase = generator.uniform(0.0, 2.0 * np.pi)
+    phrase = profile.pitch_range_semitones * np.sin(2.0 * np.pi * phrase_rate_hz * times + phase)
+    knot_count = max(2, round(duration_s * 20.0) + 1)
+    knots = generator.normal(0.0, profile.jitter, size=knot_count)
+    jitter = np.interp(times, np.linspace(0.0, duration_s, knot_count), knots)
+    contour = profile.base_pitch_hz * np.exp2(phrase / 12.0 + jitter)
+    return np.round(contour, 9)
 
 
 # -- extensions --
