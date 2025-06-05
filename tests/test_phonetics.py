@@ -137,4 +137,20 @@ def test_glottal_source_is_peak_normalized() -> None:
     assert np.max(np.abs(source)) == 1.0
 
 
+def test_glottal_source_respects_nyquist_harmonic_limit() -> None:
+    contour = np.full(400, 1800.0)
+    many = phonetics.glottal_source(contour, 8000, harmonics=20)
+    two = phonetics.glottal_source(contour, 8000, harmonics=2)
+    np.testing.assert_array_equal(many, two)
+
+
+def test_glottal_source_rejects_nonpositive_pitch() -> None:
+    with pytest.raises(ValueError, match="positive vector"):
+        phonetics.glottal_source(np.array([100.0, 0.0]), 8000)
+
+
+def test_empty_pitch_track_produces_empty_excitation() -> None:
+    assert phonetics.glottal_source(np.empty(0), 8000).shape == (0,)
+
+
 # -- extensions --
