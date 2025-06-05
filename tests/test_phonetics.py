@@ -33,4 +33,26 @@ def test_phone_lookup_returns_immutable_inventory_record() -> None:
         phonetics.get_phone("zz")
 
 
+def test_voiced_phones_have_ordered_matched_formants() -> None:
+    for phone in phonetics.PHONE_INVENTORY.values():
+        if phone.voiced:
+            assert len(phone.formants_hz) == len(phone.bandwidths_hz) >= 3
+            assert all(
+                left < right
+                for left, right in zip(phone.formants_hz, phone.formants_hz[1:], strict=False)
+            )
+
+
+def test_phone_rejects_missing_or_mismatched_acoustics() -> None:
+    with pytest.raises(ValueError, match="require formant"):
+        phonetics.Phone("bad", "vowel", True)
+    with pytest.raises(ValueError, match="one bandwidth"):
+        phonetics.Phone("bad", "vowel", True, (500.0,), ())
+
+
+def test_inventory_mapping_cannot_be_mutated() -> None:
+    with pytest.raises(TypeError):
+        phonetics.PHONE_INVENTORY["x"] = phonetics.get_phone("s")  # type: ignore[index]
+
+
 # -- extensions --
