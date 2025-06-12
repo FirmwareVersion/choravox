@@ -53,4 +53,26 @@ def test_resonator_preserves_samples_first_channels() -> None:
     np.testing.assert_allclose(output[:, 0], -output[:, 1])
 
 
+def test_resonator_amplifies_target_relative_to_distant_tone() -> None:
+    time = np.arange(8000) / 8000
+    target = np.sin(2 * np.pi * 1000 * time)
+    distant = np.sin(2 * np.pi * 3000 * time)
+    coefficients = synthesis.resonator_coefficients(1000.0, 100.0, 8000)
+    target_output = synthesis.apply_resonator(target, coefficients)[1000:]
+    distant_output = synthesis.apply_resonator(distant, coefficients)[1000:]
+    assert np.sqrt(np.mean(target_output**2)) > np.sqrt(np.mean(distant_output**2)) * 10.0
+
+
+def test_zero_input_has_zero_resonator_state() -> None:
+    coefficients = synthesis.resonator_coefficients(1000.0, 100.0, 8000)
+    np.testing.assert_array_equal(
+        synthesis.apply_resonator(np.zeros(50), coefficients), np.zeros(50)
+    )
+
+
+def test_empty_resonator_input_keeps_channel_rank() -> None:
+    coefficients = synthesis.resonator_coefficients(1000.0, 100.0, 8000)
+    assert synthesis.apply_resonator(np.empty((0, 2)), coefficients).shape == (0, 2)
+
+
 # -- extensions --
