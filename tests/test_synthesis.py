@@ -37,4 +37,20 @@ def test_resonator_coefficients_repeat_bit_exactly() -> None:
     assert first == second
 
 
+def test_resonator_impulse_starts_at_feedforward_gain() -> None:
+    coefficients = synthesis.resonator_coefficients(1000.0, 200.0, 8000)
+    impulse = np.zeros(20)
+    impulse[0] = 1.0
+    response = synthesis.apply_resonator(impulse, coefficients)
+    assert response[0] == coefficients.b0
+    assert response[1] == pytest.approx(coefficients.a1 * coefficients.b0)
+
+
+def test_resonator_preserves_samples_first_channels() -> None:
+    stereo = np.column_stack((np.ones(10), -np.ones(10)))
+    output = synthesis.apply_resonator(stereo, synthesis.resonator_coefficients(500.0, 100.0, 8000))
+    assert output.shape == stereo.shape
+    np.testing.assert_allclose(output[:, 0], -output[:, 1])
+
+
 # -- extensions --

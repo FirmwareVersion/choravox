@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
+
+from choravox.audio import as_waveform
 
 FloatArray = NDArray[np.float64]
 
@@ -28,6 +30,34 @@ def resonator_coefficients(frequency_hz: float, bandwidth_hz: float, sample_rate
     radius = float(np.exp(-np.pi * bandwidth_hz / sample_rate))
     angle = 2.0 * np.pi * frequency_hz / sample_rate
     return Resonator(1.0 - radius, 2.0 * radius * float(np.cos(angle)), -(radius**2))
+
+
+def apply_resonator(samples: ArrayLike, coefficients: Resonator) -> FloatArray:
+    """Apply a causal resonator independently along every waveform channel."""
+    waveform = as_waveform(samples)
+    output = np.empty_like(waveform)
+    if waveform.ndim == 1:
+        previous_one = previous_two = 0.0
+        for index, sample in enumerate(waveform):
+            value = (
+                coefficients.b0 * sample
+                + coefficients.a1 * previous_one
+                + coefficients.a2 * previous_two
+            )
+            output[index] = value
+            previous_two, previous_one = previous_one, value
+    else:
+        previous_one = np.zeros(waveform.shape[1], dtype=np.float64)
+        previous_two = np.zeros(waveform.shape[1], dtype=np.float64)
+        for index, sample in enumerate(waveform):
+            value = (
+                coefficients.b0 * sample
+                + coefficients.a1 * previous_one
+                + coefficients.a2 * previous_two
+            )
+            output[index] = value
+            previous_two, previous_one = previous_one, value
+    return output
 
 
 # -- extensions --
