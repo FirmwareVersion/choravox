@@ -164,4 +164,28 @@ def test_unvoiced_source_repeats_by_namespace() -> None:
     np.testing.assert_array_equal(first, second)
 
 
+def test_highpass_control_increases_upper_band_energy() -> None:
+    flat = phonetics.unvoiced_source(8192, seed=12, highpass=0.0)
+    shaped = phonetics.unvoiced_source(8192, seed=12, highpass=0.95)
+    flat_spectrum = np.abs(np.fft.rfft(flat)) ** 2
+    shaped_spectrum = np.abs(np.fft.rfft(shaped)) ** 2
+    split = flat_spectrum.size // 2
+    flat_ratio = np.sum(flat_spectrum[split:]) / np.sum(flat_spectrum[:split])
+    shaped_ratio = np.sum(shaped_spectrum[split:]) / np.sum(shaped_spectrum[:split])
+    assert shaped_ratio > flat_ratio * 3.0
+
+
+def test_unvoiced_namespaces_are_independent() -> None:
+    first = phonetics.unvoiced_source(64, seed=3, namespace="f")
+    second = phonetics.unvoiced_source(64, seed=3, namespace="s")
+    assert not np.array_equal(first, second)
+
+
+def test_unvoiced_source_validates_length_and_shaping() -> None:
+    with pytest.raises(ValueError, match="supported"):
+        phonetics.unvoiced_source(-1, seed=0)
+    with pytest.raises(ValueError, match="supported"):
+        phonetics.unvoiced_source(10, seed=0, highpass=1.1)
+
+
 # -- extensions --
