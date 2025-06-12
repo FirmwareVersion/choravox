@@ -154,4 +154,22 @@ def glottal_source(
     return np.round(source / peak if peak > 0.0 else source, 9)
 
 
+def unvoiced_source(
+    sample_count: int,
+    *,
+    seed: int,
+    namespace: str = "unvoiced",
+    highpass: float = 0.8,
+) -> FloatArray:
+    """Generate normalized high-frequency noise for unvoiced phones."""
+    if sample_count < 0 or not 0.0 <= highpass <= 1.0:
+        raise ValueError("sample_count and highpass are outside supported ranges")
+    if sample_count == 0:
+        return np.empty(0, dtype=np.float64)
+    noise = rng(seed, namespace).normal(size=sample_count + 1)
+    shaped = noise[1:] - highpass * noise[:-1]
+    level = np.sqrt(np.mean(shaped**2))
+    return np.round(shaped * (0.1 / level), 9)
+
+
 # -- extensions --

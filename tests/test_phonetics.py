@@ -153,4 +153,15 @@ def test_empty_pitch_track_produces_empty_excitation() -> None:
     assert phonetics.glottal_source(np.empty(0), 8000).shape == (0,)
 
 
+def test_unvoiced_source_has_calibrated_rms() -> None:
+    source = phonetics.unvoiced_source(4000, seed=7)
+    assert np.sqrt(np.mean(source**2)) == pytest.approx(0.1, abs=1e-9)
+
+
+def test_unvoiced_source_repeats_by_namespace() -> None:
+    first = phonetics.unvoiced_source(100, seed=7, namespace="s")
+    second = phonetics.unvoiced_source(100, seed=7, namespace="s")
+    np.testing.assert_array_equal(first, second)
+
+
 # -- extensions --
