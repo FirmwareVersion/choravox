@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from choravox import synthesis
 
@@ -16,6 +17,24 @@ def test_narrower_resonator_places_poles_nearer_unit_circle() -> None:
     narrow = synthesis.resonator_coefficients(1000.0, 50.0, 16_000)
     wide = synthesis.resonator_coefficients(1000.0, 300.0, 16_000)
     assert abs(narrow.a2) > abs(wide.a2)
+
+
+def test_resonator_rejects_frequency_at_or_above_nyquist() -> None:
+    with pytest.raises(ValueError, match="frequency"):
+        synthesis.resonator_coefficients(8000.0, 100.0, 16_000)
+    with pytest.raises(ValueError, match="frequency"):
+        synthesis.resonator_coefficients(0.0, 100.0, 16_000)
+
+
+def test_resonator_rejects_nonpositive_bandwidth() -> None:
+    with pytest.raises(ValueError, match="bandwidth"):
+        synthesis.resonator_coefficients(1000.0, 0.0, 16_000)
+
+
+def test_resonator_coefficients_repeat_bit_exactly() -> None:
+    first = synthesis.resonator_coefficients(730.0, 80.0, 16_000)
+    second = synthesis.resonator_coefficients(730.0, 80.0, 16_000)
+    assert first == second
 
 
 # -- extensions --
