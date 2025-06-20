@@ -79,4 +79,16 @@ def apply_formants(
     return np.asarray(output, dtype=np.float64)
 
 
+def phone_envelope(sample_count: int, attack: int, release: int) -> FloatArray:
+    """Create a raised-cosine phone envelope with exact zero endpoints."""
+    if sample_count <= 0 or attack < 0 or release < 0 or attack + release > sample_count:
+        raise ValueError("phone envelope lengths must be nonnegative and fit")
+    envelope = np.ones(sample_count, dtype=np.float64)
+    if attack:
+        envelope[:attack] = np.sin(np.linspace(0.0, np.pi / 2.0, attack)) ** 2
+    if release:
+        envelope[-release:] = np.cos(np.linspace(0.0, np.pi / 2.0, release)) ** 2
+    return envelope
+
+
 # -- extensions --

@@ -120,4 +120,15 @@ def test_formant_scale_moves_first_resonance_upward() -> None:
     assert high_peak > low_peak
 
 
+def test_phone_envelope_has_exact_endpoints_and_plateau() -> None:
+    envelope = synthesis.phone_envelope(10, 3, 3)
+    assert envelope[0] == 0.0 and envelope[-1] < 1e-30
+    np.testing.assert_array_equal(envelope[3:7], np.ones(4))
+
+
+def test_phone_envelope_is_symmetric_for_equal_fades() -> None:
+    envelope = synthesis.phone_envelope(20, 5, 5)
+    np.testing.assert_allclose(envelope, envelope[::-1], atol=1e-15)
+
+
 # -- extensions --
