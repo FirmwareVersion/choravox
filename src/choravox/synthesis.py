@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from choravox.audio import as_waveform
+from choravox.phonetics import Phone, SpeakerProfile
 
 FloatArray = NDArray[np.float64]
 
@@ -58,6 +59,24 @@ def apply_resonator(samples: ArrayLike, coefficients: Resonator) -> FloatArray:
             output[index] = value
             previous_two, previous_one = previous_one, value
     return output
+
+
+def apply_formants(
+    source: ArrayLike, phone: Phone, profile: SpeakerProfile, sample_rate: int
+) -> FloatArray:
+    """Apply scaled formants or a simple fricative emphasis to one excitation."""
+    output = as_waveform(source)
+    if output.ndim != 1:
+        raise ValueError("formant synthesis expects mono excitation")
+    if phone.voiced:
+        for frequency, bandwidth in zip(phone.formants_hz, phone.bandwidths_hz, strict=True):
+            scaled = min(frequency * profile.formant_scale, sample_rate * 0.48)
+            output = apply_resonator(output, resonator_coefficients(scaled, bandwidth, sample_rate))
+    elif phone.manner == "fricative" and output.size:
+        emphasized = output.copy()
+        emphasized[1:] = output[1:] - 0.92 * output[:-1]
+        output = emphasized
+    return np.asarray(output, dtype=np.float64)
 
 
 # -- extensions --

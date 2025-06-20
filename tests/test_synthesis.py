@@ -75,4 +75,21 @@ def test_empty_resonator_input_keeps_channel_rank() -> None:
     assert synthesis.apply_resonator(np.empty((0, 2)), coefficients).shape == (0, 2)
 
 
+def test_formant_filter_keeps_excitation_length() -> None:
+    from choravox.phonetics import get_phone, speaker_profile
+
+    source = np.random.default_rng(1).normal(size=1000)
+    shaped = synthesis.apply_formants(source, get_phone("aa"), speaker_profile("a", 0), 16_000)
+    assert shaped.shape == source.shape
+
+
+def test_fricative_shaping_emphasizes_sample_differences() -> None:
+    from choravox.phonetics import get_phone, speaker_profile
+
+    source = np.ones(20)
+    shaped = synthesis.apply_formants(source, get_phone("s"), speaker_profile("a", 0), 16_000)
+    assert shaped[0] == 1.0
+    np.testing.assert_allclose(shaped[1:], 0.08)
+
+
 # -- extensions --
