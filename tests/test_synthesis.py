@@ -92,4 +92,32 @@ def test_fricative_shaping_emphasizes_sample_differences() -> None:
     np.testing.assert_allclose(shaped[1:], 0.08)
 
 
+def test_vowel_filters_produce_distinct_spectral_envelopes() -> None:
+    from choravox.phonetics import get_phone, speaker_profile
+
+    source = np.random.default_rng(77).normal(size=16_000)
+    profile = speaker_profile("speaker", 4)
+    aa = synthesis.apply_formants(source, get_phone("aa"), profile, 16_000)
+    iy = synthesis.apply_formants(source, get_phone("iy"), profile, 16_000)
+    aa_spectrum = np.abs(np.fft.rfft(aa[2000:]))
+    iy_spectrum = np.abs(np.fft.rfft(iy[2000:]))
+    assert np.corrcoef(aa_spectrum, iy_spectrum)[0, 1] < 0.95
+
+
+def test_formant_scale_moves_first_resonance_upward() -> None:
+    from choravox.phonetics import SpeakerProfile, get_phone
+
+    source = np.zeros(8000)
+    source[0] = 1.0
+    low = SpeakerProfile("low", 120, 2, 0.85, 0.1, 0.01)
+    high = SpeakerProfile("high", 120, 2, 1.15, 0.1, 0.01)
+    low_peak = np.argmax(
+        np.abs(np.fft.rfft(synthesis.apply_formants(source, get_phone("aa"), low, 8000)))
+    )
+    high_peak = np.argmax(
+        np.abs(np.fft.rfft(synthesis.apply_formants(source, get_phone("aa"), high, 8000)))
+    )
+    assert high_peak > low_peak
+
+
 # -- extensions --
