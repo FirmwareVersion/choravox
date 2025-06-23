@@ -193,4 +193,29 @@ def test_phone_synthesis_rejects_zero_duration() -> None:
         synthesis.synthesize_phone("aa", 0.0, speaker_profile("a", 1), 8000, seed=0)
 
 
+def test_phone_sequence_plants_sample_accurate_spans() -> None:
+    from choravox.phonetics import speaker_profile
+
+    tokens = (synthesis.PhoneToken("aa", 0.05), synthesis.PhoneToken("s", 0.025))
+    result = synthesis.synthesize_sequence(
+        tokens, speaker_profile("a", 1), 8000, seed=8, gap_s=0.01
+    )
+    assert result.samples.shape == (680,)
+    assert result.phones == (
+        synthesis.PhoneSpan("aa", 0.0, 0.05),
+        synthesis.PhoneSpan("s", 0.06, 0.085),
+    )
+
+
+def test_phone_sequence_is_seed_deterministic() -> None:
+    from choravox.phonetics import speaker_profile
+
+    tokens = (synthesis.PhoneToken("iy", 0.03), synthesis.PhoneToken("f", 0.03))
+    profile = speaker_profile("a", 2)
+    first = synthesis.synthesize_sequence(tokens, profile, 8000, seed=9)
+    second = synthesis.synthesize_sequence(tokens, profile, 8000, seed=9)
+    np.testing.assert_array_equal(first.samples, second.samples)
+    assert first.phones == second.phones
+
+
 # -- extensions --
