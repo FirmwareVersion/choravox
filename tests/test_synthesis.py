@@ -165,4 +165,32 @@ def test_phone_synthesis_repeats_exactly() -> None:
     np.testing.assert_array_equal(first, second)
 
 
+def test_voiced_phone_has_stronger_best_periodic_autocorrelation() -> None:
+    from choravox.phonetics import speaker_profile
+
+    profile = speaker_profile("a", 3)
+    vowel = synthesis.synthesize_phone("aa", 0.2, profile, 8000, seed=4)
+    fricative = synthesis.synthesize_phone("s", 0.2, profile, 8000, seed=4)
+    lags = range(round(8000 / 300), round(8000 / 70) + 1)
+    vowel_corr = max(np.corrcoef(vowel[:-lag], vowel[lag:])[0, 1] for lag in lags)
+    fricative_corr = max(np.corrcoef(fricative[:-lag], fricative[lag:])[0, 1] for lag in lags)
+    assert vowel_corr > fricative_corr + 0.3
+
+
+def test_different_phone_seeds_change_noise_but_not_length() -> None:
+    from choravox.phonetics import speaker_profile
+
+    profile = speaker_profile("a", 3)
+    first = synthesis.synthesize_phone("f", 0.1, profile, 8000, seed=1)
+    second = synthesis.synthesize_phone("f", 0.1, profile, 8000, seed=2)
+    assert first.shape == second.shape and not np.array_equal(first, second)
+
+
+def test_phone_synthesis_rejects_zero_duration() -> None:
+    from choravox.phonetics import speaker_profile
+
+    with pytest.raises(ValueError, match="positive"):
+        synthesis.synthesize_phone("aa", 0.0, speaker_profile("a", 1), 8000, seed=0)
+
+
 # -- extensions --
