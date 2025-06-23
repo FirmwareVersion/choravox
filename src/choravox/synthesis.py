@@ -7,8 +7,15 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from choravox.audio import as_waveform
-from choravox.phonetics import Phone, SpeakerProfile
+from choravox.audio import as_waveform, normalize_rms
+from choravox.phonetics import (
+    Phone,
+    SpeakerProfile,
+    get_phone,
+    glottal_source,
+    pitch_contour,
+    unvoiced_source,
+)
 
 FloatArray = NDArray[np.float64]
 
@@ -89,6 +96,33 @@ def phone_envelope(sample_count: int, attack: int, release: int) -> FloatArray:
     if release:
         envelope[-release:] = np.cos(np.linspace(0.0, np.pi / 2.0, release)) ** 2
     return envelope
+
+
+def synthesize_phone(
+    phone: str | Phone,
+    duration_s: float,
+    profile: SpeakerProfile,
+    sample_rate: int,
+    *,
+    seed: int,
+) -> FloatArray:
+    """Render one phone from seeded excitation through its acoustic target."""
+    target = get_phone(phone) if isinstance(phone, str) else phone
+    sample_count = round(duration_s * sample_rate)
+    if duration_s <= 0.0 or sample_rate <= 0 or sample_count <= 0:
+        raise ValueError("phone duration and sample rate must be positive")
+    if target.voiced:
+        contour = pitch_contour(duration_s, sample_rate, profile, seed=seed)
+        excitation = glottal_source(contour, sample_rate)
+        if profile.breathiness > 0.0:
+            breath = unvoiced_source(sample_count, seed=seed, namespace=f"breath:{target.symbol}")
+            excitation = excitation + profile.breathiness * breath
+    else:
+        excitation = unvoiced_source(sample_count, seed=seed, namespace=f"phone:{target.symbol}")
+    shaped = apply_formants(excitation, target, profile, sample_rate)
+    fade = min(round(0.01 * sample_rate), sample_count // 4)
+    shaped *= phone_envelope(sample_count, fade, fade)
+    return np.round(normalize_rms(shaped, 0.1, peak_limit=0.95), 9)
 
 
 # -- extensions --

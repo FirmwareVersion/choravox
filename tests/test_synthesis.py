@@ -148,4 +148,21 @@ def test_phone_envelope_rejects_overlapping_fades() -> None:
         synthesis.phone_envelope(0, 0, 0)
 
 
+def test_phone_synthesis_has_requested_length_and_level() -> None:
+    from choravox.phonetics import speaker_profile
+
+    signal = synthesis.synthesize_phone("aa", 0.1, speaker_profile("a", 1), 8000, seed=2)
+    assert signal.shape == (800,)
+    assert np.sqrt(np.mean(signal**2)) == pytest.approx(0.1, abs=1e-8)
+
+
+def test_phone_synthesis_repeats_exactly() -> None:
+    from choravox.phonetics import speaker_profile
+
+    profile = speaker_profile("a", 1)
+    first = synthesis.synthesize_phone("s", 0.08, profile, 8000, seed=22)
+    second = synthesis.synthesize_phone("s", 0.08, profile, 8000, seed=22)
+    np.testing.assert_array_equal(first, second)
+
+
 # -- extensions --
