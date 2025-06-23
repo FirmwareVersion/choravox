@@ -131,4 +131,21 @@ def test_phone_envelope_is_symmetric_for_equal_fades() -> None:
     np.testing.assert_allclose(envelope, envelope[::-1], atol=1e-15)
 
 
+def test_phone_envelope_allows_no_fades() -> None:
+    np.testing.assert_array_equal(synthesis.phone_envelope(4, 0, 0), np.ones(4))
+
+
+def test_phone_envelope_can_partition_entire_phone() -> None:
+    envelope = synthesis.phone_envelope(6, 3, 3)
+    assert envelope.shape == (6,)
+    assert np.all((envelope >= 0.0) & (envelope <= 1.0))
+
+
+def test_phone_envelope_rejects_overlapping_fades() -> None:
+    with pytest.raises(ValueError, match="fit"):
+        synthesis.phone_envelope(5, 3, 3)
+    with pytest.raises(ValueError, match="fit"):
+        synthesis.phone_envelope(0, 0, 0)
+
+
 # -- extensions --
