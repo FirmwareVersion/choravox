@@ -218,4 +218,33 @@ def test_phone_sequence_is_seed_deterministic() -> None:
     assert first.phones == second.phones
 
 
+def test_sequence_gaps_are_exact_digital_silence() -> None:
+    from choravox.phonetics import speaker_profile
+
+    tokens = (synthesis.PhoneToken("aa", 0.02), synthesis.PhoneToken("iy", 0.02))
+    result = synthesis.synthesize_sequence(
+        tokens, speaker_profile("a", 1), 1000, seed=2, gap_s=0.01
+    )
+    np.testing.assert_array_equal(result.samples[20:30], np.zeros(10))
+
+
+def test_sequence_rejects_empty_script_and_negative_gap() -> None:
+    from choravox.phonetics import speaker_profile
+
+    profile = speaker_profile("a", 1)
+    with pytest.raises(ValueError, match="at least one"):
+        synthesis.synthesize_sequence((), profile, 8000, seed=0)
+    with pytest.raises(ValueError, match="nonnegative"):
+        synthesis.synthesize_sequence(
+            (synthesis.PhoneToken("aa", 0.1),), profile, 8000, seed=0, gap_s=-0.1
+        )
+
+
+def test_phone_token_validates_symbol_and_duration() -> None:
+    with pytest.raises(ValueError, match="unknown"):
+        synthesis.PhoneToken("unknown", 0.1)
+    with pytest.raises(ValueError, match="positive"):
+        synthesis.PhoneToken("aa", 0.0)
+
+
 # -- extensions --
