@@ -56,4 +56,24 @@ def test_dialogue_turn_rejects_unknown_transcript_token() -> None:
         dialogue.DialogueTurn(0.0, 1.0, "speaker-a", ("unknown",))
 
 
+def test_dialogue_rejects_turn_beyond_duration() -> None:
+    turn = dialogue.DialogueTurn(0.0, 1.1, "speaker-a", ("mava",))
+    with pytest.raises(ValueError, match="exceeds"):
+        dialogue.DialogueScript(1.0, (turn,))
+
+
+def test_dialogue_requires_nondecreasing_turn_starts() -> None:
+    later = dialogue.DialogueTurn(0.5, 0.9, "speaker-a", ("mava",))
+    earlier = dialogue.DialogueTurn(0.2, 0.4, "speaker-b", ("sito",))
+    with pytest.raises(ValueError, match="ordered"):
+        dialogue.DialogueScript(1.0, (later, earlier))
+
+
+def test_dialogue_turn_validates_time_and_speaker() -> None:
+    with pytest.raises(ValueError, match="start < end"):
+        dialogue.DialogueTurn(1.0, 1.0, "speaker-a", ("mava",))
+    with pytest.raises(ValueError, match="speaker"):
+        dialogue.DialogueTurn(0.0, 1.0, "", ("mava",))
+
+
 # -- extensions --
