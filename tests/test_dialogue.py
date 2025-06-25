@@ -42,4 +42,18 @@ def test_lexeme_rejects_unknown_phone_and_empty_text() -> None:
         dialogue.Lexeme("bad", ("zz",))
 
 
+def test_dialogue_script_allows_ordered_overlap() -> None:
+    turns = (
+        dialogue.DialogueTurn(0.0, 1.0, "speaker-a", ("mava",)),
+        dialogue.DialogueTurn(0.5, 0.8, "speaker-b", ("sito",), "backchannel"),
+    )
+    script = dialogue.DialogueScript(1.0, turns)
+    assert script.speakers == ("speaker-a", "speaker-b")
+
+
+def test_dialogue_turn_rejects_unknown_transcript_token() -> None:
+    with pytest.raises(ValueError, match="unknown synthetic word"):
+        dialogue.DialogueTurn(0.0, 1.0, "speaker-a", ("unknown",))
+
+
 # -- extensions --
