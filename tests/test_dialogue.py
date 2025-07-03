@@ -129,4 +129,22 @@ def test_monologue_preserves_word_order() -> None:
     assert tuple(turn.words[0] for turn in script.turns) == words
 
 
+def test_zero_pause_monologue_has_contiguous_turns() -> None:
+    script = dialogue.monologue_script(("mava", "sito"), word_duration_s=0.5, pause_s=0.0)
+    assert script.turns[0].end_s == script.turns[1].start_s
+    assert dialogue.activity_durations(script).silence_s == 0.0
+
+
+def test_monologue_uses_requested_speaker_for_every_turn() -> None:
+    script = dialogue.monologue_script(("mava", "sito"), speaker="narrator")
+    assert script.speakers == ("narrator",)
+
+
+def test_monologue_rejects_empty_words_and_negative_pause() -> None:
+    with pytest.raises(ValueError, match="valid"):
+        dialogue.monologue_script(())
+    with pytest.raises(ValueError, match="valid"):
+        dialogue.monologue_script(("mava",), pause_s=-0.1)
+
+
 # -- extensions --
