@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 from types import MappingProxyType
 from typing import Literal
 
@@ -91,6 +92,39 @@ class DialogueScript:
     @property
     def speakers(self) -> tuple[str, ...]:
         return tuple(dict.fromkeys(turn.speaker for turn in self.turns))
+
+
+@dataclass(frozen=True, slots=True)
+class ActivityDurations:
+    """Disjoint wall-clock speech, overlap, and silence durations."""
+
+    speech_s: float
+    overlap_s: float
+    silence_s: float
+
+
+def activity_durations(script: DialogueScript) -> ActivityDurations:
+    """Integrate unique active speakers between every planted boundary."""
+    boundaries = sorted(
+        {
+            0.0,
+            script.duration_s,
+            *(turn.start_s for turn in script.turns),
+            *(turn.end_s for turn in script.turns),
+        }
+    )
+    speech = overlap = 0.0
+    for start, end in pairwise(boundaries):
+        active = {
+            turn.speaker for turn in script.turns if turn.start_s < end and turn.end_s > start
+        }
+        if active:
+            speech += end - start
+        if len(active) >= 2:
+            overlap += end - start
+    return ActivityDurations(
+        round(speech, 6), round(overlap, 6), round(script.duration_s - speech, 6)
+    )
 
 
 # -- extensions --

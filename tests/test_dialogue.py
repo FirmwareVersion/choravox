@@ -76,4 +76,22 @@ def test_dialogue_turn_validates_time_and_speaker() -> None:
         dialogue.DialogueTurn(0.0, 1.0, "", ("mava",))
 
 
+def test_activity_durations_partition_wall_clock_time() -> None:
+    turns = (
+        dialogue.DialogueTurn(0.2, 1.0, "a", ("mava",)),
+        dialogue.DialogueTurn(0.7, 1.2, "b", ("sito",)),
+    )
+    durations = dialogue.activity_durations(dialogue.DialogueScript(1.5, turns))
+    assert durations == dialogue.ActivityDurations(speech_s=1.0, overlap_s=0.3, silence_s=0.5)
+
+
+def test_same_speaker_self_overlap_is_not_cross_speaker_overlap() -> None:
+    turns = (
+        dialogue.DialogueTurn(0.0, 1.0, "a", ("mava",)),
+        dialogue.DialogueTurn(0.5, 1.5, "a", ("sito",)),
+    )
+    durations = dialogue.activity_durations(dialogue.DialogueScript(2.0, turns))
+    assert durations.overlap_s == 0.0 and durations.speech_s == 1.5
+
+
 # -- extensions --
