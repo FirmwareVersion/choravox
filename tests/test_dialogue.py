@@ -94,4 +94,26 @@ def test_same_speaker_self_overlap_is_not_cross_speaker_overlap() -> None:
     assert durations.overlap_s == 0.0 and durations.speech_s == 1.5
 
 
+def test_empty_script_is_all_silence() -> None:
+    durations = dialogue.activity_durations(dialogue.DialogueScript(2.5, ()))
+    assert durations == dialogue.ActivityDurations(0.0, 0.0, 2.5)
+
+
+def test_full_two_speaker_overlap_counts_speech_once() -> None:
+    turns = (
+        dialogue.DialogueTurn(0.0, 1.0, "a", ("mava",)),
+        dialogue.DialogueTurn(0.0, 1.0, "b", ("sito",)),
+    )
+    durations = dialogue.activity_durations(dialogue.DialogueScript(1.0, turns))
+    assert durations == dialogue.ActivityDurations(1.0, 1.0, 0.0)
+
+
+def test_touching_turns_do_not_overlap() -> None:
+    turns = (
+        dialogue.DialogueTurn(0.0, 0.5, "a", ("mava",)),
+        dialogue.DialogueTurn(0.5, 1.0, "b", ("sito",)),
+    )
+    assert dialogue.activity_durations(dialogue.DialogueScript(1.0, turns)).overlap_s == 0.0
+
+
 # -- extensions --
