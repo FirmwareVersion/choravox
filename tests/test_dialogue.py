@@ -116,4 +116,17 @@ def test_touching_turns_do_not_overlap() -> None:
     assert dialogue.activity_durations(dialogue.DialogueScript(1.0, turns)).overlap_s == 0.0
 
 
+def test_monologue_generator_places_declared_pauses() -> None:
+    script = dialogue.monologue_script(("mava", "sito", "nena"), word_duration_s=0.4, pause_s=0.2)
+    assert script.duration_s == 1.6
+    assert [turn.start_s for turn in script.turns] == [0.0, 0.6, 1.2]
+    assert dialogue.activity_durations(script) == dialogue.ActivityDurations(1.2, 0.0, 0.4)
+
+
+def test_monologue_preserves_word_order() -> None:
+    words = ("sito", "mava", "fisu")
+    script = dialogue.monologue_script(words)
+    assert tuple(turn.words[0] for turn in script.turns) == words
+
+
 # -- extensions --

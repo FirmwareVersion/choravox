@@ -127,4 +127,24 @@ def activity_durations(script: DialogueScript) -> ActivityDurations:
     )
 
 
+def monologue_script(
+    words: tuple[str, ...],
+    *,
+    speaker: str = "speaker-00",
+    word_duration_s: float = 0.35,
+    pause_s: float = 0.1,
+) -> DialogueScript:
+    """Place one synthetic word per separated monologue turn."""
+    if not words or word_duration_s <= 0.0 or pause_s < 0.0:
+        raise ValueError("monologue words and timing must be valid")
+    turns: list[DialogueTurn] = []
+    cursor = 0.0
+    for word in words:
+        end = cursor + word_duration_s
+        turns.append(DialogueTurn(round(cursor, 6), round(end, 6), speaker, (word,)))
+        cursor = end + pause_s
+    duration = cursor - pause_s
+    return DialogueScript(round(duration, 6), tuple(turns))
+
+
 # -- extensions --
