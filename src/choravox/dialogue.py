@@ -175,4 +175,33 @@ def rapid_exchange_script(
     return DialogueScript(round(cursor - gap_s, 6), tuple(turns))
 
 
+def add_backchannels(
+    script: DialogueScript,
+    listener: str,
+    *,
+    word: str = "nena",
+    duration_s: float = 0.18,
+    minimum_host_s: float = 0.5,
+) -> DialogueScript:
+    """Place one listener backchannel near the final third of each eligible host turn."""
+    pronunciation(word)
+    if not listener or duration_s <= 0.0 or minimum_host_s <= 0.0:
+        raise ValueError("backchannel controls must be positive and named")
+    additions: list[DialogueTurn] = []
+    for turn in script.turns:
+        if turn.speaker == listener or turn.end_s - turn.start_s < minimum_host_s:
+            continue
+        center = turn.start_s + 0.7 * (turn.end_s - turn.start_s)
+        start = min(max(turn.start_s, center - duration_s / 2.0), turn.end_s - duration_s)
+        additions.append(
+            DialogueTurn(
+                round(start, 6), round(start + duration_s, 6), listener, (word,), "backchannel"
+            )
+        )
+    turns = tuple(
+        sorted((*script.turns, *additions), key=lambda turn: (turn.start_s, turn.speaker))
+    )
+    return DialogueScript(script.duration_s, turns)
+
+
 # -- extensions --

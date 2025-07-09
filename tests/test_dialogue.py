@@ -179,4 +179,23 @@ def test_rapid_exchange_seed_changes_word_selection() -> None:
     assert tuple(turn.words for turn in first.turns) != tuple(turn.words for turn in second.turns)
 
 
+def test_backchannels_overlap_eligible_host_turns() -> None:
+    host = dialogue.DialogueScript(2.0, (dialogue.DialogueTurn(0.0, 2.0, "a", ("mava", "sito")),))
+    result = dialogue.add_backchannels(host, "b", duration_s=0.2)
+    backchannel = next(turn for turn in result.turns if turn.kind == "backchannel")
+    assert backchannel.speaker == "b" and backchannel.words == ("nena",)
+    assert dialogue.activity_durations(result).overlap_s == 0.2
+
+
+def test_backchannels_skip_listener_and_short_turns() -> None:
+    script = dialogue.DialogueScript(
+        1.0,
+        (
+            dialogue.DialogueTurn(0.0, 0.4, "a", ("mava",)),
+            dialogue.DialogueTurn(0.5, 1.0, "b", ("sito",)),
+        ),
+    )
+    assert dialogue.add_backchannels(script, "b").turns == script.turns
+
+
 # -- extensions --
