@@ -147,4 +147,16 @@ def test_monologue_rejects_empty_words_and_negative_pause() -> None:
         dialogue.monologue_script(("mava",), pause_s=-0.1)
 
 
+def test_rapid_exchange_alternates_the_roster() -> None:
+    script = dialogue.rapid_exchange_script(("a", "b", "c"), 2, seed=1)
+    assert [turn.speaker for turn in script.turns] == ["a", "b", "c", "a", "b", "c"]
+    assert len(script.turns) == 6
+
+
+def test_rapid_exchange_repeats_transcript_by_seed() -> None:
+    first = dialogue.rapid_exchange_script(("a", "b"), 4, seed=9)
+    second = dialogue.rapid_exchange_script(("a", "b"), 4, seed=9)
+    assert first == second
+
+
 # -- extensions --

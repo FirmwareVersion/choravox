@@ -8,6 +8,7 @@ from types import MappingProxyType
 from typing import Literal
 
 from choravox.phonetics import get_phone
+from choravox.random import rng
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +146,33 @@ def monologue_script(
         cursor = end + pause_s
     duration = cursor - pause_s
     return DialogueScript(round(duration, 6), tuple(turns))
+
+
+def rapid_exchange_script(
+    speakers: tuple[str, ...],
+    rounds: int,
+    *,
+    seed: int,
+    turn_duration_s: float = 0.45,
+    gap_s: float = 0.05,
+) -> DialogueScript:
+    """Alternate short deterministic turns across a speaker roster."""
+    if len(set(speakers)) < 2 or any(not speaker for speaker in speakers):
+        raise ValueError("rapid exchange requires at least two distinct speakers")
+    if rounds <= 0 or turn_duration_s <= 0.0 or gap_s < 0.0:
+        raise ValueError("rapid exchange timing and rounds must be valid")
+    generator = rng(seed, "rapid-exchange")
+    vocabulary = tuple(LEXICON)
+    turns: list[DialogueTurn] = []
+    cursor = 0.0
+    for index in range(rounds * len(speakers)):
+        word = vocabulary[int(generator.integers(len(vocabulary)))]
+        end = cursor + turn_duration_s
+        turns.append(
+            DialogueTurn(round(cursor, 6), round(end, 6), speakers[index % len(speakers)], (word,))
+        )
+        cursor = end + gap_s
+    return DialogueScript(round(cursor - gap_s, 6), tuple(turns))
 
 
 # -- extensions --
