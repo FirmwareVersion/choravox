@@ -198,4 +198,24 @@ def test_backchannels_skip_listener_and_short_turns() -> None:
     assert dialogue.add_backchannels(script, "b").turns == script.turns
 
 
+def test_backchannel_stays_inside_host_boundaries() -> None:
+    host = dialogue.DialogueTurn(1.0, 1.6, "a", ("mava",))
+    result = dialogue.add_backchannels(dialogue.DialogueScript(2.0, (host,)), "b", duration_s=0.3)
+    backchannel = result.turns[1]
+    assert host.start_s <= backchannel.start_s < backchannel.end_s <= host.end_s
+
+
+def test_backchannel_addition_is_deterministic() -> None:
+    script = dialogue.monologue_script(("mava", "sito"), word_duration_s=0.8)
+    assert dialogue.add_backchannels(script, "b") == dialogue.add_backchannels(script, "b")
+
+
+def test_backchannel_rejects_invalid_word_and_duration() -> None:
+    script = dialogue.monologue_script(("mava",), word_duration_s=0.8)
+    with pytest.raises(ValueError, match="unknown"):
+        dialogue.add_backchannels(script, "b", word="yes")
+    with pytest.raises(ValueError, match="positive"):
+        dialogue.add_backchannels(script, "b", duration_s=0.0)
+
+
 # -- extensions --
