@@ -159,4 +159,24 @@ def test_rapid_exchange_repeats_transcript_by_seed() -> None:
     assert first == second
 
 
+def test_rapid_exchange_has_declared_gap_and_no_overlap() -> None:
+    script = dialogue.rapid_exchange_script(("a", "b"), 3, seed=2, turn_duration_s=0.3, gap_s=0.1)
+    assert all(
+        right.start_s - left.end_s == pytest.approx(0.1)
+        for left, right in zip(script.turns, script.turns[1:], strict=False)
+    )
+    assert dialogue.activity_durations(script).overlap_s == 0.0
+
+
+def test_rapid_exchange_requires_distinct_speakers() -> None:
+    with pytest.raises(ValueError, match="distinct"):
+        dialogue.rapid_exchange_script(("a", "a"), 2, seed=0)
+
+
+def test_rapid_exchange_seed_changes_word_selection() -> None:
+    first = dialogue.rapid_exchange_script(("a", "b"), 10, seed=1)
+    second = dialogue.rapid_exchange_script(("a", "b"), 10, seed=2)
+    assert tuple(turn.words for turn in first.turns) != tuple(turn.words for turn in second.turns)
+
+
 # -- extensions --
