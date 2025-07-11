@@ -218,4 +218,17 @@ def test_backchannel_rejects_invalid_word_and_duration() -> None:
         dialogue.add_backchannels(script, "b", duration_s=0.0)
 
 
+def test_controlled_dialogue_hits_requested_activity_ratios() -> None:
+    script = dialogue.controlled_dialogue_script(("a", "b"), 10.0, 0.2, 0.15, seed=4)
+    durations = dialogue.activity_durations(script)
+    assert durations.overlap_s / script.duration_s == pytest.approx(0.2, abs=1e-6)
+    assert durations.silence_s / script.duration_s == pytest.approx(0.15, abs=1e-6)
+
+
+def test_controlled_dialogue_repeats_from_seed() -> None:
+    first = dialogue.controlled_dialogue_script(("a", "b"), 5.0, 0.1, 0.2, seed=8)
+    second = dialogue.controlled_dialogue_script(("a", "b"), 5.0, 0.1, 0.2, seed=8)
+    assert first == second
+
+
 # -- extensions --

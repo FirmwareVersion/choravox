@@ -204,4 +204,56 @@ def add_backchannels(
     return DialogueScript(script.duration_s, turns)
 
 
+def controlled_dialogue_script(
+    speakers: tuple[str, ...],
+    duration_s: float,
+    overlap_ratio: float,
+    silence_ratio: float,
+    *,
+    seed: int,
+    turn_duration_s: float = 0.8,
+) -> DialogueScript:
+    """Construct a script whose planted wall-clock overlap and silence match controls."""
+    if len(set(speakers)) < 2 or any(not speaker for speaker in speakers):
+        raise ValueError("controlled dialogue requires two distinct speakers")
+    if duration_s <= 0.0 or turn_duration_s <= 0.0:
+        raise ValueError("dialogue durations must be positive")
+    if overlap_ratio < 0.0 or silence_ratio < 0.0 or overlap_ratio + silence_ratio > 1.0:
+        raise ValueError("overlap and silence ratios must be nonnegative and sum to at most one")
+    generator = rng(seed, "controlled-dialogue")
+    vocabulary = tuple(LEXICON)
+    speech_end = duration_s * (1.0 - silence_ratio)
+    base: list[DialogueTurn] = []
+    cursor = 0.0
+    index = 0
+    while cursor < speech_end - 1e-12:
+        end = min(speech_end, cursor + turn_duration_s)
+        word = vocabulary[int(generator.integers(len(vocabulary)))]
+        base.append(
+            DialogueTurn(round(cursor, 6), round(end, 6), speakers[index % len(speakers)], (word,))
+        )
+        cursor = end
+        index += 1
+    remaining = duration_s * overlap_ratio
+    overlays: list[DialogueTurn] = []
+    for turn in base:
+        if remaining <= 1e-12:
+            break
+        span = min(turn.end_s - turn.start_s, remaining)
+        listener_index = (speakers.index(turn.speaker) + 1) % len(speakers)
+        word = vocabulary[int(generator.integers(len(vocabulary)))]
+        overlays.append(
+            DialogueTurn(
+                turn.start_s,
+                round(turn.start_s + span, 6),
+                speakers[listener_index],
+                (word,),
+                "backchannel",
+            )
+        )
+        remaining -= span
+    turns = tuple(sorted((*base, *overlays), key=lambda turn: (turn.start_s, turn.speaker)))
+    return DialogueScript(round(duration_s, 6), turns)
+
+
 # -- extensions --
