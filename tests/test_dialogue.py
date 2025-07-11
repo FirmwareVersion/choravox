@@ -231,4 +231,25 @@ def test_controlled_dialogue_repeats_from_seed() -> None:
     assert first == second
 
 
+@pytest.mark.parametrize(
+    ("overlap", "silence"),
+    [(0.0, 0.0), (0.1, 0.2), (0.4, 0.1), (0.0, 0.9)],
+)
+def test_controlled_dialogue_realizes_condition_grid(overlap: float, silence: float) -> None:
+    script = dialogue.controlled_dialogue_script(("a", "b", "c"), 10.0, overlap, silence, seed=3)
+    measured = dialogue.activity_durations(script)
+    assert measured.overlap_s == pytest.approx(overlap * 10.0, abs=1e-5)
+    assert measured.silence_s == pytest.approx(silence * 10.0, abs=1e-5)
+
+
+def test_controlled_dialogue_rejects_impossible_ratios() -> None:
+    with pytest.raises(ValueError, match="sum to at most one"):
+        dialogue.controlled_dialogue_script(("a", "b"), 5.0, 0.7, 0.4, seed=0)
+
+
+def test_controlled_dialogue_requires_multiple_speakers() -> None:
+    with pytest.raises(ValueError, match="distinct"):
+        dialogue.controlled_dialogue_script(("a",), 5.0, 0.0, 0.1, seed=0)
+
+
 # -- extensions --
