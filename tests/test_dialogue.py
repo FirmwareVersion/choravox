@@ -252,4 +252,21 @@ def test_controlled_dialogue_requires_multiple_speakers() -> None:
         dialogue.controlled_dialogue_script(("a",), 5.0, 0.0, 0.1, seed=0)
 
 
+def test_dialogue_json_roundtrip_is_exact_and_canonical() -> None:
+    script = dialogue.controlled_dialogue_script(("a", "b"), 3.0, 0.2, 0.1, seed=9)
+    encoded = dialogue.dialogue_to_json(script)
+    assert dialogue.dialogue_from_json(encoded) == script
+    assert encoded == dialogue.dialogue_to_json(script) and " " not in encoded
+
+
+def test_dialogue_json_rejects_tampering() -> None:
+    import json
+
+    script = dialogue.monologue_script(("mava",))
+    document = json.loads(dialogue.dialogue_to_json(script))
+    document["payload"]["duration_s"] = 99.0
+    with pytest.raises(ValueError, match="digest"):
+        dialogue.dialogue_from_json(json.dumps(document))
+
+
 # -- extensions --

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from itertools import pairwise
 from types import MappingProxyType
-from typing import Literal
+from typing import Any, Literal
 
+from choravox.hashing import canonical_json, content_hash
 from choravox.phonetics import get_phone
 from choravox.random import rng
 
@@ -254,6 +256,49 @@ def controlled_dialogue_script(
         remaining -= span
     turns = tuple(sorted((*base, *overlays), key=lambda turn: (turn.start_s, turn.speaker)))
     return DialogueScript(round(duration_s, 6), turns)
+
+
+def dialogue_to_json(script: DialogueScript) -> str:
+    """Encode a dialogue script in an integrity-protected versioned document."""
+    payload = {"duration_s": script.duration_s, "turns": [asdict(turn) for turn in script.turns]}
+    document = {
+        "digest": content_hash(payload),
+        "payload": payload,
+        "schema": "choravox.dialogue",
+        "version": 1,
+    }
+    return canonical_json(document).decode("utf-8")
+
+
+def dialogue_from_json(text: str) -> DialogueScript:
+    """Decode and validate a version-one planted dialogue document."""
+    try:
+        document: Any = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError("dialogue must be valid JSON") from error
+    if (
+        not isinstance(document, dict)
+        or document.get("schema") != "choravox.dialogue"
+        or document.get("version") != 1
+    ):
+        raise ValueError("unsupported dialogue schema or version")
+    payload = document.get("payload")
+    if not isinstance(payload, dict) or document.get("digest") != content_hash(payload):
+        raise ValueError("dialogue digest mismatch")
+    try:
+        turns = tuple(
+            DialogueTurn(
+                start_s=float(turn["start_s"]),
+                end_s=float(turn["end_s"]),
+                speaker=str(turn["speaker"]),
+                words=tuple(turn["words"]),
+                kind=turn["kind"],
+            )
+            for turn in payload["turns"]
+        )
+        return DialogueScript(float(payload["duration_s"]), turns)
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("dialogue payload is malformed") from error
 
 
 # -- extensions --
