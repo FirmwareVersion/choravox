@@ -31,4 +31,15 @@ def test_distance_is_symmetric_and_zero_on_identity() -> None:
     assert room.distance_m(left, left) == 0.0
 
 
+def test_sound_speed_matches_room_temperature_approximation() -> None:
+    assert room.speed_of_sound(20.0) == 343.42
+    assert room.speed_of_sound(30.0) > room.speed_of_sound(0.0)
+
+
+def test_travel_time_scales_with_path_length() -> None:
+    short = room.travel_time_s((0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+    long = room.travel_time_s((0.0, 0.0, 0.0), (2.0, 0.0, 0.0))
+    assert long == pytest.approx(2.0 * short, abs=1e-9)
+
+
 # -- extensions --
