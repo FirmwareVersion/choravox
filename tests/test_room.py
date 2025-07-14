@@ -42,4 +42,21 @@ def test_travel_time_scales_with_path_length() -> None:
     assert long == pytest.approx(2.0 * short, abs=1e-9)
 
 
+def test_sound_speed_rejects_out_of_range_temperature() -> None:
+    with pytest.raises(ValueError, match=r"\[-40, 60\]"):
+        room.speed_of_sound(-41.0)
+    with pytest.raises(ValueError, match="finite"):
+        room.speed_of_sound(float("nan"))
+
+
+def test_colocated_source_has_zero_travel_time() -> None:
+    point = (1.0, 2.0, 3.0)
+    assert room.travel_time_s(point, point) == 0.0
+
+
+def test_one_meter_path_is_about_three_milliseconds() -> None:
+    delay = room.travel_time_s((0.0, 0.0, 0.0), (1.0, 0.0, 0.0))
+    assert delay == pytest.approx(0.002912, abs=1e-6)
+
+
 # -- extensions --
