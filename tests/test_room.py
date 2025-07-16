@@ -74,4 +74,26 @@ def test_x_wall_images_follow_mirror_geometry() -> None:
     assert images[2].position_m == (9.0, 1.5, 2.0)
 
 
+def test_centered_source_has_paired_equal_wall_paths() -> None:
+    geometry = room.RoomGeometry((6.0, 4.0, 2.0), (3.0, 2.0, 1.0), (3.0, 2.0, 1.0))
+    images = room.first_order_images(geometry)
+    distances = [room.distance_m(image.position_m, geometry.microphone_m) for image in images]
+    assert distances[1] == distances[2]
+    assert distances[3] == distances[4]
+    assert distances[5] == distances[6]
+
+
+def test_image_source_order_is_axis_then_near_far_wall() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0))
+    positions = [image.position_m for image in room.first_order_images(geometry)]
+    assert positions[1][0] < 0 < positions[2][0]
+    assert positions[3][1] < 0 < positions[4][1]
+    assert positions[5][2] < 0 < positions[6][2]
+
+
+def test_first_order_image_enumeration_is_deterministic() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0))
+    assert room.first_order_images(geometry) == room.first_order_images(geometry)
+
+
 # -- extensions --
