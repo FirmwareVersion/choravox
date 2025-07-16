@@ -56,4 +56,24 @@ def travel_time_s(
     return round(distance_m(source_m, microphone_m) / speed_of_sound(temperature_c), 12)
 
 
+@dataclass(frozen=True, slots=True)
+class ImageSource:
+    """Virtual source position and wall-reflection count."""
+
+    position_m: Point3D
+    reflections: int
+
+
+def first_order_images(geometry: RoomGeometry) -> tuple[ImageSource, ...]:
+    """Return direct and six single-wall image sources in stable axis order."""
+    images = [ImageSource(geometry.source_m, 0)]
+    for axis, size in enumerate(geometry.size_m):
+        near = list(geometry.source_m)
+        far = list(geometry.source_m)
+        near[axis] = -geometry.source_m[axis]
+        far[axis] = 2.0 * size - geometry.source_m[axis]
+        images.extend((ImageSource(tuple(near), 1), ImageSource(tuple(far), 1)))
+    return tuple(images)
+
+
 # -- extensions --

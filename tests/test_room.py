@@ -59,4 +59,19 @@ def test_one_meter_path_is_about_three_milliseconds() -> None:
     assert delay == pytest.approx(0.002912, abs=1e-6)
 
 
+def test_first_order_images_include_direct_and_six_walls() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.5, 2.0), (2.0, 2.0, 1.0))
+    images = room.first_order_images(geometry)
+    assert len(images) == 7
+    assert images[0] == room.ImageSource((1.0, 1.5, 2.0), 0)
+    assert [image.reflections for image in images] == [0, 1, 1, 1, 1, 1, 1]
+
+
+def test_x_wall_images_follow_mirror_geometry() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.5, 2.0), (2.0, 2.0, 1.0))
+    images = room.first_order_images(geometry)
+    assert images[1].position_m == (-1.0, 1.5, 2.0)
+    assert images[2].position_m == (9.0, 1.5, 2.0)
+
+
 # -- extensions --
