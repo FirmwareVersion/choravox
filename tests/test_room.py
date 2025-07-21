@@ -111,4 +111,22 @@ def test_direct_rir_delay_matches_propagation_time() -> None:
     assert center == pytest.approx(expected, abs=1e-5)
 
 
+def test_direct_path_gain_follows_inverse_distance() -> None:
+    near = room.RoomGeometry((6.0, 3.0, 3.0), (1.0, 1.0, 1.0), (2.0, 1.0, 1.0))
+    far = room.RoomGeometry((6.0, 3.0, 3.0), (1.0, 1.0, 1.0), (3.0, 1.0, 1.0))
+    assert np.sum(room.direct_path_rir(near, 8000)) == pytest.approx(1.0)
+    assert np.sum(room.direct_path_rir(far, 8000)) == pytest.approx(0.5)
+
+
+def test_fractional_delay_rejects_out_of_buffer_impulse() -> None:
+    with pytest.raises(ValueError, match="fit"):
+        room.fractional_delay_impulse(10.0, 1.0, 10)
+
+
+def test_colocated_direct_path_uses_finite_nearfield_floor() -> None:
+    geometry = room.RoomGeometry((3.0, 3.0, 3.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0))
+    impulse = room.direct_path_rir(geometry, 8000)
+    assert impulse[0] == 10.0 and np.all(np.isfinite(impulse))
+
+
 # -- extensions --
