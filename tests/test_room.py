@@ -129,4 +129,15 @@ def test_colocated_direct_path_uses_finite_nearfield_floor() -> None:
     assert impulse[0] == 10.0 and np.all(np.isfinite(impulse))
 
 
+def test_longer_rt60_produces_more_reflective_walls() -> None:
+    size = (6.0, 5.0, 3.0)
+    assert room.reflection_coefficient(size, 0.8) > room.reflection_coefficient(size, 0.3)
+
+
+def test_absorption_matches_sabine_volume_surface_relation() -> None:
+    size = (5.0, 4.0, 3.0)
+    expected = 0.161 * 60.0 / (94.0 * 0.5)
+    assert room.wall_absorption(size, 0.5) == pytest.approx(expected, abs=1e-9)
+
+
 # -- extensions --

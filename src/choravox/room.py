@@ -117,4 +117,23 @@ def direct_path_rir(
     return fractional_delay_impulse(delay, gain, output_length)
 
 
+def wall_absorption(size_m: Point3D, rt60_s: float) -> float:
+    """Estimate uniform Sabine wall absorption from room geometry and RT60."""
+    _validate_point(size_m, "size_m")
+    if any(size <= 0.0 for size in size_m) or not math.isfinite(rt60_s) or rt60_s <= 0.0:
+        raise ValueError("room dimensions and rt60_s must be positive")
+    width, depth, height = size_m
+    volume = width * depth * height
+    surface = 2.0 * (width * depth + width * height + depth * height)
+    absorption = 0.161 * volume / (surface * rt60_s)
+    if absorption >= 1.0:
+        raise ValueError("requested RT60 requires impossible wall absorption")
+    return round(absorption, 9)
+
+
+def reflection_coefficient(size_m: Point3D, rt60_s: float) -> float:
+    """Return pressure reflection magnitude implied by uniform absorption."""
+    return round(math.sqrt(1.0 - wall_absorption(size_m, rt60_s)), 9)
+
+
 # -- extensions --
