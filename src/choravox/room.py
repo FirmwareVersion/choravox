@@ -5,6 +5,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+import numpy as np
+from numpy.typing import NDArray
+
 Point3D = tuple[float, float, float]
 
 
@@ -74,6 +77,44 @@ def first_order_images(geometry: RoomGeometry) -> tuple[ImageSource, ...]:
         far[axis] = 2.0 * size - geometry.source_m[axis]
         images.extend((ImageSource(tuple(near), 1), ImageSource(tuple(far), 1)))
     return tuple(images)
+
+
+FloatArray = NDArray[np.float64]
+
+
+def fractional_delay_impulse(delay_samples: float, gain: float, length: int) -> FloatArray:
+    """Place a linearly interpolated impulse without quantizing its delay."""
+    if not math.isfinite(delay_samples) or delay_samples < 0.0:
+        raise ValueError("delay_samples must be finite and nonnegative")
+    if not math.isfinite(gain) or length <= 0:
+        raise ValueError("gain must be finite and length positive")
+    lower = math.floor(delay_samples)
+    if lower >= length:
+        raise ValueError("delay must fit the impulse response")
+    fraction = delay_samples - lower
+    impulse = np.zeros(length, dtype=np.float64)
+    impulse[lower] += gain * (1.0 - fraction)
+    if fraction and lower + 1 < length:
+        impulse[lower + 1] += gain * fraction
+    return impulse
+
+
+def direct_path_rir(
+    geometry: RoomGeometry,
+    sample_rate: int,
+    *,
+    temperature_c: float = 20.0,
+    length: int | None = None,
+) -> FloatArray:
+    """Render inverse-distance direct-path propagation as an impulse response."""
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    distance = distance_m(geometry.source_m, geometry.microphone_m)
+    delay = distance / speed_of_sound(temperature_c) * sample_rate
+    required = math.floor(delay) + 2
+    output_length = required if length is None else length
+    gain = 1.0 / max(distance, 0.1)
+    return fractional_delay_impulse(delay, gain, output_length)
 
 
 # -- extensions --

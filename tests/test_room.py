@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import room
@@ -94,6 +95,20 @@ def test_image_source_order_is_axis_then_near_far_wall() -> None:
 def test_first_order_image_enumeration_is_deterministic() -> None:
     geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 2.0, 2.0))
     assert room.first_order_images(geometry) == room.first_order_images(geometry)
+
+
+def test_fractional_delay_splits_gain_between_two_samples() -> None:
+    impulse = room.fractional_delay_impulse(2.25, 2.0, 6)
+    np.testing.assert_array_equal(impulse, [0.0, 0.0, 1.5, 0.5, 0.0, 0.0])
+    assert np.sum(impulse) == 2.0
+
+
+def test_direct_rir_delay_matches_propagation_time() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 1.0, 1.0))
+    impulse = room.direct_path_rir(geometry, 16_000)
+    expected = room.travel_time_s(geometry.source_m, geometry.microphone_m) * 16_000
+    center = np.sum(np.arange(impulse.size) * impulse) / np.sum(impulse)
+    assert center == pytest.approx(expected, abs=1e-5)
 
 
 # -- extensions --
