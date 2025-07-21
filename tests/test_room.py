@@ -156,4 +156,19 @@ def test_reflection_coefficient_stays_in_physical_range() -> None:
         assert 0.0 < coefficient < 1.0
 
 
+def test_image_method_rir_is_peak_normalized_and_causal() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (3.0, 2.0, 1.0))
+    response = room.image_method_rir(geometry, 8000, 0.3, order=3)
+    assert response.shape == (2400,)
+    assert np.max(np.abs(response)) == 1.0
+    assert np.flatnonzero(response)[0] > 0
+
+
+def test_image_method_zero_order_matches_direct_arrival_position() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 1.0, 1.0))
+    image = room.image_method_rir(geometry, 8000, 0.2, order=0)
+    direct = room.direct_path_rir(geometry, 8000, length=image.size)
+    assert int(np.argmax(image)) == int(np.argmax(direct))
+
+
 # -- extensions --

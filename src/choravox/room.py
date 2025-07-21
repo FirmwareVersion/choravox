@@ -136,4 +136,42 @@ def reflection_coefficient(size_m: Point3D, rt60_s: float) -> float:
     return round(math.sqrt(1.0 - wall_absorption(size_m, rt60_s)), 9)
 
 
+def image_method_rir(
+    geometry: RoomGeometry,
+    sample_rate: int,
+    rt60_s: float,
+    *,
+    order: int = 4,
+    temperature_c: float = 20.0,
+) -> FloatArray:
+    """Sum rectangular-room image paths through a bounded reflection order."""
+    if sample_rate <= 0 or order < 0:
+        raise ValueError("sample_rate and image order must be nonnegative")
+    reflection = reflection_coefficient(geometry.size_m, rt60_s)
+    length = max(2, math.ceil(rt60_s * sample_rate))
+    response = np.zeros(length, dtype=np.float64)
+    source = geometry.source_m
+    for x_order in range(-order, order + 1):
+        for y_order in range(-order, order + 1):
+            for z_order in range(-order, order + 1):
+                reflection_count = abs(x_order) + abs(y_order) + abs(z_order)
+                if reflection_count > order:
+                    continue
+                orders = (x_order, y_order, z_order)
+                image = tuple(
+                    2.0 * axis_order * size + ((-1.0) ** axis_order) * coordinate
+                    for axis_order, size, coordinate in zip(
+                        orders, geometry.size_m, source, strict=True
+                    )
+                )
+                distance = distance_m(image, geometry.microphone_m)
+                delay = distance / speed_of_sound(temperature_c) * sample_rate
+                if math.floor(delay) + 1 >= length:
+                    continue
+                gain = reflection**reflection_count / max(distance, 0.1)
+                response += fractional_delay_impulse(delay, gain, length)
+    peak = np.max(np.abs(response))
+    return np.round(response / peak if peak else response, 9)
+
+
 # -- extensions --
