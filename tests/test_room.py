@@ -140,4 +140,20 @@ def test_absorption_matches_sabine_volume_surface_relation() -> None:
     assert room.wall_absorption(size, 0.5) == pytest.approx(expected, abs=1e-9)
 
 
+def test_absorption_rejects_zero_rt60() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        room.wall_absorption((5.0, 4.0, 3.0), 0.0)
+
+
+def test_absorption_rejects_unrealistically_short_decay() -> None:
+    with pytest.raises(ValueError, match="impossible"):
+        room.wall_absorption((2.0, 2.0, 2.0), 0.001)
+
+
+def test_reflection_coefficient_stays_in_physical_range() -> None:
+    for rt60 in (0.2, 0.4, 0.8, 1.2):
+        coefficient = room.reflection_coefficient((8.0, 6.0, 3.0), rt60)
+        assert 0.0 < coefficient < 1.0
+
+
 # -- extensions --
