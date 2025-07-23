@@ -58,4 +58,39 @@ def aperture_m(array: MicrophoneArray) -> float:
     return 0.0 if not baselines else max(baselines)
 
 
+def linear_array(
+    channel_count: int, spacing_m: float, *, center_m: Point3D = (0.0, 0.0, 0.0)
+) -> MicrophoneArray:
+    """Place an odd or even linear array symmetrically along the x axis."""
+    if channel_count < 1 or not math.isfinite(spacing_m) or spacing_m <= 0.0:
+        raise ValueError("channel_count and spacing_m must be positive")
+    if not _finite_point(center_m):
+        raise ValueError("center_m must have three finite coordinates")
+    offset = (channel_count - 1) / 2.0
+    positions = tuple(
+        (center_m[0] + (index - offset) * spacing_m, center_m[1], center_m[2])
+        for index in range(channel_count)
+    )
+    return MicrophoneArray(positions)
+
+
+def circular_array(
+    channel_count: int, radius_m: float, *, center_m: Point3D = (0.0, 0.0, 0.0)
+) -> MicrophoneArray:
+    """Place microphones counter-clockwise in the centre's horizontal plane."""
+    if channel_count < 2 or not math.isfinite(radius_m) or radius_m <= 0.0:
+        raise ValueError("circular arrays need at least two channels and a positive radius")
+    if not _finite_point(center_m):
+        raise ValueError("center_m must have three finite coordinates")
+    positions = tuple(
+        (
+            center_m[0] + radius_m * math.cos(2.0 * math.pi * index / channel_count),
+            center_m[1] + radius_m * math.sin(2.0 * math.pi * index / channel_count),
+            center_m[2],
+        )
+        for index in range(channel_count)
+    )
+    return MicrophoneArray(positions)
+
+
 # -- extensions --
