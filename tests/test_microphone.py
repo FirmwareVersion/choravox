@@ -51,4 +51,21 @@ def test_four_channel_circle_starts_on_positive_x_and_turns_counter_clockwise() 
     )
 
 
+def test_layout_constructors_reject_degenerate_geometry() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        microphone.linear_array(2, 0.0)
+    with pytest.raises(ValueError, match="at least two"):
+        microphone.circular_array(1, 0.1)
+    with pytest.raises(ValueError, match="positive radius"):
+        microphone.circular_array(3, -0.1)
+
+
+def test_circular_layout_preserves_radius_and_height() -> None:
+    array = microphone.circular_array(7, 0.12, center_m=(0.5, -0.3, 1.1))
+    for point in array.positions_m:
+        horizontal_radius = np.hypot(point[0] - 0.5, point[1] + 0.3)
+        assert horizontal_radius == pytest.approx(0.12)
+        assert point[2] == 1.1
+
+
 # -- extensions --
