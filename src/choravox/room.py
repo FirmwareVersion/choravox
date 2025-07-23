@@ -6,7 +6,9 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
+
+from choravox.audio import as_waveform
 
 Point3D = tuple[float, float, float]
 
@@ -172,6 +174,28 @@ def image_method_rir(
                 response += fractional_delay_impulse(delay, gain, length)
     peak = np.max(np.abs(response))
     return np.round(response / peak if peak else response, 9)
+
+
+def apply_rir(samples: ArrayLike, response: ArrayLike, *, trim: bool = False) -> FloatArray:
+    """Convolve one room response independently with mono or multichannel audio."""
+    waveform = as_waveform(samples)
+    impulse = np.asarray(response, dtype=np.float64)
+    if impulse.ndim != 1 or impulse.size == 0 or not np.all(np.isfinite(impulse)):
+        raise ValueError("response must be a nonempty finite vector")
+    if waveform.shape[0] == 0:
+        return waveform.copy()
+    if waveform.ndim == 1:
+        output = np.convolve(waveform, impulse, mode="full")
+    else:
+        output = np.column_stack(
+            [
+                np.convolve(waveform[:, channel], impulse, mode="full")
+                for channel in range(waveform.shape[1])
+            ]
+        )
+    if trim:
+        output = output[: waveform.shape[0]]
+    return np.asarray(output, dtype=np.float64)
 
 
 # -- extensions --

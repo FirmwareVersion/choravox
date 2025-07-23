@@ -193,4 +193,21 @@ def test_image_method_response_is_byte_deterministic() -> None:
     assert first.tobytes() == second.tobytes()
 
 
+def test_room_convolution_has_full_linear_length() -> None:
+    output = room.apply_rir([1.0, 2.0, 3.0], [1.0, 0.5])
+    np.testing.assert_array_equal(output, [1.0, 2.5, 4.0, 1.5])
+
+
+def test_room_convolution_preserves_channels_and_can_trim() -> None:
+    stereo = np.column_stack((np.ones(5), -np.ones(5)))
+    output = room.apply_rir(stereo, [1.0, 0.5], trim=True)
+    assert output.shape == stereo.shape
+    np.testing.assert_allclose(output[:, 0], -output[:, 1])
+
+
+def test_room_convolution_rejects_empty_response() -> None:
+    with pytest.raises(ValueError, match="nonempty"):
+        room.apply_rir([1.0], [])
+
+
 # -- extensions --
