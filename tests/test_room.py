@@ -171,4 +171,26 @@ def test_image_method_zero_order_matches_direct_arrival_position() -> None:
     assert int(np.argmax(image)) == int(np.argmax(direct))
 
 
+def test_higher_image_order_adds_non_direct_energy() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (3.0, 2.0, 1.0))
+    direct = room.image_method_rir(geometry, 8000, 0.5, order=0)
+    reflected = room.image_method_rir(geometry, 8000, 0.5, order=3)
+    assert np.count_nonzero(reflected) > np.count_nonzero(direct)
+
+
+def test_longer_rt60_retains_more_late_reflection_energy() -> None:
+    geometry = room.RoomGeometry((8.0, 6.0, 3.0), (1.0, 1.0, 1.0), (6.0, 4.0, 1.0))
+    short = room.image_method_rir(geometry, 8000, 0.25, order=4)
+    long = room.image_method_rir(geometry, 8000, 0.8, order=4)
+    direct_index = np.flatnonzero(short)[0]
+    assert np.sum(long[direct_index + 10 :] ** 2) > np.sum(short[direct_index + 10 :] ** 2)
+
+
+def test_image_method_response_is_byte_deterministic() -> None:
+    geometry = room.RoomGeometry((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (3.0, 2.0, 1.0))
+    first = room.image_method_rir(geometry, 8000, 0.4, order=2)
+    second = room.image_method_rir(geometry, 8000, 0.4, order=2)
+    assert first.tobytes() == second.tobytes()
+
+
 # -- extensions --
