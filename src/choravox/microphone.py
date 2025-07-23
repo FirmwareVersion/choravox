@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from choravox.room import Point3D
+from choravox.room import Point3D, distance_m
 
 FloatArray = NDArray[np.float64]
 
@@ -41,6 +41,21 @@ class MicrophoneArray:
         """Return the arithmetic centre of all microphone positions."""
         values = np.mean(np.asarray(self.positions_m, dtype=np.float64), axis=0)
         return tuple(round(float(value), 12) for value in values)
+
+
+def pairwise_baselines_m(array: MicrophoneArray) -> tuple[float, ...]:
+    """Return unique microphone-pair distances in stable channel order."""
+    return tuple(
+        distance_m(array.positions_m[left], array.positions_m[right])
+        for left in range(array.channel_count)
+        for right in range(left + 1, array.channel_count)
+    )
+
+
+def aperture_m(array: MicrophoneArray) -> float:
+    """Return the largest microphone baseline, or zero for one channel."""
+    baselines = pairwise_baselines_m(array)
+    return 0.0 if not baselines else max(baselines)
 
 
 # -- extensions --
