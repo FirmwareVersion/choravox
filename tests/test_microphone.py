@@ -68,4 +68,22 @@ def test_circular_layout_preserves_radius_and_height() -> None:
         assert point[2] == 1.1
 
 
+def test_look_direction_follows_compass_angles_in_horizontal_plane() -> None:
+    assert microphone.look_direction(0.0) == pytest.approx((1.0, 0.0, 0.0), abs=1e-12)
+    assert microphone.look_direction(90.0) == pytest.approx((0.0, 1.0, 0.0), abs=1e-12)
+    assert microphone.look_direction(0.0, 90.0) == pytest.approx((0.0, 0.0, 1.0), abs=1e-12)
+
+
+def test_endfire_plane_wave_reaches_near_linear_microphone_first() -> None:
+    array = microphone.linear_array(3, 0.1)
+    delays = microphone.plane_wave_delays_s(array, 0.0)
+    assert delays[2] < delays[1] < delays[0]
+    assert np.mean(delays) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_broadside_wave_has_equal_delays_on_x_axis_array() -> None:
+    delays = microphone.plane_wave_delays_s(microphone.linear_array(4, 0.05), 90.0)
+    np.testing.assert_allclose(delays, 0.0, atol=1e-12)
+
+
 # -- extensions --

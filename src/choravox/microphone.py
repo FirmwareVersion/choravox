@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from choravox.room import Point3D, distance_m
+from choravox.room import Point3D, distance_m, speed_of_sound
 
 FloatArray = NDArray[np.float64]
 
@@ -91,6 +91,36 @@ def circular_array(
         for index in range(channel_count)
     )
     return MicrophoneArray(positions)
+
+
+def look_direction(azimuth_deg: float, elevation_deg: float = 0.0) -> Point3D:
+    """Convert source-bearing angles into a unit Cartesian direction."""
+    if not math.isfinite(azimuth_deg) or not math.isfinite(elevation_deg):
+        raise ValueError("look angles must be finite")
+    if not -90.0 <= elevation_deg <= 90.0:
+        raise ValueError("elevation_deg must be in [-90, 90]")
+    azimuth = math.radians(azimuth_deg)
+    elevation = math.radians(elevation_deg)
+    horizontal = math.cos(elevation)
+    return (
+        round(horizontal * math.cos(azimuth), 12),
+        round(horizontal * math.sin(azimuth), 12),
+        round(math.sin(elevation), 12),
+    )
+
+
+def plane_wave_delays_s(
+    array: MicrophoneArray,
+    azimuth_deg: float,
+    elevation_deg: float = 0.0,
+    *,
+    temperature_c: float = 20.0,
+) -> FloatArray:
+    """Return signed far-field arrival delays relative to the array centroid."""
+    direction = np.asarray(look_direction(azimuth_deg, elevation_deg), dtype=np.float64)
+    centered = np.asarray(array.positions_m, dtype=np.float64) - np.asarray(array.centroid_m)
+    delays = -(centered @ direction) / speed_of_sound(temperature_c)
+    return np.round(delays, 12)
 
 
 # -- extensions --
