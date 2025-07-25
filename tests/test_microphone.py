@@ -86,4 +86,25 @@ def test_broadside_wave_has_equal_delays_on_x_axis_array() -> None:
     np.testing.assert_allclose(delays, 0.0, atol=1e-12)
 
 
+def test_look_direction_rejects_invalid_elevation_and_nonfinite_angles() -> None:
+    with pytest.raises(ValueError, match="elevation"):
+        microphone.look_direction(0.0, 91.0)
+    with pytest.raises(ValueError, match="finite"):
+        microphone.look_direction(float("inf"))
+
+
+def test_warmer_air_reduces_interchannel_delay_magnitude() -> None:
+    array = microphone.linear_array(2, 0.2)
+    cold = microphone.plane_wave_delays_s(array, 0.0, temperature_c=0.0)
+    warm = microphone.plane_wave_delays_s(array, 0.0, temperature_c=40.0)
+    assert np.ptp(warm) < np.ptp(cold)
+
+
+def test_opposite_bearings_reverse_signed_delays() -> None:
+    array = microphone.circular_array(6, 0.08)
+    forward = microphone.plane_wave_delays_s(array, 35.0)
+    reverse = microphone.plane_wave_delays_s(array, 215.0)
+    np.testing.assert_allclose(forward, -reverse, atol=1e-12)
+
+
 # -- extensions --
