@@ -107,4 +107,20 @@ def test_opposite_bearings_reverse_signed_delays() -> None:
     np.testing.assert_allclose(forward, -reverse, atol=1e-12)
 
 
+def test_point_source_delays_start_at_zero_and_follow_distance() -> None:
+    array = microphone.linear_array(3, 0.1)
+    delays = microphone.point_source_delays_s(array, (1.0, 0.0, 0.0))
+    assert delays[2] == 0.0
+    assert delays[0] > delays[1] > delays[2]
+
+
+def test_point_source_capture_emits_samples_by_channels_audio() -> None:
+    signal = np.zeros(64)
+    signal[4] = 1.0
+    array = microphone.linear_array(3, 0.1)
+    capture = microphone.capture_point_source(signal, 8000, array, (1.0, 0.0, 0.0))
+    assert capture.shape == (64, 3)
+    assert np.argmax(capture[:, 2]) <= np.argmax(capture[:, 1]) <= np.argmax(capture[:, 0])
+
+
 # -- extensions --

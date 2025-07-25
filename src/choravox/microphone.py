@@ -6,9 +6,10 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
-from choravox.room import Point3D, distance_m, speed_of_sound
+from choravox.audio import as_waveform
+from choravox.room import Point3D, distance_m, fractional_delay_impulse, speed_of_sound
 
 FloatArray = NDArray[np.float64]
 
@@ -121,6 +122,45 @@ def plane_wave_delays_s(
     centered = np.asarray(array.positions_m, dtype=np.float64) - np.asarray(array.centroid_m)
     delays = -(centered @ direction) / speed_of_sound(temperature_c)
     return np.round(delays, 12)
+
+
+def point_source_delays_s(
+    array: MicrophoneArray, source_m: Point3D, *, temperature_c: float = 20.0
+) -> FloatArray:
+    """Return nonnegative spherical-wave delays relative to the first arrival."""
+    if not _finite_point(source_m):
+        raise ValueError("source_m must have three finite coordinates")
+    distances = np.asarray([distance_m(source_m, point) for point in array.positions_m])
+    return np.round((distances - np.min(distances)) / speed_of_sound(temperature_c), 12)
+
+
+def capture_point_source(
+    samples: ArrayLike,
+    sample_rate: int,
+    array: MicrophoneArray,
+    source_m: Point3D,
+    *,
+    temperature_c: float = 20.0,
+) -> FloatArray:
+    """Render a mono signal at every microphone with delay and relative spreading loss."""
+    waveform = as_waveform(samples)
+    if waveform.ndim != 1:
+        raise ValueError("point-source input must be mono")
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    distances = np.asarray([distance_m(source_m, point) for point in array.positions_m])
+    delays = point_source_delays_s(array, source_m, temperature_c=temperature_c)
+    reference_distance = max(float(np.min(distances)), 0.1)
+    channels = []
+    for delay_s, distance in zip(delays, distances, strict=True):
+        delay_samples = float(delay_s) * sample_rate
+        impulse = fractional_delay_impulse(
+            delay_samples,
+            reference_distance / max(float(distance), 0.1),
+            math.floor(delay_samples) + 2,
+        )
+        channels.append(np.convolve(waveform, impulse, mode="full")[: waveform.size])
+    return np.asarray(np.column_stack(channels), dtype=np.float64)
 
 
 # -- extensions --
