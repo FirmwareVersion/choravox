@@ -123,4 +123,29 @@ def test_point_source_capture_emits_samples_by_channels_audio() -> None:
     assert np.argmax(capture[:, 2]) <= np.argmax(capture[:, 1]) <= np.argmax(capture[:, 0])
 
 
+def test_nearest_microphone_has_largest_point_source_peak() -> None:
+    signal = np.zeros(128)
+    signal[10] = 1.0
+    array = microphone.linear_array(4, 0.08)
+    capture = microphone.capture_point_source(signal, 16_000, array, (2.0, 0.0, 0.0))
+    peaks = np.max(np.abs(capture), axis=0)
+    assert peaks[-1] > peaks[0]
+    assert peaks[-1] <= 1.0
+
+
+def test_point_source_capture_is_byte_deterministic() -> None:
+    signal = np.linspace(-0.5, 0.5, 100)
+    array = microphone.circular_array(5, 0.07)
+    first = microphone.capture_point_source(signal, 8000, array, (1.2, -0.5, 0.3))
+    second = microphone.capture_point_source(signal, 8000, array, (1.2, -0.5, 0.3))
+    assert first.tobytes() == second.tobytes()
+
+
+def test_point_source_capture_rejects_multichannel_input() -> None:
+    with pytest.raises(ValueError, match="mono"):
+        microphone.capture_point_source(
+            np.ones((10, 2)), 8000, microphone.linear_array(2, 0.1), (1.0, 0.0, 0.0)
+        )
+
+
 # -- extensions --
