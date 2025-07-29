@@ -148,4 +148,23 @@ def test_point_source_capture_rejects_multichannel_input() -> None:
         )
 
 
+def test_delay_and_sum_aligns_integer_delayed_impulses() -> None:
+    channels = np.zeros((16, 3))
+    channels[2, 0] = channels[4, 1] = channels[6, 2] = 1.0
+    output = microphone.delay_and_sum(channels, [0.0, 0.002, 0.004], 1000)
+    assert np.argmax(output) == 2
+    assert output[2] == 1.0
+
+
+def test_delay_and_sum_with_zero_delays_is_channel_mean() -> None:
+    channels = np.column_stack((np.arange(8.0), -np.arange(8.0), np.ones(8)))
+    output = microphone.delay_and_sum(channels, np.zeros(3), 8000)
+    np.testing.assert_allclose(output, np.mean(channels, axis=1))
+
+
+def test_delay_and_sum_validates_channel_delay_shape() -> None:
+    with pytest.raises(ValueError, match="one finite value"):
+        microphone.delay_and_sum(np.ones((10, 2)), [0.0], 8000)
+
+
 # -- extensions --

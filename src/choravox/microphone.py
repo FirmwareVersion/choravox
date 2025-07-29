@@ -163,4 +163,30 @@ def capture_point_source(
     return np.asarray(np.column_stack(channels), dtype=np.float64)
 
 
+def delay_and_sum(samples: ArrayLike, delays_s: ArrayLike, sample_rate: int) -> FloatArray:
+    """Advance channels by known arrival delays and return their arithmetic mean."""
+    waveform = as_waveform(samples)
+    delays = np.asarray(delays_s, dtype=np.float64)
+    if waveform.ndim != 2:
+        raise ValueError("beamformer input must be multichannel")
+    if delays.shape != (waveform.shape[1],) or not np.all(np.isfinite(delays)):
+        raise ValueError("delays_s must contain one finite value per channel")
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    positions = np.arange(waveform.shape[0], dtype=np.float64)
+    aligned = np.column_stack(
+        [
+            np.interp(
+                positions + delay * sample_rate,
+                positions,
+                waveform[:, channel],
+                left=0.0,
+                right=0.0,
+            )
+            for channel, delay in enumerate(delays)
+        ]
+    )
+    return np.asarray(np.mean(aligned, axis=1), dtype=np.float64)
+
+
 # -- extensions --
