@@ -167,4 +167,27 @@ def test_delay_and_sum_validates_channel_delay_shape() -> None:
         microphone.delay_and_sum(np.ones((10, 2)), [0.0], 8000)
 
 
+def test_interchannel_lag_reports_delay_of_second_signal() -> None:
+    first = np.zeros(32)
+    second = np.zeros(32)
+    first[5] = 1.0
+    second[12] = 1.0
+    assert microphone.estimate_lag_samples(first, second) == 7
+    assert microphone.estimate_lag_samples(second, first) == -7
+
+
+def test_interchannel_lag_respects_search_bound() -> None:
+    first = np.zeros(32)
+    second = np.zeros(32)
+    first[4] = second[14] = 1.0
+    assert abs(microphone.estimate_lag_samples(first, second, max_lag=3)) <= 3
+
+
+def test_interchannel_lag_rejects_mismatched_signals() -> None:
+    with pytest.raises(ValueError, match="equal length"):
+        microphone.estimate_lag_samples(np.ones(4), np.ones(5))
+    with pytest.raises(ValueError, match="nonnegative"):
+        microphone.estimate_lag_samples(np.ones(4), np.ones(4), max_lag=-1)
+
+
 # -- extensions --

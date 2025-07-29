@@ -189,4 +189,21 @@ def delay_and_sum(samples: ArrayLike, delays_s: ArrayLike, sample_rate: int) -> 
     return np.asarray(np.mean(aligned, axis=1), dtype=np.float64)
 
 
+def estimate_lag_samples(first: ArrayLike, second: ArrayLike, max_lag: int | None = None) -> int:
+    """Estimate the signed lag of the second mono signal by cross-correlation."""
+    left = as_waveform(first)
+    right = as_waveform(second)
+    if left.ndim != 1 or right.ndim != 1 or left.size == 0 or left.shape != right.shape:
+        raise ValueError("lag inputs must be nonempty mono signals of equal length")
+    if max_lag is not None and max_lag < 0:
+        raise ValueError("max_lag must be nonnegative")
+    correlation = np.correlate(right, left, mode="full")
+    lags = np.arange(-left.size + 1, left.size)
+    if max_lag is not None:
+        keep = np.abs(lags) <= max_lag
+        correlation = correlation[keep]
+        lags = lags[keep]
+    return int(lags[int(np.argmax(correlation))])
+
+
 # -- extensions --
