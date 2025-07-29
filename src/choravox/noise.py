@@ -7,10 +7,16 @@ import math
 import numpy as np
 from numpy.typing import NDArray
 
-from choravox.audio import normalize_rms
 from choravox.random import rng
 
 FloatArray = NDArray[np.float64]
+
+
+def _calibrate_rms(samples: FloatArray, rms_level: float) -> FloatArray:
+    current = float(np.sqrt(np.mean(np.square(samples))))
+    if current == 0.0:
+        raise ValueError("noise realization must have nonzero RMS")
+    return np.asarray(samples * (rms_level / current), dtype=np.float64)
 
 
 def white_noise(sample_count: int, *, seed: int, rms_level: float = 1.0) -> FloatArray:
@@ -21,7 +27,7 @@ def white_noise(sample_count: int, *, seed: int, rms_level: float = 1.0) -> Floa
         raise ValueError("rms_level must be finite and positive")
     samples = rng(seed, "white-noise").standard_normal(sample_count)
     samples -= np.mean(samples)
-    return np.round(normalize_rms(samples, rms_level), 9)
+    return np.round(_calibrate_rms(samples, rms_level), 9)
 
 
 # -- extensions --
