@@ -30,4 +30,18 @@ def white_noise(sample_count: int, *, seed: int, rms_level: float = 1.0) -> Floa
     return np.round(_calibrate_rms(samples, rms_level), 9)
 
 
+def pink_noise(sample_count: int, *, seed: int, rms_level: float = 1.0) -> FloatArray:
+    """Generate periodic finite-length pink noise by shaping white-noise FFT bins."""
+    if sample_count < 2:
+        raise ValueError("pink noise requires at least two samples")
+    if not math.isfinite(rms_level) or rms_level <= 0.0:
+        raise ValueError("rms_level must be finite and positive")
+    white = rng(seed, "pink-noise").standard_normal(sample_count)
+    spectrum = np.fft.rfft(white)
+    spectrum[0] = 0.0
+    spectrum[1:] /= np.sqrt(np.arange(1, spectrum.size, dtype=np.float64))
+    samples = np.fft.irfft(spectrum, n=sample_count)
+    return np.round(_calibrate_rms(samples, rms_level), 9)
+
+
 # -- extensions --

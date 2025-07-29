@@ -36,4 +36,18 @@ def test_white_noise_samples_are_finite() -> None:
     assert np.all(np.isfinite(noise.white_noise(10_000, seed=99)))
 
 
+def test_pink_noise_has_more_low_than_high_frequency_power() -> None:
+    samples = noise.pink_noise(8192, seed=3)
+    power = np.abs(np.fft.rfft(samples)) ** 2
+    low = np.mean(power[1:128])
+    high = np.mean(power[-128:])
+    assert low > 5.0 * high
+
+
+def test_pink_noise_is_centered_and_rms_calibrated() -> None:
+    samples = noise.pink_noise(4096, seed=8, rms_level=0.15)
+    assert np.mean(samples) == pytest.approx(0.0, abs=1e-9)
+    assert audio.rms(samples) == pytest.approx(0.15, abs=1e-8)
+
+
 # -- extensions --
