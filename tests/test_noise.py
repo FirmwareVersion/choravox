@@ -50,4 +50,22 @@ def test_pink_noise_is_centered_and_rms_calibrated() -> None:
     assert audio.rms(samples) == pytest.approx(0.15, abs=1e-8)
 
 
+def test_pink_noise_supports_odd_lengths_and_repeats_exactly() -> None:
+    first = noise.pink_noise(513, seed=12)
+    second = noise.pink_noise(513, seed=12)
+    assert first.shape == (513,)
+    assert first.tobytes() == second.tobytes()
+
+
+def test_pink_noise_rejects_degenerate_length_and_level() -> None:
+    with pytest.raises(ValueError, match="at least two"):
+        noise.pink_noise(1, seed=0)
+    with pytest.raises(ValueError, match="rms_level"):
+        noise.pink_noise(8, seed=0, rms_level=0.0)
+
+
+def test_pink_and_white_generators_use_separate_seed_namespaces() -> None:
+    assert not np.array_equal(noise.white_noise(128, seed=5), noise.pink_noise(128, seed=5))
+
+
 # -- extensions --
