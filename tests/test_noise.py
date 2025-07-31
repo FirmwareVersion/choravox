@@ -123,4 +123,25 @@ def test_babble_seed_selects_repeatable_source_offsets() -> None:
     assert not np.array_equal(first, noise.babble_noise(sources, 100, seed=10))
 
 
+def test_babble_requires_multiple_nonempty_mono_sources() -> None:
+    with pytest.raises(ValueError, match="at least two"):
+        noise.babble_noise((np.ones(8),), 16, seed=0)
+    with pytest.raises(ValueError, match="nonempty mono"):
+        noise.babble_noise((np.ones((8, 2)), np.ones(8)), 16, seed=0)
+    with pytest.raises(ValueError, match="nonempty mono"):
+        noise.babble_noise((np.ones(8), np.array([])), 16, seed=0)
+
+
+def test_babble_rejects_jointly_constant_sources() -> None:
+    with pytest.raises(ValueError, match="nonconstant"):
+        noise.babble_noise((np.ones(8), np.full(12, 2.0)), 32, seed=0)
+
+
+def test_babble_source_order_is_part_of_seeded_condition() -> None:
+    sources = (np.arange(9.0), np.arange(13.0) ** 2)
+    forward = noise.babble_noise(sources, 80, seed=5)
+    reversed_order = noise.babble_noise(tuple(reversed(sources)), 80, seed=5)
+    assert not np.array_equal(forward, reversed_order)
+
+
 # -- extensions --
