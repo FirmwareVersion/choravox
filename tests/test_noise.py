@@ -108,4 +108,19 @@ def test_noise_mixing_preserves_multichannel_shape() -> None:
     assert noise.mix_at_snr(signal, disturbance, 5.0).shape == signal.shape
 
 
+def test_babble_wraps_synthetic_sources_to_requested_length() -> None:
+    phase = np.arange(80)
+    sources = (np.sin(phase / 3.0), np.sin(phase / 5.0), np.cos(phase / 7.0))
+    babble = noise.babble_noise(sources, 1000, seed=14, rms_level=0.25)
+    assert babble.shape == (1000,)
+    assert audio.rms(babble) == pytest.approx(0.25, abs=1e-8)
+
+
+def test_babble_seed_selects_repeatable_source_offsets() -> None:
+    sources = (np.arange(11.0), np.arange(7.0) ** 2)
+    first = noise.babble_noise(sources, 100, seed=9)
+    assert first.tobytes() == noise.babble_noise(sources, 100, seed=9).tobytes()
+    assert not np.array_equal(first, noise.babble_noise(sources, 100, seed=10))
+
+
 # -- extensions --

@@ -66,4 +66,26 @@ def snr_sweep(
     return tuple(mix_at_snr(signal, disturbance, level) for level in levels_db)
 
 
+def babble_noise(
+    sources: tuple[ArrayLike, ...], sample_count: int, *, seed: int, rms_level: float = 1.0
+) -> FloatArray:
+    """Mix wrapped, seeded excerpts of synthetic mono speakers into babble."""
+    if len(sources) < 2:
+        raise ValueError("babble requires at least two synthetic sources")
+    if sample_count <= 0 or not math.isfinite(rms_level) or rms_level <= 0.0:
+        raise ValueError("sample_count and rms_level must be positive")
+    mixture = np.zeros(sample_count, dtype=np.float64)
+    for index, source in enumerate(sources):
+        waveform = as_waveform(source)
+        if waveform.ndim != 1 or waveform.size == 0:
+            raise ValueError("babble sources must be nonempty mono waveforms")
+        generator = rng(seed, f"babble-source:{index}")
+        offset = int(generator.integers(0, waveform.size))
+        indices = (np.arange(sample_count) + offset) % waveform.size
+        mixture += waveform[indices] - np.mean(waveform)
+    if not np.any(mixture):
+        raise ValueError("babble sources must contain nonconstant audio")
+    return np.round(_calibrate_rms(mixture, rms_level), 9)
+
+
 # -- extensions --
