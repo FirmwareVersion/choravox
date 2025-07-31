@@ -83,4 +83,29 @@ def test_snr_sweep_preserves_level_order() -> None:
     assert measured == pytest.approx([-5.0, 0.0, 10.0], abs=1e-5)
 
 
+def test_snr_sweep_uses_identical_noise_direction() -> None:
+    signal = np.linspace(-1.0, 1.0, 128)
+    disturbance = noise.white_noise(128, seed=6)
+    low, high = noise.snr_sweep(signal, disturbance, (0.0, 20.0))
+    low_residual = low - signal
+    high_residual = high - signal
+    cosine = np.dot(low_residual, high_residual) / (
+        np.linalg.norm(low_residual) * np.linalg.norm(high_residual)
+    )
+    assert cosine == pytest.approx(1.0, abs=1e-12)
+
+
+def test_noise_mixing_rejects_nonfinite_target_and_empty_sweep() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        noise.mix_at_snr(np.ones(8), np.arange(8.0), float("inf"))
+    with pytest.raises(ValueError, match="nonempty"):
+        noise.snr_sweep(np.ones(8), np.arange(8.0), ())
+
+
+def test_noise_mixing_preserves_multichannel_shape() -> None:
+    signal = np.column_stack((np.linspace(-1.0, 1.0, 64), np.linspace(1.0, -1.0, 64)))
+    disturbance = np.column_stack((noise.white_noise(64, seed=1), noise.white_noise(64, seed=2)))
+    assert noise.mix_at_snr(signal, disturbance, 5.0).shape == signal.shape
+
+
 # -- extensions --
