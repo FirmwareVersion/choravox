@@ -68,4 +68,19 @@ def test_pink_and_white_generators_use_separate_seed_namespaces() -> None:
     assert not np.array_equal(noise.white_noise(128, seed=5), noise.pink_noise(128, seed=5))
 
 
+def test_noise_mix_reaches_requested_power_snr() -> None:
+    signal = np.sin(2.0 * np.pi * np.arange(4000) / 40.0)
+    disturbance = noise.white_noise(signal.size, seed=4)
+    observed = noise.mix_at_snr(signal, disturbance, 7.5)
+    assert audio.snr_db(signal, observed) == pytest.approx(7.5, abs=1e-5)
+
+
+def test_snr_sweep_preserves_level_order() -> None:
+    signal = np.sin(2.0 * np.pi * np.arange(2000) / 25.0)
+    disturbance = noise.pink_noise(signal.size, seed=2)
+    mixtures = noise.snr_sweep(signal, disturbance, (-5.0, 0.0, 10.0))
+    measured = [audio.snr_db(signal, mixture) for mixture in mixtures]
+    assert measured == pytest.approx([-5.0, 0.0, 10.0], abs=1e-5)
+
+
 # -- extensions --

@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
+from choravox.audio import add_noise_at_snr, as_waveform, snr_db
 from choravox.random import rng
 
 FloatArray = NDArray[np.float64]
@@ -42,6 +43,27 @@ def pink_noise(sample_count: int, *, seed: int, rms_level: float = 1.0) -> Float
     spectrum[1:] /= np.sqrt(np.arange(1, spectrum.size, dtype=np.float64))
     samples = np.fft.irfft(spectrum, n=sample_count)
     return np.round(_calibrate_rms(samples, rms_level), 9)
+
+
+def mix_at_snr(signal: ArrayLike, disturbance: ArrayLike, target_db: float) -> FloatArray:
+    """Add a disturbance and verify its measured SNR after deterministic scaling."""
+    if not math.isfinite(target_db):
+        raise ValueError("target_db must be finite")
+    clean = as_waveform(signal)
+    observed = add_noise_at_snr(clean, disturbance, target_db)
+    measured = snr_db(clean, observed)
+    if not math.isclose(measured, target_db, abs_tol=1e-5):
+        raise RuntimeError("noise calibration failed")
+    return observed
+
+
+def snr_sweep(
+    signal: ArrayLike, disturbance: ArrayLike, levels_db: tuple[float, ...]
+) -> tuple[FloatArray, ...]:
+    """Mix the same disturbance at a stable sequence of requested SNR levels."""
+    if not levels_db:
+        raise ValueError("levels_db must be nonempty")
+    return tuple(mix_at_snr(signal, disturbance, level) for level in levels_db)
 
 
 # -- extensions --
