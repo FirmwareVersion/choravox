@@ -27,4 +27,22 @@ def test_planted_word_rejects_empty_identity_or_reversed_time() -> None:
         meeting.PlantedWord("mava", "speaker-00", 0.2, 0.1)
 
 
+def test_meeting_rejects_audio_length_mismatch() -> None:
+    with pytest.raises(ValueError, match="length"):
+        meeting.SyntheticMeeting(np.zeros(7999), 8000, _script(), (), 0)
+
+
+def test_meeting_rejects_nonfinite_multichannel_audio() -> None:
+    samples = np.zeros((8000, 2))
+    samples[10, 1] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        meeting.SyntheticMeeting(samples, 8000, _script(), (), 0)
+
+
+def test_meeting_rejects_word_beyond_script() -> None:
+    word = meeting.PlantedWord("mava", "speaker-00", 0.9, 1.1)
+    with pytest.raises(ValueError, match="exceeds"):
+        meeting.SyntheticMeeting(np.zeros(8000), 8000, _script(), (word,), 0)
+
+
 # -- extensions --
