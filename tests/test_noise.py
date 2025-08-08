@@ -170,4 +170,23 @@ def test_noise_condition_rejects_unknown_kind_and_negative_seed() -> None:
         noise.NoiseCondition("white", seed=-1)
 
 
+def test_noise_condition_value_semantics_are_stable() -> None:
+    first = noise.NoiseCondition("pink", seed=17, rms_level=0.4)
+    second = noise.NoiseCondition("pink", seed=17, rms_level=0.4)
+    assert first == second
+    assert (first.kind, first.seed, first.rms_level) == ("pink", 17, 0.4)
+
+
+def test_rendered_conditions_are_finite_and_exact_length() -> None:
+    for kind in ("white", "pink"):
+        rendered = noise.render_noise(noise.NoiseCondition(kind, seed=4), 333)
+        assert rendered.shape == (333,)
+        assert np.all(np.isfinite(rendered))
+
+
+def test_babble_condition_requires_explicit_synthetic_sources() -> None:
+    with pytest.raises(ValueError, match="at least two synthetic"):
+        noise.render_noise(noise.NoiseCondition("babble", seed=0), 64)
+
+
 # -- extensions --
