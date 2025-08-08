@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -86,6 +87,37 @@ def babble_noise(
     if not np.any(mixture):
         raise ValueError("babble sources must contain nonconstant audio")
     return np.round(_calibrate_rms(mixture, rms_level), 9)
+
+
+@dataclass(frozen=True, slots=True)
+class NoiseCondition:
+    """Serializable controls for one synthetic noise realization."""
+
+    kind: str
+    seed: int
+    rms_level: float = 1.0
+
+    def __post_init__(self) -> None:
+        if self.kind not in {"white", "pink", "babble"}:
+            raise ValueError("noise kind must be white, pink, or babble")
+        if self.seed < 0 or not math.isfinite(self.rms_level) or self.rms_level <= 0.0:
+            raise ValueError("noise seed and rms_level must be valid")
+
+
+def render_noise(
+    condition: NoiseCondition,
+    sample_count: int,
+    *,
+    babble_sources: tuple[ArrayLike, ...] = (),
+) -> FloatArray:
+    """Render one declared synthetic condition without accessing external data."""
+    if condition.kind == "white":
+        return white_noise(sample_count, seed=condition.seed, rms_level=condition.rms_level)
+    if condition.kind == "pink":
+        return pink_noise(sample_count, seed=condition.seed, rms_level=condition.rms_level)
+    return babble_noise(
+        babble_sources, sample_count, seed=condition.seed, rms_level=condition.rms_level
+    )
 
 
 # -- extensions --

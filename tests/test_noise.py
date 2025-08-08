@@ -144,4 +144,30 @@ def test_babble_source_order_is_part_of_seeded_condition() -> None:
     assert not np.array_equal(forward, reversed_order)
 
 
+def test_noise_condition_routes_each_offline_generator() -> None:
+    white = noise.NoiseCondition("white", seed=1, rms_level=0.1)
+    pink = noise.NoiseCondition("pink", seed=2, rms_level=0.2)
+    babble = noise.NoiseCondition("babble", seed=3, rms_level=0.3)
+    sources = (np.arange(10.0), np.arange(7.0) ** 2)
+    assert (
+        noise.render_noise(white, 128).tobytes()
+        == noise.white_noise(128, seed=1, rms_level=0.1).tobytes()
+    )
+    assert (
+        noise.render_noise(pink, 128).tobytes()
+        == noise.pink_noise(128, seed=2, rms_level=0.2).tobytes()
+    )
+    assert (
+        noise.render_noise(babble, 128, babble_sources=sources).tobytes()
+        == noise.babble_noise(sources, 128, seed=3, rms_level=0.3).tobytes()
+    )
+
+
+def test_noise_condition_rejects_unknown_kind_and_negative_seed() -> None:
+    with pytest.raises(ValueError, match="kind"):
+        noise.NoiseCondition("traffic", seed=0)
+    with pytest.raises(ValueError, match="seed"):
+        noise.NoiseCondition("white", seed=-1)
+
+
 # -- extensions --
