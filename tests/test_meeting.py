@@ -45,4 +45,17 @@ def test_meeting_rejects_word_beyond_script() -> None:
         meeting.SyntheticMeeting(np.zeros(8000), 8000, _script(), (word,), 0)
 
 
+def test_word_phone_allocation_preserves_pronunciation_and_samples() -> None:
+    tokens = meeting.word_phone_tokens("sito", 401, 8000)
+    assert tuple(token.symbol for token in tokens) == dialogue.pronunciation("sito")
+    assert sum(round(token.duration_s * 8000) for token in tokens) == 401
+
+
+def test_word_phone_allocation_distributes_remainder_from_start() -> None:
+    counts = [
+        round(token.duration_s * 1000) for token in meeting.word_phone_tokens("mava", 11, 1000)
+    ]
+    assert counts == [4, 4, 3]
+
+
 # -- extensions --

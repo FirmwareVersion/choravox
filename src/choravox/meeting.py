@@ -8,7 +8,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from choravox.dialogue import DialogueScript
+from choravox.dialogue import DialogueScript, pronunciation
+from choravox.synthesis import PhoneToken
 
 FloatArray = NDArray[np.float64]
 
@@ -52,6 +53,18 @@ class SyntheticMeeting:
             raise ValueError("meeting audio length must match the dialogue duration")
         if any(word.end_s > self.script.duration_s for word in self.words):
             raise ValueError("planted word exceeds the meeting duration")
+
+
+def word_phone_tokens(word: str, sample_count: int, sample_rate: int) -> tuple[PhoneToken, ...]:
+    """Allocate integer samples across a synthetic word's planted pronunciation."""
+    phones = pronunciation(word)
+    if sample_rate <= 0 or sample_count < len(phones):
+        raise ValueError("word span must provide at least one sample per phone")
+    base, remainder = divmod(sample_count, len(phones))
+    return tuple(
+        PhoneToken(symbol, (base + (index < remainder)) / sample_rate)
+        for index, symbol in enumerate(phones)
+    )
 
 
 # -- extensions --
