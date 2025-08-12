@@ -58,4 +58,19 @@ def test_word_phone_allocation_distributes_remainder_from_start() -> None:
     assert counts == [4, 4, 3]
 
 
+def test_word_phone_allocation_rejects_unknown_word() -> None:
+    with pytest.raises(ValueError, match="unknown synthetic word"):
+        meeting.word_phone_tokens("hello", 100, 8000)
+
+
+def test_word_phone_allocation_requires_one_sample_per_phone() -> None:
+    with pytest.raises(ValueError, match="one sample per phone"):
+        meeting.word_phone_tokens("sito", 3, 8000)
+
+
+def test_word_phone_allocation_rejects_invalid_sample_rate() -> None:
+    with pytest.raises(ValueError, match="word span"):
+        meeting.word_phone_tokens("mava", 30, 0)
+
+
 # -- extensions --
