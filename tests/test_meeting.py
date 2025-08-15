@@ -183,4 +183,27 @@ def test_speaker_activity_uses_half_open_sample_intervals() -> None:
     assert not np.any(activity[75:])
 
 
+def test_sample_activity_matches_planted_wall_clock_durations() -> None:
+    script = dialogue.controlled_dialogue_script(
+        ("speaker-00", "speaker-01"), 2.0, 0.2, 0.25, seed=1, turn_duration_s=0.5
+    )
+    _, activity = meeting.speaker_activity(script, 1000)
+    measured_speech = np.mean(np.any(activity, axis=1)) * script.duration_s
+    measured_overlap = np.mean(np.sum(activity, axis=1) >= 2) * script.duration_s
+    planted = dialogue.activity_durations(script)
+    assert measured_speech == pytest.approx(planted.speech_s, abs=0.001)
+    assert measured_overlap == pytest.approx(planted.overlap_s, abs=0.001)
+
+
+def test_speaker_activity_handles_empty_script() -> None:
+    speakers, activity = meeting.speaker_activity(dialogue.DialogueScript(0.25, ()), 8000)
+    assert speakers == ()
+    assert activity.shape == (2000, 0)
+
+
+def test_speaker_activity_rejects_invalid_sample_rate() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        meeting.speaker_activity(_script(), -1)
+
+
 # -- extensions --
