@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from choravox.dialogue import DialogueScript, DialogueTurn, pronunciation
-from choravox.phonetics import SpeakerProfile
+from choravox.phonetics import SpeakerProfile, speaker_profile
 from choravox.random import derive_seed
 from choravox.synthesis import PhoneToken, synthesize_sequence
 
@@ -110,6 +110,32 @@ def render_turn(
             )
         )
     return RenderedTurn(np.concatenate(pieces), tuple(words))
+
+
+def render_clean_meeting(
+    script: DialogueScript, sample_rate: int, *, seed: int
+) -> SyntheticMeeting:
+    """Render and add every planted turn using stable per-speaker voice profiles."""
+    if sample_rate <= 0 or seed < 0:
+        raise ValueError("sample_rate must be positive and seed nonnegative")
+    output = np.zeros(round(script.duration_s * sample_rate), dtype=np.float64)
+    words: list[PlantedWord] = []
+    profiles = {
+        speaker: speaker_profile(speaker, derive_seed(seed, f"profile:{speaker}"))
+        for speaker in script.speakers
+    }
+    for index, turn in enumerate(script.turns):
+        rendered = render_turn(
+            turn,
+            profiles[turn.speaker],
+            sample_rate,
+            seed=derive_seed(seed, f"turn:{index}"),
+        )
+        start = round(turn.start_s * sample_rate)
+        output[start : start + rendered.samples.size] += rendered.samples
+        words.extend(rendered.words)
+    ordered_words = tuple(sorted(words, key=lambda word: (word.start_s, word.speaker)))
+    return SyntheticMeeting(np.round(output, 9), sample_rate, script, ordered_words, seed)
 
 
 # -- extensions --

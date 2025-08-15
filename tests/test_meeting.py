@@ -121,4 +121,27 @@ def test_render_turn_rejects_span_too_short_for_phones() -> None:
         meeting.render_turn(turn, speaker_profile("speaker-00", 0), 8000, seed=0)
 
 
+def test_clean_meeting_places_turns_on_shared_clock() -> None:
+    script = dialogue.DialogueScript(
+        1.0,
+        (
+            dialogue.DialogueTurn(0.0, 0.4, "speaker-00", ("mava",)),
+            dialogue.DialogueTurn(0.5, 0.9, "speaker-01", ("sito",)),
+        ),
+    )
+    rendered = meeting.render_clean_meeting(script, 4000, seed=8)
+    assert rendered.samples.shape == (4000,)
+    assert np.all(rendered.samples[1600:2000] == 0.0)
+    assert [word.speaker for word in rendered.words] == ["speaker-00", "speaker-01"]
+
+
+def test_clean_meeting_adds_overlapping_turn_waveforms() -> None:
+    host = dialogue.DialogueTurn(0.0, 0.5, "speaker-00", ("mava",))
+    guest = dialogue.DialogueTurn(0.0, 0.5, "speaker-01", ("sito",))
+    both = meeting.render_clean_meeting(dialogue.DialogueScript(0.5, (host, guest)), 4000, seed=2)
+    host_only = meeting.render_clean_meeting(dialogue.DialogueScript(0.5, (host,)), 4000, seed=2)
+    assert not np.array_equal(both.samples, host_only.samples)
+    assert {word.speaker for word in both.words} == {"speaker-00", "speaker-01"}
+
+
 # -- extensions --
