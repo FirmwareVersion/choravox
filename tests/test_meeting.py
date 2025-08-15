@@ -73,4 +73,26 @@ def test_word_phone_allocation_rejects_invalid_sample_rate() -> None:
         meeting.word_phone_tokens("mava", 30, 0)
 
 
+def test_rendered_turn_matches_exact_sample_span() -> None:
+    from choravox.phonetics import speaker_profile
+
+    turn = dialogue.DialogueTurn(0.1, 0.601, "speaker-00", ("mava", "sito"))
+    rendered = meeting.render_turn(turn, speaker_profile("speaker-00", 4), 8000, seed=5)
+    assert rendered.samples.size == round(0.601 * 8000) - round(0.1 * 8000)
+    assert rendered.words[0].start_s == 0.1
+    assert rendered.words[-1].end_s == round(0.601 * 8000) / 8000
+
+
+def test_rendered_turn_word_spans_are_contiguous() -> None:
+    from choravox.phonetics import speaker_profile
+
+    turn = dialogue.DialogueTurn(0.0, 0.9, "speaker-01", ("mava", "sito", "nena"))
+    rendered = meeting.render_turn(turn, speaker_profile("speaker-01", 1), 4000, seed=2)
+    assert [word.text for word in rendered.words] == list(turn.words)
+    assert all(
+        left.end_s == right.start_s
+        for left, right in zip(rendered.words, rendered.words[1:], strict=False)
+    )
+
+
 # -- extensions --

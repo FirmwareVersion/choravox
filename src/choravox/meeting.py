@@ -8,8 +8,10 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from choravox.dialogue import DialogueScript, pronunciation
-from choravox.synthesis import PhoneToken
+from choravox.dialogue import DialogueScript, DialogueTurn, pronunciation
+from choravox.phonetics import SpeakerProfile
+from choravox.random import derive_seed
+from choravox.synthesis import PhoneToken, synthesize_sequence
 
 FloatArray = NDArray[np.float64]
 
@@ -65,6 +67,49 @@ def word_phone_tokens(word: str, sample_count: int, sample_rate: int) -> tuple[P
         PhoneToken(symbol, (base + (index < remainder)) / sample_rate)
         for index, symbol in enumerate(phones)
     )
+
+
+@dataclass(frozen=True, slots=True)
+class RenderedTurn:
+    """One rendered turn and its word annotations on the meeting clock."""
+
+    samples: FloatArray
+    words: tuple[PlantedWord, ...]
+
+
+def render_turn(
+    turn: DialogueTurn, profile: SpeakerProfile, sample_rate: int, *, seed: int
+) -> RenderedTurn:
+    """Render each word independently while preserving exact turn sample bounds."""
+    if profile.speaker_id != turn.speaker:
+        raise ValueError("speaker profile must match the dialogue turn")
+    start_sample = round(turn.start_s * sample_rate)
+    end_sample = round(turn.end_s * sample_rate)
+    total = end_sample - start_sample
+    if sample_rate <= 0 or total < len(turn.words) * 3:
+        raise ValueError("turn is too short for its planted words")
+    base, remainder = divmod(total, len(turn.words))
+    pieces: list[FloatArray] = []
+    words: list[PlantedWord] = []
+    cursor = 0
+    for index, text in enumerate(turn.words):
+        word_samples = base + (index < remainder)
+        tokens = word_phone_tokens(text, word_samples, sample_rate)
+        sequence = synthesize_sequence(
+            tokens, profile, sample_rate, seed=derive_seed(seed, f"turn-word:{index}:{text}")
+        )
+        pieces.append(sequence.samples)
+        word_start = start_sample + cursor
+        cursor += sequence.samples.size
+        words.append(
+            PlantedWord(
+                text,
+                turn.speaker,
+                round(word_start / sample_rate, 9),
+                round((start_sample + cursor) / sample_rate, 9),
+            )
+        )
+    return RenderedTurn(np.concatenate(pieces), tuple(words))
 
 
 # -- extensions --
