@@ -167,4 +167,20 @@ def test_clean_meeting_rejects_invalid_render_controls() -> None:
         meeting.render_clean_meeting(_script(), 8000, seed=-1)
 
 
+def test_speaker_activity_uses_half_open_sample_intervals() -> None:
+    script = dialogue.DialogueScript(
+        1.0,
+        (
+            dialogue.DialogueTurn(0.0, 0.5, "a", ("mava",)),
+            dialogue.DialogueTurn(0.25, 0.75, "b", ("sito",)),
+        ),
+    )
+    speakers, activity = meeting.speaker_activity(script, 100)
+    assert speakers == ("a", "b")
+    assert np.sum(activity[:, 0]) == 50
+    assert np.sum(activity[:, 1]) == 50
+    assert np.sum(np.sum(activity, axis=1) == 2) == 25
+    assert not np.any(activity[75:])
+
+
 # -- extensions --

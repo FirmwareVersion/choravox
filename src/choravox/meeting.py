@@ -14,6 +14,7 @@ from choravox.random import derive_seed
 from choravox.synthesis import PhoneToken, synthesize_sequence
 
 FloatArray = NDArray[np.float64]
+BoolArray = NDArray[np.bool_]
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +137,20 @@ def render_clean_meeting(
         words.extend(rendered.words)
     ordered_words = tuple(sorted(words, key=lambda word: (word.start_s, word.speaker)))
     return SyntheticMeeting(np.round(output, 9), sample_rate, script, ordered_words, seed)
+
+
+def speaker_activity(script: DialogueScript, sample_rate: int) -> tuple[tuple[str, ...], BoolArray]:
+    """Return planted samples-by-speakers activity using half-open turn bounds."""
+    if sample_rate <= 0:
+        raise ValueError("sample_rate must be positive")
+    speakers = script.speakers
+    indices = {speaker: index for index, speaker in enumerate(speakers)}
+    activity = np.zeros((round(script.duration_s * sample_rate), len(speakers)), dtype=np.bool_)
+    for turn in script.turns:
+        start = round(turn.start_s * sample_rate)
+        end = round(turn.end_s * sample_rate)
+        activity[start:end, indices[turn.speaker]] = True
+    return speakers, activity
 
 
 # -- extensions --
