@@ -206,4 +206,34 @@ def test_speaker_activity_rejects_invalid_sample_rate() -> None:
         meeting.speaker_activity(_script(), -1)
 
 
+def test_configured_script_uses_stable_speaker_roster_and_ratios() -> None:
+    from choravox.config import MeetingConfig
+
+    config = MeetingConfig(
+        speakers=3, duration_s=4.0, overlap_ratio=0.2, silence_ratio=0.25, seed=4
+    )
+    script = meeting.script_from_config(config)
+    durations = dialogue.activity_durations(script)
+    assert script.speakers == ("speaker-00", "speaker-01", "speaker-02")
+    assert durations.overlap_s / script.duration_s == pytest.approx(0.2, abs=1e-6)
+    assert durations.silence_s / script.duration_s == pytest.approx(0.25, abs=1e-6)
+
+
+def test_single_speaker_config_generates_one_contiguous_turn() -> None:
+    from choravox.config import MeetingConfig
+
+    script = meeting.script_from_config(
+        MeetingConfig(
+            speakers=1,
+            duration_s=2.0,
+            overlap_ratio=0.0,
+            silence_ratio=0.25,
+            seed=3,
+        )
+    )
+    assert len(script.turns) == 1
+    assert script.turns[0].speaker == "speaker-00"
+    assert script.turns[0].end_s == 1.5
+
+
 # -- extensions --

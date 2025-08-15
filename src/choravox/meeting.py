@@ -8,9 +8,16 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from choravox.dialogue import DialogueScript, DialogueTurn, pronunciation
+from choravox.config import MeetingConfig
+from choravox.dialogue import (
+    LEXICON,
+    DialogueScript,
+    DialogueTurn,
+    controlled_dialogue_script,
+    pronunciation,
+)
 from choravox.phonetics import SpeakerProfile, speaker_profile
-from choravox.random import derive_seed
+from choravox.random import derive_seed, rng
 from choravox.synthesis import PhoneToken, synthesize_sequence
 
 FloatArray = NDArray[np.float64]
@@ -151,6 +158,38 @@ def speaker_activity(script: DialogueScript, sample_rate: int) -> tuple[tuple[st
         end = round(turn.end_s * sample_rate)
         activity[start:end, indices[turn.speaker]] = True
     return speakers, activity
+
+
+def speaker_roster(count: int) -> tuple[str, ...]:
+    """Return stable synthetic speaker identifiers for a configured count."""
+    if not 1 <= count <= 16:
+        raise ValueError("speaker count must be between 1 and 16")
+    return tuple(f"speaker-{index:02d}" for index in range(count))
+
+
+def script_from_config(config: MeetingConfig) -> DialogueScript:
+    """Generate a planted dialogue script from high-level meeting controls."""
+    speakers = speaker_roster(config.speakers)
+    if config.overlap_ratio + config.silence_ratio > 1.0:
+        raise ValueError("overlap_ratio and silence_ratio must sum to at most one")
+    if config.speakers == 1:
+        if config.overlap_ratio != 0.0:
+            raise ValueError("a one-speaker meeting cannot contain overlap")
+        end = round(config.duration_s * (1.0 - config.silence_ratio), 6)
+        generator = rng(config.seed, "single-speaker-script")
+        vocabulary = tuple(LEXICON)
+        word_count = max(1, round(end / 0.45))
+        words = tuple(
+            vocabulary[int(generator.integers(len(vocabulary)))] for _ in range(word_count)
+        )
+        return DialogueScript(config.duration_s, (DialogueTurn(0.0, end, speakers[0], words),))
+    return controlled_dialogue_script(
+        speakers,
+        config.duration_s,
+        config.overlap_ratio,
+        config.silence_ratio,
+        seed=config.seed,
+    )
 
 
 # -- extensions --
