@@ -144,4 +144,27 @@ def test_clean_meeting_adds_overlapping_turn_waveforms() -> None:
     assert {word.speaker for word in both.words} == {"speaker-00", "speaker-01"}
 
 
+def test_clean_meeting_repeats_audio_and_annotations_by_seed() -> None:
+    script = dialogue.rapid_exchange_script(("speaker-00", "speaker-01"), 2, seed=3)
+    first = meeting.render_clean_meeting(script, 4000, seed=20)
+    second = meeting.render_clean_meeting(script, 4000, seed=20)
+    assert first.samples.tobytes() == second.samples.tobytes()
+    assert first.words == second.words
+
+
+def test_clean_meeting_seed_changes_voice_but_not_planted_timing() -> None:
+    script = dialogue.monologue_script(("mava", "sito"), word_duration_s=0.25)
+    first = meeting.render_clean_meeting(script, 4000, seed=20)
+    second = meeting.render_clean_meeting(script, 4000, seed=21)
+    assert not np.array_equal(first.samples, second.samples)
+    assert first.words == second.words
+
+
+def test_clean_meeting_rejects_invalid_render_controls() -> None:
+    with pytest.raises(ValueError, match="sample_rate"):
+        meeting.render_clean_meeting(_script(), 0, seed=0)
+    with pytest.raises(ValueError, match="seed"):
+        meeting.render_clean_meeting(_script(), 8000, seed=-1)
+
+
 # -- extensions --
