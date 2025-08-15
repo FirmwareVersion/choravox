@@ -95,4 +95,30 @@ def test_rendered_turn_word_spans_are_contiguous() -> None:
     )
 
 
+def test_render_turn_rejects_mismatched_speaker_profile() -> None:
+    from choravox.phonetics import speaker_profile
+
+    turn = dialogue.DialogueTurn(0.0, 0.3, "speaker-00", ("mava",))
+    with pytest.raises(ValueError, match="match"):
+        meeting.render_turn(turn, speaker_profile("speaker-01", 0), 8000, seed=0)
+
+
+def test_render_turn_repeats_for_same_seed_and_changes_for_another() -> None:
+    from choravox.phonetics import speaker_profile
+
+    turn = dialogue.DialogueTurn(0.0, 0.4, "speaker-00", ("fisu",))
+    profile = speaker_profile("speaker-00", 3)
+    first = meeting.render_turn(turn, profile, 8000, seed=11).samples
+    assert first.tobytes() == meeting.render_turn(turn, profile, 8000, seed=11).samples.tobytes()
+    assert not np.array_equal(first, meeting.render_turn(turn, profile, 8000, seed=12).samples)
+
+
+def test_render_turn_rejects_span_too_short_for_phones() -> None:
+    from choravox.phonetics import speaker_profile
+
+    turn = dialogue.DialogueTurn(0.0, 0.0001, "speaker-00", ("sito",))
+    with pytest.raises(ValueError, match="too short"):
+        meeting.render_turn(turn, speaker_profile("speaker-00", 0), 8000, seed=0)
+
+
 # -- extensions --
