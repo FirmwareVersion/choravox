@@ -275,4 +275,32 @@ def test_meeting_factory_rejects_invalid_sample_rate() -> None:
         meeting.MeetingFactory(MeetingConfig(), sample_rate=0)
 
 
+def test_factory_repeats_every_clean_artifact_by_seed() -> None:
+    from choravox.config import MeetingConfig
+
+    config = MeetingConfig(duration_s=1.2, seed=31)
+    first = meeting.MeetingFactory(config, 4000).build()
+    second = meeting.MeetingFactory(config, 4000).build()
+    assert first.samples.tobytes() == second.samples.tobytes()
+    assert first.script == second.script
+    assert first.words == second.words
+
+
+def test_factory_seed_changes_script_or_voice_realization() -> None:
+    from choravox.config import MeetingConfig
+
+    first = meeting.MeetingFactory(MeetingConfig(duration_s=1.2, seed=31), 4000).build()
+    second = meeting.MeetingFactory(MeetingConfig(duration_s=1.2, seed=32), 4000).build()
+    assert first.samples.tobytes() != second.samples.tobytes()
+
+
+def test_factory_preserves_requested_silence_tail() -> None:
+    from choravox.config import MeetingConfig
+
+    artifact = meeting.MeetingFactory(
+        MeetingConfig(duration_s=2.0, silence_ratio=0.25, seed=1), 4000
+    ).build()
+    assert np.all(artifact.samples[6000:] == 0.0)
+
+
 # -- extensions --
