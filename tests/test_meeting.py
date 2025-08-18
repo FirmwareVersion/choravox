@@ -303,4 +303,21 @@ def test_factory_preserves_requested_silence_tail() -> None:
     assert np.all(artifact.samples[6000:] == 0.0)
 
 
+def test_room_condition_preserves_meeting_shape_and_annotations() -> None:
+    from choravox.config import MeetingConfig
+
+    clean = meeting.MeetingFactory(MeetingConfig(duration_s=1.0, seed=2), 4000).build()
+    condition = meeting.RoomCondition((5.0, 4.0, 3.0), (1.0, 1.0, 1.2), (3.0, 2.0, 1.2), 0.3)
+    reverberant = meeting.reverberate_meeting(clean, condition)
+    assert reverberant.samples.shape == clean.samples.shape
+    assert reverberant.words == clean.words
+    assert reverberant.script == clean.script
+    assert not np.array_equal(reverberant.samples, clean.samples)
+
+
+def test_room_condition_validates_rt60_and_geometry() -> None:
+    with pytest.raises(ValueError, match="RT60"):
+        meeting.RoomCondition((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 2.0, 1.0), 0.0).geometry()
+
+
 # -- extensions --

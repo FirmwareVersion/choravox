@@ -18,6 +18,7 @@ from choravox.dialogue import (
 )
 from choravox.phonetics import SpeakerProfile, speaker_profile
 from choravox.random import derive_seed, rng
+from choravox.room import Point3D, RoomGeometry, apply_rir, image_method_rir
 from choravox.synthesis import PhoneToken, synthesize_sequence
 
 FloatArray = NDArray[np.float64]
@@ -208,6 +209,36 @@ class MeetingFactory:
         return render_clean_meeting(
             script_from_config(self.config), self.sample_rate, seed=self.config.seed
         )
+
+
+@dataclass(frozen=True, slots=True)
+class RoomCondition:
+    """Rectangular-room controls attached to a synthetic meeting."""
+
+    size_m: Point3D
+    source_m: Point3D
+    microphone_m: Point3D
+    rt60_s: float
+    image_order: int = 3
+
+    def geometry(self) -> RoomGeometry:
+        """Validate and expose the corresponding room geometry."""
+        if not math.isfinite(self.rt60_s) or self.rt60_s <= 0.0 or self.image_order < 0:
+            raise ValueError("room RT60 must be positive and image order nonnegative")
+        return RoomGeometry(self.size_m, self.source_m, self.microphone_m)
+
+
+def reverberate_meeting(source: SyntheticMeeting, condition: RoomCondition) -> SyntheticMeeting:
+    """Apply a deterministic image-method response without changing annotation times."""
+    if source.samples.ndim != 1:
+        raise ValueError("room rendering currently expects a mono clean meeting")
+    response = image_method_rir(
+        condition.geometry(), source.sample_rate, condition.rt60_s, order=condition.image_order
+    )
+    samples = apply_rir(source.samples, response, trim=True)
+    return SyntheticMeeting(
+        np.round(samples, 9), source.sample_rate, source.script, source.words, source.seed
+    )
 
 
 # -- extensions --
