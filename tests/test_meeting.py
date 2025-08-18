@@ -236,4 +236,25 @@ def test_single_speaker_config_generates_one_contiguous_turn() -> None:
     assert script.turns[0].end_s == 1.5
 
 
+def test_configured_script_rejects_impossible_activity_ratios() -> None:
+    from choravox.config import MeetingConfig
+
+    config = MeetingConfig(speakers=2, overlap_ratio=0.7, silence_ratio=0.4)
+    with pytest.raises(ValueError, match="sum to at most one"):
+        meeting.script_from_config(config)
+
+
+def test_single_speaker_config_rejects_overlap() -> None:
+    from choravox.config import MeetingConfig
+
+    with pytest.raises(ValueError, match="cannot contain overlap"):
+        meeting.script_from_config(MeetingConfig(speakers=1, overlap_ratio=0.1))
+
+
+def test_speaker_roster_bounds_and_zero_padding() -> None:
+    assert meeting.speaker_roster(3) == ("speaker-00", "speaker-01", "speaker-02")
+    with pytest.raises(ValueError, match="between 1 and 16"):
+        meeting.speaker_roster(0)
+
+
 # -- extensions --
