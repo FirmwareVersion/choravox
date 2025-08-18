@@ -257,4 +257,22 @@ def test_speaker_roster_bounds_and_zero_padding() -> None:
         meeting.speaker_roster(0)
 
 
+def test_meeting_factory_builds_complete_duration_and_words() -> None:
+    from choravox.config import MeetingConfig
+
+    factory = meeting.MeetingFactory(MeetingConfig(duration_s=1.5, seed=6), sample_rate=4000)
+    artifact = factory.build()
+    assert artifact.samples.shape == (6000,)
+    assert artifact.script.duration_s == 1.5
+    assert artifact.words
+    assert artifact.seed == 6
+
+
+def test_meeting_factory_rejects_invalid_sample_rate() -> None:
+    from choravox.config import MeetingConfig
+
+    with pytest.raises(ValueError, match="sample_rate"):
+        meeting.MeetingFactory(MeetingConfig(), sample_rate=0)
+
+
 # -- extensions --

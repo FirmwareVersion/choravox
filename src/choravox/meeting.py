@@ -192,4 +192,22 @@ def script_from_config(config: MeetingConfig) -> DialogueScript:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class MeetingFactory:
+    """Render clean synthetic meetings from validated high-level controls."""
+
+    config: MeetingConfig
+    sample_rate: int = 16_000
+
+    def __post_init__(self) -> None:
+        if self.sample_rate <= 0:
+            raise ValueError("factory sample_rate must be positive")
+
+    def build(self) -> SyntheticMeeting:
+        """Generate script, waveform, and planted annotations in one operation."""
+        return render_clean_meeting(
+            script_from_config(self.config), self.sample_rate, seed=self.config.seed
+        )
+
+
 # -- extensions --
