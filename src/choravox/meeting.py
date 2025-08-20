@@ -16,6 +16,7 @@ from choravox.dialogue import (
     controlled_dialogue_script,
     pronunciation,
 )
+from choravox.microphone import MicrophoneArray, capture_point_source
 from choravox.phonetics import SpeakerProfile, speaker_profile
 from choravox.random import derive_seed, rng
 from choravox.room import Point3D, RoomGeometry, apply_rir, image_method_rir
@@ -236,6 +237,28 @@ def reverberate_meeting(source: SyntheticMeeting, condition: RoomCondition) -> S
         condition.geometry(), source.sample_rate, condition.rt60_s, order=condition.image_order
     )
     samples = apply_rir(source.samples, response, trim=True)
+    return SyntheticMeeting(
+        np.round(samples, 9), source.sample_rate, source.script, source.words, source.seed
+    )
+
+
+def capture_meeting(
+    source: SyntheticMeeting,
+    array: MicrophoneArray,
+    source_m: Point3D,
+    *,
+    temperature_c: float = 20.0,
+) -> SyntheticMeeting:
+    """Capture a mono meeting as geometry-delayed microphone channels."""
+    if source.samples.ndim != 1:
+        raise ValueError("array capture expects a mono meeting")
+    samples = capture_point_source(
+        source.samples,
+        source.sample_rate,
+        array,
+        source_m,
+        temperature_c=temperature_c,
+    )
     return SyntheticMeeting(
         np.round(samples, 9), source.sample_rate, source.script, source.words, source.seed
     )

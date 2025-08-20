@@ -350,4 +350,25 @@ def test_room_rendering_rejects_already_multichannel_audio() -> None:
         meeting.reverberate_meeting(clean, condition)
 
 
+def test_array_capture_produces_one_channel_per_microphone() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.microphone import linear_array
+
+    clean = meeting.MeetingFactory(MeetingConfig(duration_s=0.8, seed=4), 4000).build()
+    captured = meeting.capture_meeting(clean, linear_array(4, 0.05), (2.0, 0.0, 0.0))
+    assert captured.samples.shape == (clean.samples.size, 4)
+    assert captured.words == clean.words
+
+
+def test_array_capture_channel_arrivals_follow_source_geometry() -> None:
+    from choravox.microphone import linear_array
+
+    samples = np.zeros(1000)
+    samples[100] = 1.0
+    clean = meeting.SyntheticMeeting(samples, 1000, _script(), (), 0)
+    captured = meeting.capture_meeting(clean, linear_array(3, 0.2), (2.0, 0.0, 0.0))
+    peaks = np.argmax(np.abs(captured.samples), axis=0)
+    assert peaks[2] <= peaks[1] <= peaks[0]
+
+
 # -- extensions --
