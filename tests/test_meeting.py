@@ -419,4 +419,36 @@ def test_multichannel_meeting_noise_uses_distinct_channels() -> None:
     assert not np.array_equal(residual[:, 0], residual[:, 1])
 
 
+def test_meeting_noise_repeats_for_declared_condition() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.noise import NoiseCondition
+
+    clean = meeting.MeetingFactory(MeetingConfig(duration_s=0.7, seed=2), 4000).build()
+    condition = NoiseCondition("pink", seed=19)
+    first = meeting.add_meeting_noise(clean, condition, 0.0)
+    second = meeting.add_meeting_noise(clean, condition, 0.0)
+    assert first.samples.tobytes() == second.samples.tobytes()
+
+
+def test_meeting_noise_condition_changes_realization() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.noise import NoiseCondition
+
+    clean = meeting.MeetingFactory(MeetingConfig(duration_s=0.7, seed=2), 4000).build()
+    first = meeting.add_meeting_noise(clean, NoiseCondition("white", seed=19), 0.0)
+    second = meeting.add_meeting_noise(clean, NoiseCondition("white", seed=20), 0.0)
+    assert not np.array_equal(first.samples, second.samples)
+
+
+def test_babble_meeting_noise_requires_synthetic_sources() -> None:
+    from choravox.noise import NoiseCondition
+
+    with pytest.raises(ValueError, match="at least two synthetic"):
+        meeting.add_meeting_noise(
+            meeting.SyntheticMeeting(np.ones(8000), 8000, _script(), (), 0),
+            NoiseCondition("babble", seed=0),
+            0.0,
+        )
+
+
 # -- extensions --
