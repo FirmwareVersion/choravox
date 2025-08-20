@@ -320,4 +320,34 @@ def test_room_condition_validates_rt60_and_geometry() -> None:
         meeting.RoomCondition((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (2.0, 2.0, 1.0), 0.0).geometry()
 
 
+def test_reverberation_delays_first_nonzero_sample() -> None:
+    script = dialogue.DialogueScript(
+        0.5, (dialogue.DialogueTurn(0.0, 0.3, "speaker-00", ("mava",)),)
+    )
+    clean = meeting.render_clean_meeting(script, 4000, seed=1)
+    condition = meeting.RoomCondition((6.0, 4.0, 3.0), (1.0, 1.0, 1.0), (4.0, 1.0, 1.0), 0.2, 0)
+    reverberant = meeting.reverberate_meeting(clean, condition)
+    assert np.flatnonzero(reverberant.samples)[0] > np.flatnonzero(clean.samples)[0]
+
+
+def test_room_rendering_is_byte_deterministic() -> None:
+    clean = meeting.MeetingFactory(
+        __import__("choravox.config", fromlist=["MeetingConfig"]).MeetingConfig(
+            duration_s=0.8, seed=3
+        ),
+        4000,
+    ).build()
+    condition = meeting.RoomCondition((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (3.0, 2.0, 1.0), 0.25, 2)
+    first = meeting.reverberate_meeting(clean, condition)
+    second = meeting.reverberate_meeting(clean, condition)
+    assert first.samples.tobytes() == second.samples.tobytes()
+
+
+def test_room_rendering_rejects_already_multichannel_audio() -> None:
+    clean = meeting.SyntheticMeeting(np.zeros((8000, 2)), 8000, _script(), (), 0)
+    condition = meeting.RoomCondition((5.0, 4.0, 3.0), (1.0, 1.0, 1.0), (3.0, 2.0, 1.0), 0.3)
+    with pytest.raises(ValueError, match="mono"):
+        meeting.reverberate_meeting(clean, condition)
+
+
 # -- extensions --
