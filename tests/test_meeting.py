@@ -397,4 +397,26 @@ def test_array_capture_preserves_declared_seed() -> None:
     assert meeting.capture_meeting(source, linear_array(2, 0.1), (1.0, 0.0, 0.0)).seed == 123
 
 
+def test_meeting_noise_reaches_requested_snr_without_moving_truth() -> None:
+    from choravox import audio
+    from choravox.config import MeetingConfig
+    from choravox.noise import NoiseCondition
+
+    clean = meeting.MeetingFactory(MeetingConfig(duration_s=1.0, seed=5), 4000).build()
+    noisy = meeting.add_meeting_noise(clean, NoiseCondition("white", seed=8), 6.0)
+    assert audio.snr_db(clean.samples, noisy.samples) == pytest.approx(6.0, abs=1e-5)
+    assert noisy.words == clean.words
+    assert noisy.script == clean.script
+
+
+def test_multichannel_meeting_noise_uses_distinct_channels() -> None:
+    from choravox.noise import NoiseCondition
+
+    source = meeting.SyntheticMeeting(np.ones((8000, 2)), 8000, _script(), (), 1)
+    noisy = meeting.add_meeting_noise(source, NoiseCondition("pink", seed=3), 10.0)
+    residual = noisy.samples - source.samples
+    assert residual.shape == source.samples.shape
+    assert not np.array_equal(residual[:, 0], residual[:, 1])
+
+
 # -- extensions --

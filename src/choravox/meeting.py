@@ -17,6 +17,7 @@ from choravox.dialogue import (
     pronunciation,
 )
 from choravox.microphone import MicrophoneArray, capture_point_source
+from choravox.noise import NoiseCondition, mix_at_snr, render_noise
 from choravox.phonetics import SpeakerProfile, speaker_profile
 from choravox.random import derive_seed, rng
 from choravox.room import Point3D, RoomGeometry, apply_rir, image_method_rir
@@ -259,6 +260,38 @@ def capture_meeting(
         source_m,
         temperature_c=temperature_c,
     )
+    return SyntheticMeeting(
+        np.round(samples, 9), source.sample_rate, source.script, source.words, source.seed
+    )
+
+
+def add_meeting_noise(
+    source: SyntheticMeeting,
+    condition: NoiseCondition,
+    target_snr_db: float,
+    *,
+    babble_sources: tuple[FloatArray, ...] = (),
+) -> SyntheticMeeting:
+    """Render independent deterministic channel noise at one measured global SNR."""
+    if source.samples.ndim == 1:
+        disturbance = render_noise(condition, source.samples.size, babble_sources=babble_sources)
+    else:
+        channels = []
+        for channel in range(source.samples.shape[1]):
+            channel_condition = NoiseCondition(
+                condition.kind,
+                derive_seed(condition.seed, f"meeting-channel:{channel}"),
+                condition.rms_level,
+            )
+            channels.append(
+                render_noise(
+                    channel_condition,
+                    source.samples.shape[0],
+                    babble_sources=babble_sources,
+                )
+            )
+        disturbance = np.column_stack(channels)
+    samples = mix_at_snr(source.samples, disturbance, target_snr_db)
     return SyntheticMeeting(
         np.round(samples, 9), source.sample_rate, source.script, source.words, source.seed
     )
