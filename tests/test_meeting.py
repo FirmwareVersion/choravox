@@ -371,4 +371,30 @@ def test_array_capture_channel_arrivals_follow_source_geometry() -> None:
     assert peaks[2] <= peaks[1] <= peaks[0]
 
 
+def test_meeting_array_capture_is_byte_deterministic() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.microphone import circular_array
+
+    clean = meeting.MeetingFactory(MeetingConfig(duration_s=0.6, seed=9), 4000).build()
+    array = circular_array(3, 0.04)
+    first = meeting.capture_meeting(clean, array, (1.0, 0.5, 0.0))
+    second = meeting.capture_meeting(clean, array, (1.0, 0.5, 0.0))
+    assert first.samples.tobytes() == second.samples.tobytes()
+
+
+def test_meeting_array_capture_rejects_multichannel_source() -> None:
+    from choravox.microphone import linear_array
+
+    source = meeting.SyntheticMeeting(np.zeros((8000, 2)), 8000, _script(), (), 0)
+    with pytest.raises(ValueError, match="mono"):
+        meeting.capture_meeting(source, linear_array(2, 0.1), (1.0, 0.0, 0.0))
+
+
+def test_array_capture_preserves_declared_seed() -> None:
+    from choravox.microphone import linear_array
+
+    source = meeting.SyntheticMeeting(np.zeros(8000), 8000, _script(), (), 123)
+    assert meeting.capture_meeting(source, linear_array(2, 0.1), (1.0, 0.0, 0.0)).seed == 123
+
+
 # -- extensions --
