@@ -44,4 +44,19 @@ def test_empty_rttm_is_a_valid_empty_annotation() -> None:
     assert annotations.rttm_from_text("\n") == ()
 
 
+def test_stm_roundtrip_preserves_multiword_transcript() -> None:
+    entries = (
+        annotations.StmEntry("meeting-02", 1, "speaker-00", 0.0, 1.25, "mava sito"),
+        annotations.StmEntry("meeting-02", 1, "speaker-01", 1.3, 1.8, "nena"),
+    )
+    text = annotations.stm_to_text(entries)
+    assert text.splitlines()[0] == "meeting-02 1 speaker-00 0.000000 1.250000 <NA> mava sito"
+    assert annotations.stm_from_text(text) == entries
+
+
+def test_stm_empty_document_roundtrips() -> None:
+    assert annotations.stm_to_text(()) == ""
+    assert annotations.stm_from_text("") == ()
+
+
 # -- extensions --
