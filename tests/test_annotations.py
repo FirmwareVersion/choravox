@@ -143,4 +143,34 @@ def test_planted_words_convert_to_transcript_and_stm() -> None:
     assert [entry.transcript for entry in stm] == ["mava", "sito"]
 
 
+def test_rttm_export_retains_simultaneous_speaker_turns() -> None:
+    from choravox.dialogue import DialogueScript, DialogueTurn
+
+    script = DialogueScript(
+        1.0,
+        (
+            DialogueTurn(0.0, 0.7, "a", ("mava",)),
+            DialogueTurn(0.4, 0.9, "b", ("sito",)),
+        ),
+    )
+    entries = annotations.script_to_rttm(script, "overlap")
+    assert len(entries) == 2
+    assert entries[0].segment().end > entries[1].segment().start
+    assert {entry.speaker for entry in entries} == {"a", "b"}
+
+
+def test_annotation_conversion_rejects_unsafe_recording_id() -> None:
+    from choravox.dialogue import DialogueScript
+
+    with pytest.raises(ValueError, match="recording_id"):
+        annotations.script_to_rttm(DialogueScript(1.0, ()), "two words")
+
+
+def test_word_conversion_keeps_chronological_order() -> None:
+    from choravox.meeting import PlantedWord
+
+    words = (PlantedWord("mava", "a", 0.0, 0.4), PlantedWord("sito", "b", 0.2, 0.5))
+    assert [word.text for word in annotations.words_to_transcript(words).words] == ["mava", "sito"]
+
+
 # -- extensions --
