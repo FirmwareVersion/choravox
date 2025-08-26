@@ -6,7 +6,9 @@ import json
 import math
 from dataclasses import asdict, dataclass
 
+from choravox.dialogue import DialogueScript
 from choravox.hashing import canonical_json, content_hash
+from choravox.meeting import PlantedWord
 from choravox.types import Segment, Transcript, Word
 
 
@@ -171,6 +173,31 @@ def transcript_from_jsonl(text: str) -> Transcript:
         return Transcript(words)
     except (TypeError, ValueError) as error:
         raise ValueError("transcript payload is malformed") from error
+
+
+def script_to_rttm(script: DialogueScript, recording_id: str) -> tuple[RttmEntry, ...]:
+    """Convert every planted dialogue turn to an RTTM speaker record."""
+    _token(recording_id, "recording_id")
+    return tuple(
+        RttmEntry(recording_id, 1, turn.start_s, round(turn.end_s - turn.start_s, 6), turn.speaker)
+        for turn in script.turns
+    )
+
+
+def words_to_transcript(words: tuple[PlantedWord, ...]) -> Transcript:
+    """Convert planted factory words to the public transcript representation."""
+    return Transcript(
+        tuple(Word(word.text, word.start_s, word.end_s, word.speaker, 1.0) for word in words)
+    )
+
+
+def words_to_stm(words: tuple[PlantedWord, ...], recording_id: str) -> tuple[StmEntry, ...]:
+    """Emit one STM entry per planted word without losing speaker timing."""
+    _token(recording_id, "recording_id")
+    return tuple(
+        StmEntry(recording_id, 1, word.speaker, word.start_s, word.end_s, word.text)
+        for word in words
+    )
 
 
 # -- extensions --

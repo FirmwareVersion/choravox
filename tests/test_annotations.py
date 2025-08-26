@@ -124,4 +124,23 @@ def test_transcript_jsonl_rejects_malformed_word_payload() -> None:
         annotations.transcript_from_jsonl(json.dumps(header) + "\n{}\n")
 
 
+def test_planted_script_converts_to_rttm_without_time_loss() -> None:
+    from choravox.dialogue import DialogueScript, DialogueTurn
+
+    script = DialogueScript(1.0, (DialogueTurn(0.1, 0.6, "spk", ("mava",)),))
+    entries = annotations.script_to_rttm(script, "rec")
+    assert entries == (annotations.RttmEntry("rec", 1, 0.1, 0.5, "spk"),)
+    assert annotations.rttm_from_text(annotations.rttm_to_text(entries)) == entries
+
+
+def test_planted_words_convert_to_transcript_and_stm() -> None:
+    from choravox.meeting import PlantedWord
+
+    words = (PlantedWord("mava", "spk", 0.0, 0.3), PlantedWord("sito", "spk", 0.3, 0.7))
+    transcript = annotations.words_to_transcript(words)
+    stm = annotations.words_to_stm(words, "rec")
+    assert transcript.text() == "mava sito"
+    assert [entry.transcript for entry in stm] == ["mava", "sito"]
+
+
 # -- extensions --
