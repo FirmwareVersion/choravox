@@ -101,4 +101,27 @@ def test_empty_transcript_still_has_integrity_header() -> None:
     assert annotations.transcript_from_jsonl(encoded).words == ()
 
 
+def test_transcript_jsonl_rejects_missing_or_unknown_header() -> None:
+    with pytest.raises(ValueError, match="version header"):
+        annotations.transcript_from_jsonl("")
+    bad = '{"schema":"choravox.transcript","version":2,"digest":"x"}\n'
+    with pytest.raises(ValueError, match="unsupported"):
+        annotations.transcript_from_jsonl(bad)
+
+
+def test_transcript_jsonl_detects_changed_word_line() -> None:
+    from choravox.types import Transcript, Word
+
+    encoded = annotations.transcript_to_jsonl(Transcript((Word("mava", 0.0, 0.2, "spk"),)))
+    changed = encoded.replace('"mava"', '"sito"')
+    with pytest.raises(ValueError, match="digest mismatch"):
+        annotations.transcript_from_jsonl(changed)
+
+
+def test_transcript_jsonl_rejects_malformed_word_payload() -> None:
+    header = {"schema": "choravox.transcript", "version": 1, "digest": "invalid"}
+    with pytest.raises(ValueError, match="digest mismatch"):
+        annotations.transcript_from_jsonl(json.dumps(header) + "\n{}\n")
+
+
 # -- extensions --
