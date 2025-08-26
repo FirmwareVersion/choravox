@@ -173,4 +173,23 @@ def test_word_conversion_keeps_chronological_order() -> None:
     assert [word.text for word in annotations.words_to_transcript(words).words] == ["mava", "sito"]
 
 
+def test_phone_expansion_matches_synthetic_pronunciation() -> None:
+    from choravox.dialogue import pronunciation
+    from choravox.meeting import PlantedWord
+
+    word = PlantedWord("sito", "speaker-00", 0.2, 0.6)
+    phones = annotations.words_to_phones((word,))
+    assert tuple(phone.symbol for phone in phones) == pronunciation("sito")
+    assert phones[0].start_s == word.start_s
+    assert phones[-1].end_s == word.end_s
+
+
+def test_phone_expansion_preserves_word_and_speaker_identity() -> None:
+    from choravox.meeting import PlantedWord
+
+    phones = annotations.words_to_phones((PlantedWord("mava", "spk", 0.0, 0.3),))
+    assert {phone.word for phone in phones} == {"mava"}
+    assert {phone.speaker for phone in phones} == {"spk"}
+
+
 # -- extensions --

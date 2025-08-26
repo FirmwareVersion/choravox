@@ -6,7 +6,7 @@ import json
 import math
 from dataclasses import asdict, dataclass
 
-from choravox.dialogue import DialogueScript
+from choravox.dialogue import DialogueScript, pronunciation
 from choravox.hashing import canonical_json, content_hash
 from choravox.meeting import PlantedWord
 from choravox.types import Segment, Transcript, Word
@@ -198,6 +198,39 @@ def words_to_stm(words: tuple[PlantedWord, ...], recording_id: str) -> tuple[Stm
         StmEntry(recording_id, 1, word.speaker, word.start_s, word.end_s, word.text)
         for word in words
     )
+
+
+@dataclass(frozen=True, slots=True)
+class PhoneAnnotation:
+    """A synthetic phone label bounded within one planted word."""
+
+    symbol: str
+    speaker: str
+    word: str
+    start_s: float
+    end_s: float
+
+    def __post_init__(self) -> None:
+        _token(self.symbol, "phone symbol")
+        _token(self.speaker, "speaker")
+        _token(self.word, "word")
+        if self.start_s < 0.0 or self.end_s <= self.start_s:
+            raise ValueError("phone annotation interval is invalid")
+
+
+def words_to_phones(words: tuple[PlantedWord, ...]) -> tuple[PhoneAnnotation, ...]:
+    """Divide each planted word evenly across its known synthetic pronunciation."""
+    output: list[PhoneAnnotation] = []
+    for word in words:
+        symbols = pronunciation(word.text)
+        step = (word.end_s - word.start_s) / len(symbols)
+        for index, symbol in enumerate(symbols):
+            start = word.start_s + index * step
+            end = word.end_s if index + 1 == len(symbols) else word.start_s + (index + 1) * step
+            output.append(
+                PhoneAnnotation(symbol, word.speaker, word.text, round(start, 9), round(end, 9))
+            )
+    return tuple(output)
 
 
 # -- extensions --
