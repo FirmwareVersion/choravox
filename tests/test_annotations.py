@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from choravox import annotations
@@ -75,6 +77,28 @@ def test_stm_parser_reports_line_of_malformed_record() -> None:
 def test_stm_rejects_embedded_newline_in_transcript() -> None:
     with pytest.raises(ValueError, match="single-line"):
         annotations.StmEntry("rec", 1, "spk", 0.0, 1.0, "mava\nsito")
+
+
+def test_transcript_jsonl_roundtrip_preserves_word_fields() -> None:
+    from choravox.types import Transcript, Word
+
+    transcript = Transcript(
+        (
+            Word("mava", 0.0, 0.3, "speaker-00", 0.9),
+            Word("sito", 0.3, 0.7, "speaker-00", 0.8),
+        )
+    )
+    encoded = annotations.transcript_to_jsonl(transcript)
+    assert json.loads(encoded.splitlines()[0])["schema"] == "choravox.transcript"
+    assert annotations.transcript_from_jsonl(encoded) == transcript
+
+
+def test_empty_transcript_still_has_integrity_header() -> None:
+    from choravox.types import Transcript
+
+    encoded = annotations.transcript_to_jsonl(Transcript(()))
+    assert len(encoded.splitlines()) == 1
+    assert annotations.transcript_from_jsonl(encoded).words == ()
 
 
 # -- extensions --

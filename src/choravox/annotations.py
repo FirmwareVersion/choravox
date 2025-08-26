@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
-from choravox.types import Segment
+from choravox.hashing import canonical_json, content_hash
+from choravox.types import Segment, Transcript, Word
 
 
 def _token(value: str, name: str) -> str:
@@ -128,6 +130,47 @@ def stm_from_text(text: str) -> tuple[StmEntry, ...]:
         except ValueError as error:
             raise ValueError(f"invalid STM values on line {line_number}") from error
     return tuple(entries)
+
+
+TRANSCRIPT_SCHEMA = "choravox.transcript"
+TRANSCRIPT_VERSION = 1
+
+
+def transcript_to_jsonl(transcript: Transcript) -> str:
+    """Encode speaker-attributed words behind a versioned integrity header."""
+    payload = [asdict(word) for word in transcript.words]
+    header = {
+        "digest": content_hash(payload),
+        "schema": TRANSCRIPT_SCHEMA,
+        "version": TRANSCRIPT_VERSION,
+    }
+    lines = [canonical_json(header), *(canonical_json(word) for word in payload)]
+    return b"\n".join(lines).decode("utf-8") + "\n"
+
+
+def transcript_from_jsonl(text: str) -> Transcript:
+    """Decode a version-one transcript and verify every payload line together."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("transcript JSONL requires a version header")
+    try:
+        header = json.loads(lines[0])
+        payload = [json.loads(line) for line in lines[1:]]
+    except json.JSONDecodeError as error:
+        raise ValueError("transcript JSONL contains invalid JSON") from error
+    if (
+        not isinstance(header, dict)
+        or header.get("schema") != TRANSCRIPT_SCHEMA
+        or header.get("version") != TRANSCRIPT_VERSION
+    ):
+        raise ValueError("unsupported transcript schema or version")
+    if header.get("digest") != content_hash(payload):
+        raise ValueError("transcript digest mismatch")
+    try:
+        words = tuple(Word(**values) for values in payload)
+        return Transcript(words)
+    except (TypeError, ValueError) as error:
+        raise ValueError("transcript payload is malformed") from error
 
 
 # -- extensions --
