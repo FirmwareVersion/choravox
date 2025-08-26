@@ -59,4 +59,22 @@ def test_stm_empty_document_roundtrips() -> None:
     assert annotations.stm_from_text("") == ()
 
 
+def test_stm_rejects_reversed_interval_and_empty_transcript() -> None:
+    with pytest.raises(ValueError, match="interval"):
+        annotations.StmEntry("rec", 1, "spk", 1.0, 1.0, "mava")
+    with pytest.raises(ValueError, match="transcript"):
+        annotations.StmEntry("rec", 1, "spk", 0.0, 1.0, "  ")
+
+
+def test_stm_parser_reports_line_of_malformed_record() -> None:
+    good = "rec 1 spk 0.000000 1.000000 <NA> mava"
+    with pytest.raises(ValueError, match="line 2"):
+        annotations.stm_from_text(good + "\nrec 1 broken\n")
+
+
+def test_stm_rejects_embedded_newline_in_transcript() -> None:
+    with pytest.raises(ValueError, match="single-line"):
+        annotations.StmEntry("rec", 1, "spk", 0.0, 1.0, "mava\nsito")
+
+
 # -- extensions --
