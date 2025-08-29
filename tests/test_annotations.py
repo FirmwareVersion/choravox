@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from itertools import pairwise
 
 import pytest
 
@@ -190,6 +191,24 @@ def test_phone_expansion_preserves_word_and_speaker_identity() -> None:
     phones = annotations.words_to_phones((PlantedWord("mava", "spk", 0.0, 0.3),))
     assert {phone.word for phone in phones} == {"mava"}
     assert {phone.speaker for phone in phones} == {"spk"}
+
+
+def test_phone_timestamps_partition_each_word_without_gaps() -> None:
+    from choravox.meeting import PlantedWord
+
+    word = PlantedWord("fisu", "spk", 0.123, 0.987)
+    phones = annotations.words_to_phones((word,))
+    assert all(left.end_s == right.start_s for left, right in pairwise(phones))
+    assert sum(phone.end_s - phone.start_s for phone in phones) == pytest.approx(0.864, abs=1e-8)
+
+
+def test_phone_annotation_rejects_invalid_interval() -> None:
+    with pytest.raises(ValueError, match="interval"):
+        annotations.PhoneAnnotation("aa", "spk", "mava", 0.2, 0.1)
+
+
+def test_empty_word_sequence_expands_to_no_phones() -> None:
+    assert annotations.words_to_phones(()) == ()
 
 
 # -- extensions --
