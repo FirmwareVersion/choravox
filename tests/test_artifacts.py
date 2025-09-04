@@ -60,4 +60,25 @@ def test_manifest_preserves_condition_metadata_types() -> None:
     assert isinstance(decoded.conditions["snr_db"], float)
 
 
+def test_manifest_rejects_duplicate_artifact_paths() -> None:
+    record = artifacts.artifact_record("same.bin", "application/octet-stream", b"x")
+    with pytest.raises(ValueError, match="unique"):
+        artifacts.MeetingManifest("rec", 0, "b" * 64, {}, (record, record))
+
+
+def test_manifest_decoder_detects_changed_payload() -> None:
+    encoded = artifacts.manifest_to_json(_manifest())
+    changed = encoded.replace('"seed":7', '"seed":8')
+    with pytest.raises(ValueError, match="digest mismatch"):
+        artifacts.manifest_from_json(changed)
+
+
+def test_manifest_rejects_unknown_version_and_bad_config_hash() -> None:
+    encoded = artifacts.manifest_to_json(_manifest()).replace('"version":1', '"version":2')
+    with pytest.raises(ValueError, match="unsupported"):
+        artifacts.manifest_from_json(encoded)
+    with pytest.raises(ValueError, match="config_hash"):
+        artifacts.MeetingManifest("rec", 0, "short", {}, ())
+
+
 # -- extensions --
