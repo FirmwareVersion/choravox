@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import PurePosixPath
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -37,6 +38,76 @@ class ArtifactRecord:
 def artifact_record(path: str, media_type: str, data: bytes) -> ArtifactRecord:
     """Measure exact artifact bytes into a validated manifest record."""
     return ArtifactRecord(path, media_type, len(data), bytes_digest(data))
+
+
+@dataclass(frozen=True, slots=True)
+class MeetingManifest:
+    """Version-one inventory and provenance for a synthetic meeting bundle."""
+
+    recording_id: str
+    seed: int
+    config_hash: str
+    conditions: dict[str, object]
+    artifacts: tuple[ArtifactRecord, ...]
+
+    def __post_init__(self) -> None:
+        if not self.recording_id or any(char.isspace() for char in self.recording_id):
+            raise ValueError("manifest recording_id must be a nonempty token")
+        if self.seed < 0 or _DIGEST.fullmatch(self.config_hash) is None:
+            raise ValueError("manifest seed or config_hash is invalid")
+        paths = [record.path for record in self.artifacts]
+        if len(paths) != len(set(paths)):
+            raise ValueError("manifest artifact paths must be unique")
+
+
+def manifest_to_json(manifest: MeetingManifest) -> str:
+    """Encode a deterministic manifest with an envelope integrity digest."""
+    from choravox.hashing import canonical_json, content_hash
+
+    payload = {
+        "artifacts": [asdict(record) for record in manifest.artifacts],
+        "conditions": manifest.conditions,
+        "config_hash": manifest.config_hash,
+        "recording_id": manifest.recording_id,
+        "seed": manifest.seed,
+    }
+    document = {
+        "digest": content_hash(payload),
+        "payload": payload,
+        "schema": "choravox.meeting-manifest",
+        "version": 1,
+    }
+    return canonical_json(document).decode("utf-8") + "\n"
+
+
+def manifest_from_json(text: str) -> MeetingManifest:
+    """Decode and integrity-check a version-one meeting manifest."""
+    from choravox.hashing import content_hash
+
+    try:
+        document = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError("manifest must be valid JSON") from error
+    if (
+        not isinstance(document, dict)
+        or document.get("schema") != "choravox.meeting-manifest"
+        or document.get("version") != 1
+    ):
+        raise ValueError("unsupported meeting manifest schema or version")
+    payload = document.get("payload")
+    if not isinstance(payload, dict) or document.get("digest") != content_hash(payload):
+        raise ValueError("meeting manifest digest mismatch")
+    try:
+        records = tuple(ArtifactRecord(**record) for record in payload["artifacts"])
+        return MeetingManifest(
+            str(payload["recording_id"]),
+            int(payload["seed"]),
+            str(payload["config_hash"]),
+            dict(payload["conditions"]),
+            records,
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("meeting manifest payload is malformed") from error
 
 
 # -- extensions --

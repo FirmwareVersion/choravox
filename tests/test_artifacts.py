@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from choravox import artifacts
@@ -37,6 +39,25 @@ def test_artifact_record_rejects_bad_media_size_and_digest() -> None:
 
 def test_artifact_digest_changes_with_one_byte() -> None:
     assert artifacts.bytes_digest(b"abc") != artifacts.bytes_digest(b"abd")
+
+
+def _manifest() -> artifacts.MeetingManifest:
+    records = (artifacts.artifact_record("meeting.wav", "audio/wav", b"audio"),)
+    return artifacts.MeetingManifest("demo-01", 7, "a" * 64, {"snr_db": 10.0}, records)
+
+
+def test_manifest_json_roundtrip_is_byte_stable() -> None:
+    encoded = artifacts.manifest_to_json(_manifest())
+    decoded = artifacts.manifest_from_json(encoded)
+    assert decoded == _manifest()
+    assert artifacts.manifest_to_json(decoded) == encoded
+    assert json.loads(encoded)["schema"] == "choravox.meeting-manifest"
+
+
+def test_manifest_preserves_condition_metadata_types() -> None:
+    decoded = artifacts.manifest_from_json(artifacts.manifest_to_json(_manifest()))
+    assert decoded.conditions == {"snr_db": 10.0}
+    assert isinstance(decoded.conditions["snr_db"], float)
 
 
 # -- extensions --
