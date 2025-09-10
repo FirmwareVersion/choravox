@@ -145,4 +145,24 @@ def test_empty_phone_jsonl_retains_schema_header() -> None:
     assert artifacts.phones_from_jsonl(encoded) == ()
 
 
+def test_phone_jsonl_detects_changed_payload() -> None:
+    from choravox.annotations import PhoneAnnotation
+
+    encoded = artifacts.phones_to_jsonl((PhoneAnnotation("aa", "spk", "mava", 0.0, 0.1),))
+    with pytest.raises(ValueError, match="digest mismatch"):
+        artifacts.phones_from_jsonl(encoded.replace('"aa"', '"eh"'))
+
+
+def test_phone_jsonl_rejects_missing_and_unknown_headers() -> None:
+    with pytest.raises(ValueError, match="version header"):
+        artifacts.phones_from_jsonl("")
+    with pytest.raises(ValueError, match="unsupported"):
+        artifacts.phones_from_jsonl('{"schema":"choravox.phones","version":2}\n')
+
+
+def test_phone_jsonl_rejects_invalid_json() -> None:
+    with pytest.raises(ValueError, match="invalid JSON"):
+        artifacts.phones_from_jsonl("not-json\n")
+
+
 # -- extensions --
