@@ -127,4 +127,22 @@ def test_bundle_verifier_checks_size_before_digest() -> None:
         )
 
 
+def test_phone_jsonl_roundtrip_preserves_timestamps() -> None:
+    from choravox.annotations import PhoneAnnotation
+
+    phones = (
+        PhoneAnnotation("m", "speaker-00", "mava", 0.0, 0.1),
+        PhoneAnnotation("aa", "speaker-00", "mava", 0.1, 0.2),
+    )
+    encoded = artifacts.phones_to_jsonl(phones)
+    assert json.loads(encoded.splitlines()[0])["schema"] == "choravox.phones"
+    assert artifacts.phones_from_jsonl(encoded) == phones
+
+
+def test_empty_phone_jsonl_retains_schema_header() -> None:
+    encoded = artifacts.phones_to_jsonl(())
+    assert len(encoded.splitlines()) == 1
+    assert artifacts.phones_from_jsonl(encoded) == ()
+
+
 # -- extensions --

@@ -8,6 +8,9 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import PurePosixPath
 
+from choravox.annotations import PhoneAnnotation
+from choravox.hashing import canonical_json, content_hash
+
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 
 
@@ -127,6 +130,46 @@ def verify_bundle(bundle: ArtifactBundle) -> None:
     for (name, data), record in zip(bundle.files, bundle.manifest.artifacts, strict=True):
         if len(data) != record.size_bytes or bytes_digest(data) != record.sha256:
             raise ValueError(f"bundle artifact digest mismatch: {name}")
+
+
+def phones_to_jsonl(phones: tuple[PhoneAnnotation, ...]) -> str:
+    """Encode planted phone timestamps with a versioned integrity header."""
+    payload = [asdict(phone) for phone in phones]
+    header = {
+        "digest": content_hash(payload),
+        "schema": "choravox.phones",
+        "version": 1,
+    }
+    return (
+        b"\n".join((canonical_json(header), *(canonical_json(item) for item in payload))).decode(
+            "utf-8"
+        )
+        + "\n"
+    )
+
+
+def phones_from_jsonl(text: str) -> tuple[PhoneAnnotation, ...]:
+    """Decode planted phone timestamps and reject payload corruption."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("phone JSONL requires a version header")
+    try:
+        header = json.loads(lines[0])
+        payload = [json.loads(line) for line in lines[1:]]
+    except json.JSONDecodeError as error:
+        raise ValueError("phone JSONL contains invalid JSON") from error
+    if (
+        not isinstance(header, dict)
+        or header.get("schema") != "choravox.phones"
+        or header.get("version") != 1
+    ):
+        raise ValueError("unsupported phone schema or version")
+    if header.get("digest") != content_hash(payload):
+        raise ValueError("phone JSONL digest mismatch")
+    try:
+        return tuple(PhoneAnnotation(**item) for item in payload)
+    except (TypeError, ValueError) as error:
+        raise ValueError("phone JSONL payload is malformed") from error
 
 
 # -- extensions --
