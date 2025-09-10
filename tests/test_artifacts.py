@@ -81,4 +81,22 @@ def test_manifest_rejects_unknown_version_and_bad_config_hash() -> None:
         artifacts.MeetingManifest("rec", 0, "short", {}, ())
 
 
+def test_bundle_verifier_accepts_exact_declared_bytes() -> None:
+    files = (("a.txt", b"alpha"), ("b.bin", b"beta"))
+    records = tuple(
+        artifacts.artifact_record(name, "application/octet-stream", data) for name, data in files
+    )
+    manifest = artifacts.MeetingManifest("rec", 0, "c" * 64, {}, records)
+    artifacts.verify_bundle(artifacts.ArtifactBundle(files, manifest))
+
+
+def test_bundle_verifier_detects_one_byte_change() -> None:
+    record = artifacts.artifact_record("a.txt", "text/plain", b"alpha")
+    bundle = artifacts.ArtifactBundle(
+        (("a.txt", b"alphb"),), artifacts.MeetingManifest("rec", 0, "c" * 64, {}, (record,))
+    )
+    with pytest.raises(ValueError, match="digest mismatch"):
+        artifacts.verify_bundle(bundle)
+
+
 # -- extensions --

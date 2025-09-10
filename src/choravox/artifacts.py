@@ -110,4 +110,23 @@ def manifest_from_json(text: str) -> MeetingManifest:
         raise ValueError("meeting manifest payload is malformed") from error
 
 
+@dataclass(frozen=True, slots=True)
+class ArtifactBundle:
+    """In-memory named bytes paired with their content manifest."""
+
+    files: tuple[tuple[str, bytes], ...]
+    manifest: MeetingManifest
+
+
+def verify_bundle(bundle: ArtifactBundle) -> None:
+    """Reject missing, extra, reordered, resized, or modified artifact bytes."""
+    names = [name for name, _ in bundle.files]
+    expected = [record.path for record in bundle.manifest.artifacts]
+    if names != expected:
+        raise ValueError("bundle file order and names must match the manifest")
+    for (name, data), record in zip(bundle.files, bundle.manifest.artifacts, strict=True):
+        if len(data) != record.size_bytes or bytes_digest(data) != record.sha256:
+            raise ValueError(f"bundle artifact digest mismatch: {name}")
+
+
 # -- extensions --
