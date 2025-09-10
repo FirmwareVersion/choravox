@@ -99,4 +99,32 @@ def test_bundle_verifier_detects_one_byte_change() -> None:
         artifacts.verify_bundle(bundle)
 
 
+def test_bundle_verifier_rejects_missing_and_extra_files() -> None:
+    record = artifacts.artifact_record("a.txt", "text/plain", b"alpha")
+    manifest = artifacts.MeetingManifest("rec", 0, "d" * 64, {}, (record,))
+    with pytest.raises(ValueError, match="order and names"):
+        artifacts.verify_bundle(artifacts.ArtifactBundle((), manifest))
+    with pytest.raises(ValueError, match="order and names"):
+        artifacts.verify_bundle(
+            artifacts.ArtifactBundle((("a.txt", b"alpha"), ("b.txt", b"beta")), manifest)
+        )
+
+
+def test_bundle_verifier_rejects_reordered_files() -> None:
+    files = (("a.txt", b"a"), ("b.txt", b"b"))
+    records = tuple(artifacts.artifact_record(name, "text/plain", data) for name, data in files)
+    manifest = artifacts.MeetingManifest("rec", 0, "e" * 64, {}, records)
+    with pytest.raises(ValueError, match="order"):
+        artifacts.verify_bundle(artifacts.ArtifactBundle(tuple(reversed(files)), manifest))
+
+
+def test_bundle_verifier_checks_size_before_digest() -> None:
+    record = artifacts.artifact_record("a.txt", "text/plain", b"alpha")
+    manifest = artifacts.MeetingManifest("rec", 0, "f" * 64, {}, (record,))
+    with pytest.raises(ValueError, match="digest mismatch"):
+        artifacts.verify_bundle(
+            artifacts.ArtifactBundle((("a.txt", b"shorter-or-longer"),), manifest)
+        )
+
+
 # -- extensions --
