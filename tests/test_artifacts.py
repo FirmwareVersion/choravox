@@ -165,4 +165,31 @@ def test_phone_jsonl_rejects_invalid_json() -> None:
         artifacts.phones_from_jsonl("not-json\n")
 
 
+def test_meeting_bundle_contains_audio_and_all_truth_formats() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+
+    meeting = MeetingFactory(MeetingConfig(duration_s=0.8, seed=5), 4000).build()
+    bundle = artifacts.build_meeting_bundle(meeting, "demo", conditions={"synthetic": True})
+    assert [name for name, _ in bundle.files] == [
+        "meeting.wav",
+        "turns.rttm",
+        "words.stm",
+        "transcript.jsonl",
+        "phones.jsonl",
+    ]
+    assert bundle.manifest.conditions == {"synthetic": True}
+    artifacts.verify_bundle(bundle)
+
+
+def test_meeting_bundle_repeats_bytes_and_hashes() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+
+    meeting = MeetingFactory(MeetingConfig(duration_s=0.6, seed=8), 4000).build()
+    first = artifacts.build_meeting_bundle(meeting, "same")
+    second = artifacts.build_meeting_bundle(meeting, "same")
+    assert first == second
+
+
 # -- extensions --

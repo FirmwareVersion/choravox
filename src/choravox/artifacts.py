@@ -8,8 +8,19 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import PurePosixPath
 
-from choravox.annotations import PhoneAnnotation
+from choravox.annotations import (
+    PhoneAnnotation,
+    rttm_to_text,
+    script_to_rttm,
+    stm_to_text,
+    transcript_to_jsonl,
+    words_to_phones,
+    words_to_stm,
+    words_to_transcript,
+)
+from choravox.audio_io import wav_bytes
 from choravox.hashing import canonical_json, content_hash
+from choravox.meeting import SyntheticMeeting
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 
@@ -170,6 +181,52 @@ def phones_from_jsonl(text: str) -> tuple[PhoneAnnotation, ...]:
         return tuple(PhoneAnnotation(**item) for item in payload)
     except (TypeError, ValueError) as error:
         raise ValueError("phone JSONL payload is malformed") from error
+
+
+def build_meeting_bundle(
+    meeting: SyntheticMeeting,
+    recording_id: str,
+    *,
+    conditions: dict[str, object] | None = None,
+) -> ArtifactBundle:
+    """Assemble audio and every planted annotation into verified in-memory bytes."""
+    audio = wav_bytes(meeting.samples, meeting.sample_rate, encoding="float32")
+    rttm = rttm_to_text(script_to_rttm(meeting.script, recording_id)).encode("utf-8")
+    stm = stm_to_text(words_to_stm(meeting.words, recording_id)).encode("utf-8")
+    transcript = transcript_to_jsonl(words_to_transcript(meeting.words)).encode("utf-8")
+    phones = phones_to_jsonl(words_to_phones(meeting.words)).encode("utf-8")
+    files = (
+        ("meeting.wav", audio),
+        ("turns.rttm", rttm),
+        ("words.stm", stm),
+        ("transcript.jsonl", transcript),
+        ("phones.jsonl", phones),
+    )
+    media_types = (
+        "audio/wav",
+        "text/plain",
+        "text/plain",
+        "application/x-ndjson",
+        "application/x-ndjson",
+    )
+    records = tuple(
+        artifact_record(name, media_type, data)
+        for (name, data), media_type in zip(files, media_types, strict=True)
+    )
+    script_payload = {
+        "duration_s": meeting.script.duration_s,
+        "turns": [asdict(turn) for turn in meeting.script.turns],
+    }
+    manifest = MeetingManifest(
+        recording_id,
+        meeting.seed,
+        content_hash(script_payload),
+        {} if conditions is None else conditions,
+        records,
+    )
+    bundle = ArtifactBundle(files, manifest)
+    verify_bundle(bundle)
+    return bundle
 
 
 # -- extensions --
