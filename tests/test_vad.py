@@ -54,4 +54,25 @@ def test_adaptive_threshold_shifts_exactly_with_margin() -> None:
     assert high - low == 6.0
 
 
+def test_adaptive_threshold_rejects_empty_matrix_and_nan() -> None:
+    with pytest.raises(ValueError, match="nonempty finite vector"):
+        vad.adaptive_threshold_db([])
+    with pytest.raises(ValueError, match="nonempty finite vector"):
+        vad.adaptive_threshold_db([[1.0]])
+    with pytest.raises(ValueError, match="nonempty finite vector"):
+        vad.adaptive_threshold_db([float("nan")])
+
+
+def test_adaptive_threshold_rejects_quantile_and_margin_bounds() -> None:
+    with pytest.raises(ValueError, match="invalid"):
+        vad.adaptive_threshold_db([-20.0], noise_quantile=1.1)
+    with pytest.raises(ValueError, match="invalid"):
+        vad.adaptive_threshold_db([-20.0], margin_db=-0.1)
+
+
+def test_zero_margin_returns_selected_noise_quantile() -> None:
+    energies = np.array([-70.0, -60.0, -50.0, -40.0])
+    assert vad.adaptive_threshold_db(energies, noise_quantile=0.5, margin_db=0.0) == -55.0
+
+
 # -- extensions --
