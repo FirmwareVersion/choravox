@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from choravox.annotations import (
     PhoneAnnotation,
@@ -227,6 +227,22 @@ def build_meeting_bundle(
     bundle = ArtifactBundle(files, manifest)
     verify_bundle(bundle)
     return bundle
+
+
+def write_bundle(directory: str | Path, bundle: ArtifactBundle) -> tuple[Path, ...]:
+    """Write a verified bundle without overwriting any existing artifact."""
+    verify_bundle(bundle)
+    root = Path(directory)
+    targets = [root / name for name, _ in bundle.files]
+    manifest_path = root / "manifest.json"
+    if any(path.exists() for path in (*targets, manifest_path)):
+        raise FileExistsError("bundle destination already contains an artifact")
+    root.mkdir(parents=True, exist_ok=True)
+    for target, (_, data) in zip(targets, bundle.files, strict=True):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    manifest_path.write_text(manifest_to_json(bundle.manifest), encoding="utf-8")
+    return (*targets, manifest_path)
 
 
 # -- extensions --

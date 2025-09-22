@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -190,6 +191,34 @@ def test_meeting_bundle_repeats_bytes_and_hashes() -> None:
     first = artifacts.build_meeting_bundle(meeting, "same")
     second = artifacts.build_meeting_bundle(meeting, "same")
     assert first == second
+
+
+def test_bundle_writer_persists_verified_bytes_and_manifest(tmp_path: Path) -> None:
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+
+    meeting = MeetingFactory(MeetingConfig(duration_s=0.5, seed=2), 4000).build()
+    bundle = artifacts.build_meeting_bundle(meeting, "write-demo")
+    paths = artifacts.write_bundle(tmp_path / "bundle", bundle)
+    assert len(paths) == len(bundle.files) + 1
+    for (name, data), path in zip(bundle.files, paths, strict=False):
+        assert path.name == name
+        assert path.read_bytes() == data
+    decoded = artifacts.manifest_from_json(paths[-1].read_text(encoding="utf-8"))
+    assert decoded == bundle.manifest
+
+
+def test_bundle_writer_never_overwrites_existing_artifact(tmp_path: Path) -> None:
+    record = artifacts.artifact_record("a.txt", "text/plain", b"new")
+    bundle = artifacts.ArtifactBundle(
+        (("a.txt", b"new"),), artifacts.MeetingManifest("rec", 0, "a" * 64, {}, (record,))
+    )
+    target = tmp_path / "bundle"
+    target.mkdir()
+    (target / "a.txt").write_bytes(b"old")
+    with pytest.raises(FileExistsError, match="already contains"):
+        artifacts.write_bundle(target, bundle)
+    assert (target / "a.txt").read_bytes() == b"old"
 
 
 # -- extensions --
