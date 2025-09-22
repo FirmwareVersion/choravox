@@ -40,4 +40,18 @@ def test_frame_energy_rejects_invalid_timing_and_floor() -> None:
         vad.frame_energy_db(np.ones(10), 8000, floor_db=1.0)
 
 
+def test_adaptive_threshold_tracks_lower_energy_tail() -> None:
+    energies = np.array([-50.0, -48.0, -47.0, -20.0, -18.0])
+    threshold = vad.adaptive_threshold_db(energies, noise_quantile=0.2, margin_db=5.0)
+    assert threshold == pytest.approx(np.quantile(energies, 0.2) + 5.0, abs=1e-6)
+    assert energies[2] < threshold < energies[3]
+
+
+def test_adaptive_threshold_shifts_exactly_with_margin() -> None:
+    energies = np.array([-60.0, -55.0, -30.0, -20.0])
+    low = vad.adaptive_threshold_db(energies, margin_db=3.0)
+    high = vad.adaptive_threshold_db(energies, margin_db=9.0)
+    assert high - low == 6.0
+
+
 # -- extensions --

@@ -52,4 +52,17 @@ def frame_energy_db(
     return FrameEnergy(starts, starts + duration / 2.0, values, duration)
 
 
+def adaptive_threshold_db(
+    energy_db: ArrayLike, *, noise_quantile: float = 0.2, margin_db: float = 6.0
+) -> float:
+    """Estimate a speech threshold above a lower-tail noise floor."""
+    values = np.asarray(energy_db, dtype=np.float64)
+    if values.ndim != 1 or values.size == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("energy_db must be a nonempty finite vector")
+    if not 0.0 <= noise_quantile <= 1.0 or not math.isfinite(margin_db) or margin_db < 0.0:
+        raise ValueError("noise_quantile and margin_db are invalid")
+    noise_floor = float(np.quantile(values, noise_quantile))
+    return round(noise_floor + margin_db, 6)
+
+
 # -- extensions --
