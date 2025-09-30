@@ -65,4 +65,21 @@ def adaptive_threshold_db(
     return round(noise_floor + margin_db, 6)
 
 
+def energy_posterior(
+    energy_db: ArrayLike, threshold_db: float, *, temperature_db: float = 2.0
+) -> FloatArray:
+    """Map frame energy to calibrated logistic speech probabilities."""
+    values = np.asarray(energy_db, dtype=np.float64)
+    if values.ndim != 1 or not np.all(np.isfinite(values)):
+        raise ValueError("energy_db must be a finite vector")
+    if (
+        not math.isfinite(threshold_db)
+        or not math.isfinite(temperature_db)
+        or temperature_db <= 0.0
+    ):
+        raise ValueError("posterior threshold and temperature must be finite and valid")
+    logits = np.clip((values - threshold_db) / temperature_db, -60.0, 60.0)
+    return np.round(1.0 / (1.0 + np.exp(-logits)), 9)
+
+
 # -- extensions --

@@ -75,4 +75,18 @@ def test_zero_margin_returns_selected_noise_quantile() -> None:
     assert vad.adaptive_threshold_db(energies, noise_quantile=0.5, margin_db=0.0) == -55.0
 
 
+def test_energy_posterior_is_half_at_threshold_and_monotone() -> None:
+    posterior = vad.energy_posterior([-30.0, -20.0, -10.0], -20.0, temperature_db=2.0)
+    assert posterior[1] == 0.5
+    assert np.all(np.diff(posterior) > 0.0)
+    assert posterior[0] < 0.01 < posterior[2]
+
+
+def test_energy_posterior_temperature_controls_slope() -> None:
+    steep = vad.energy_posterior([-22.0, -18.0], -20.0, temperature_db=1.0)
+    gentle = vad.energy_posterior([-22.0, -18.0], -20.0, temperature_db=4.0)
+    assert steep[0] < gentle[0] < 0.5
+    assert steep[1] > gentle[1] > 0.5
+
+
 # -- extensions --
