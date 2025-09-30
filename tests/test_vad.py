@@ -122,4 +122,24 @@ def test_hysteresis_initial_state_changes_ambiguous_prefix() -> None:
     np.testing.assert_array_equal(speech, [True, True, False])
 
 
+def test_hysteresis_rejects_invalid_probabilities() -> None:
+    with pytest.raises(ValueError, match="probability vector"):
+        vad.hysteresis_decode([-0.1, 0.5])
+    with pytest.raises(ValueError, match="probability vector"):
+        vad.hysteresis_decode([float("nan")])
+    with pytest.raises(ValueError, match="probability vector"):
+        vad.hysteresis_decode([[0.5]])
+
+
+def test_hysteresis_rejects_reversed_thresholds() -> None:
+    with pytest.raises(ValueError, match="offset"):
+        vad.hysteresis_decode([0.5], onset=0.3, offset=0.7)
+
+
+def test_hysteresis_empty_input_is_empty_boolean_vector() -> None:
+    decoded = vad.hysteresis_decode([])
+    assert decoded.dtype == np.bool_
+    assert decoded.shape == (0,)
+
+
 # -- extensions --
