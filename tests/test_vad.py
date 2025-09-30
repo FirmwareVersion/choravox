@@ -108,4 +108,18 @@ def test_energy_posterior_rejects_bad_shape_and_temperature() -> None:
         vad.energy_posterior([1.0], 0.0, temperature_db=0.0)
 
 
+def test_hysteresis_holds_state_between_thresholds() -> None:
+    posterior = [0.1, 0.7, 0.5, 0.41, 0.39, 0.5, 0.61]
+    decoded = vad.hysteresis_decode(posterior, onset=0.6, offset=0.4)
+    np.testing.assert_array_equal(decoded, [False, True, True, True, False, False, True])
+
+
+def test_hysteresis_initial_state_changes_ambiguous_prefix() -> None:
+    posterior = [0.5, 0.5, 0.3]
+    silence = vad.hysteresis_decode(posterior)
+    speech = vad.hysteresis_decode(posterior, initial_speech=True)
+    np.testing.assert_array_equal(silence, [False, False, False])
+    np.testing.assert_array_equal(speech, [True, True, False])
+
+
 # -- extensions --

@@ -82,4 +82,32 @@ def energy_posterior(
     return np.round(1.0 / (1.0 + np.exp(-logits)), 9)
 
 
+def hysteresis_decode(
+    posterior: ArrayLike,
+    *,
+    onset: float = 0.6,
+    offset: float = 0.4,
+    initial_speech: bool = False,
+) -> BoolArray:
+    """Decode speech state with separate entry and exit thresholds."""
+    values = np.asarray(posterior, dtype=np.float64)
+    if (
+        values.ndim != 1
+        or not np.all(np.isfinite(values))
+        or np.any((values < 0.0) | (values > 1.0))
+    ):
+        raise ValueError("posterior must be a finite probability vector")
+    if not 0.0 <= offset <= onset <= 1.0:
+        raise ValueError("hysteresis requires 0 <= offset <= onset <= 1")
+    output = np.empty(values.size, dtype=np.bool_)
+    active = initial_speech
+    for index, value in enumerate(values):
+        if active and value < offset:
+            active = False
+        elif not active and value >= onset:
+            active = True
+        output[index] = active
+    return output
+
+
 # -- extensions --
