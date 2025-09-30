@@ -89,4 +89,23 @@ def test_energy_posterior_temperature_controls_slope() -> None:
     assert steep[1] > gentle[1] > 0.5
 
 
+def test_energy_posterior_stays_bounded_for_extreme_energy() -> None:
+    posterior = vad.energy_posterior([-1e9, 1e9], 0.0)
+    assert np.all(posterior >= 0.0)
+    assert np.all(posterior <= 1.0)
+    assert posterior[0] < 1e-20
+    assert posterior[1] == 1.0
+
+
+def test_energy_posterior_accepts_empty_vector() -> None:
+    assert vad.energy_posterior([], -20.0).shape == (0,)
+
+
+def test_energy_posterior_rejects_bad_shape_and_temperature() -> None:
+    with pytest.raises(ValueError, match="finite vector"):
+        vad.energy_posterior([[1.0]], 0.0)
+    with pytest.raises(ValueError, match="temperature"):
+        vad.energy_posterior([1.0], 0.0, temperature_db=0.0)
+
+
 # -- extensions --
