@@ -142,4 +142,16 @@ def test_hysteresis_empty_input_is_empty_boolean_vector() -> None:
     assert decoded.shape == (0,)
 
 
+def test_hangover_extends_each_speech_offset() -> None:
+    decisions = np.array([False, True, False, False, False, True, False, False])
+    extended = vad.apply_hangover(decisions, 2)
+    np.testing.assert_array_equal(extended, [False, True, True, True, False, True, True, True])
+
+
+def test_new_speech_resets_hangover_countdown() -> None:
+    decisions = np.array([True, False, True, False, False, False])
+    extended = vad.apply_hangover(decisions, 2)
+    np.testing.assert_array_equal(extended, [True, True, True, True, True, False])
+
+
 # -- extensions --

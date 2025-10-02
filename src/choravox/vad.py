@@ -110,4 +110,22 @@ def hysteresis_decode(
     return output
 
 
+def apply_hangover(decisions: ArrayLike, frames: int) -> BoolArray:
+    """Retain speech for a fixed number of frames after every positive decision."""
+    values = np.asarray(decisions)
+    if values.ndim != 1 or values.dtype.kind != "b":
+        raise ValueError("decisions must be a boolean vector")
+    if frames < 0:
+        raise ValueError("hangover frames must be nonnegative")
+    output = values.astype(np.bool_, copy=True)
+    remaining = 0
+    for index, value in enumerate(values):
+        if value:
+            remaining = frames
+        elif remaining > 0:
+            output[index] = True
+            remaining -= 1
+    return output
+
+
 # -- extensions --
