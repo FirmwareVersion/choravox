@@ -154,4 +154,22 @@ def test_new_speech_resets_hangover_countdown() -> None:
     np.testing.assert_array_equal(extended, [True, True, True, True, True, False])
 
 
+def test_zero_hangover_is_boolean_identity_copy() -> None:
+    decisions = np.array([True, False, True])
+    output = vad.apply_hangover(decisions, 0)
+    np.testing.assert_array_equal(output, decisions)
+    assert output is not decisions
+
+
+def test_hangover_stops_cleanly_at_sequence_end() -> None:
+    np.testing.assert_array_equal(vad.apply_hangover(np.array([False, True]), 10), [False, True])
+
+
+def test_hangover_rejects_nonboolean_or_negative_controls() -> None:
+    with pytest.raises(ValueError, match="boolean vector"):
+        vad.apply_hangover([0, 1], 2)
+    with pytest.raises(ValueError, match="nonnegative"):
+        vad.apply_hangover(np.array([True]), -1)
+
+
 # -- extensions --
