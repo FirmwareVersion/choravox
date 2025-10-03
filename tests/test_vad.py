@@ -187,4 +187,23 @@ def test_vad_result_retains_all_frame_outputs() -> None:
     assert result.posterior.shape == result.speech.shape == frames.dbfs.shape
 
 
+def test_vad_config_rejects_reversed_frame_timing() -> None:
+    with pytest.raises(ValueError, match="frame and hop"):
+        vad.VadConfig(frame_ms=10.0, hop_ms=20.0)
+
+
+def test_vad_config_rejects_probability_and_temperature_bounds() -> None:
+    with pytest.raises(ValueError, match="calibration"):
+        vad.VadConfig(noise_quantile=1.1)
+    with pytest.raises(ValueError, match="calibration"):
+        vad.VadConfig(temperature_db=0.0)
+    with pytest.raises(ValueError, match="thresholds"):
+        vad.VadConfig(onset=0.3, offset=0.7)
+
+
+def test_vad_config_rejects_negative_hangover() -> None:
+    with pytest.raises(ValueError, match="hangover"):
+        vad.VadConfig(hangover_frames=-1)
+
+
 # -- extensions --
