@@ -128,4 +128,53 @@ def apply_hangover(decisions: ArrayLike, frames: int) -> BoolArray:
     return output
 
 
+@dataclass(frozen=True, slots=True)
+class VadConfig:
+    """Validated controls for deterministic frame-energy VAD."""
+
+    sample_rate: int = 16_000
+    frame_ms: float = 25.0
+    hop_ms: float = 10.0
+    noise_quantile: float = 0.2
+    margin_db: float = 6.0
+    temperature_db: float = 2.0
+    onset: float = 0.6
+    offset: float = 0.4
+    hangover_frames: int = 3
+    hmm_smoothing: bool = True
+
+    def __post_init__(self) -> None:
+        values = (
+            self.frame_ms,
+            self.hop_ms,
+            self.noise_quantile,
+            self.margin_db,
+            self.temperature_db,
+            self.onset,
+            self.offset,
+        )
+        if self.sample_rate <= 0 or not all(math.isfinite(value) for value in values):
+            raise ValueError("VAD configuration values must be finite and sample_rate positive")
+        if self.frame_ms <= 0.0 or not 0.0 < self.hop_ms <= self.frame_ms:
+            raise ValueError("VAD frame and hop timing are invalid")
+        if (
+            not 0.0 <= self.noise_quantile <= 1.0
+            or self.margin_db < 0.0
+            or self.temperature_db <= 0.0
+        ):
+            raise ValueError("VAD noise and posterior calibration are invalid")
+        if not 0.0 <= self.offset <= self.onset <= 1.0 or self.hangover_frames < 0:
+            raise ValueError("VAD state thresholds and hangover are invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class VadResult:
+    """Energy, threshold, posterior, and final frame decisions."""
+
+    frames: FrameEnergy
+    threshold_db: float
+    posterior: FloatArray
+    speech: BoolArray
+
+
 # -- extensions --

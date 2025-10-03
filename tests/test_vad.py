@@ -172,4 +172,19 @@ def test_hangover_rejects_nonboolean_or_negative_controls() -> None:
         vad.apply_hangover(np.array([True]), -1)
 
 
+def test_vad_config_defaults_have_consistent_state_thresholds() -> None:
+    config = vad.VadConfig()
+    assert config.offset < config.onset
+    assert config.hop_ms <= config.frame_ms
+    assert config.hmm_smoothing is True
+
+
+def test_vad_result_retains_all_frame_outputs() -> None:
+    frames = vad.frame_energy_db(np.ones(400), 8000)
+    result = vad.VadResult(
+        frames, -20.0, np.full(frames.dbfs.size, 0.5), np.zeros(frames.dbfs.size, dtype=np.bool_)
+    )
+    assert result.posterior.shape == result.speech.shape == frames.dbfs.shape
+
+
 # -- extensions --
