@@ -223,4 +223,25 @@ def test_hmm_smoothing_strengthens_sustained_speech_block() -> None:
     assert smoothed[0] < smoothed[4]
 
 
+def test_hmm_posterior_accepts_empty_and_extreme_evidence() -> None:
+    assert vad.hmm_speech_posterior([]).shape == (0,)
+    smoothed = vad.hmm_speech_posterior([0.0, 0.0, 1.0, 1.0])
+    assert np.all(np.isfinite(smoothed))
+    assert smoothed[-1] > smoothed[0]
+
+
+def test_hmm_posterior_rejects_invalid_probability_vector() -> None:
+    with pytest.raises(ValueError, match="probability vector"):
+        vad.hmm_speech_posterior([1.1])
+    with pytest.raises(ValueError, match="probability vector"):
+        vad.hmm_speech_posterior([[0.5]])
+
+
+def test_hmm_posterior_rejects_degenerate_transitions() -> None:
+    with pytest.raises(ValueError, match="stay probabilities"):
+        vad.hmm_speech_posterior([0.5], silence_stay=1.0)
+    with pytest.raises(ValueError, match="stay probabilities"):
+        vad.hmm_speech_posterior([0.5], speech_stay=0.0)
+
+
 # -- extensions --
