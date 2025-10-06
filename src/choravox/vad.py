@@ -220,4 +220,27 @@ def hmm_speech_posterior(
     return np.round(smoothed[:, 1], 9)
 
 
+def hmm_viterbi(
+    posterior: ArrayLike, *, silence_stay: float = 0.95, speech_stay: float = 0.95
+) -> BoolArray:
+    """Decode the maximum-probability two-state sequence by Viterbi."""
+    emissions, transitions = _hmm_inputs(posterior, silence_stay, speech_stay)
+    if emissions.shape[0] == 0:
+        return np.empty(0, dtype=np.bool_)
+    log_emissions = np.log(emissions)
+    log_transitions = np.log(transitions)
+    scores = np.empty_like(emissions)
+    backpointers = np.zeros(emissions.shape, dtype=np.int64)
+    scores[0] = math.log(0.5) + log_emissions[0]
+    for index in range(1, emissions.shape[0]):
+        candidates = scores[index - 1][:, None] + log_transitions
+        backpointers[index] = np.argmax(candidates, axis=0)
+        scores[index] = np.max(candidates, axis=0) + log_emissions[index]
+    states = np.empty(emissions.shape[0], dtype=np.int64)
+    states[-1] = int(np.argmax(scores[-1]))
+    for index in range(states.size - 1, 0, -1):
+        states[index - 1] = backpointers[index, states[index]]
+    return states.astype(np.bool_)
+
+
 # -- extensions --

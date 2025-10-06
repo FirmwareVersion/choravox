@@ -244,4 +244,16 @@ def test_hmm_posterior_rejects_degenerate_transitions() -> None:
         vad.hmm_speech_posterior([0.5], speech_stay=0.0)
 
 
+def test_hmm_viterbi_prefers_persistent_speech_run() -> None:
+    posterior = [0.1, 0.2, 0.8, 0.9, 0.85, 0.2, 0.1]
+    states = vad.hmm_viterbi(posterior, silence_stay=0.9, speech_stay=0.9)
+    np.testing.assert_array_equal(states, [False, False, True, True, True, False, False])
+
+
+def test_hmm_viterbi_returns_boolean_state_vector() -> None:
+    states = vad.hmm_viterbi([0.2, 0.8])
+    assert states.dtype == np.bool_
+    assert states.shape == (2,)
+
+
 # -- extensions --
