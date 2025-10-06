@@ -177,4 +177,47 @@ class VadResult:
     speech: BoolArray
 
 
+def _hmm_inputs(
+    posterior: ArrayLike, silence_stay: float, speech_stay: float
+) -> tuple[FloatArray, FloatArray]:
+    values = np.asarray(posterior, dtype=np.float64)
+    if (
+        values.ndim != 1
+        or not np.all(np.isfinite(values))
+        or np.any((values < 0.0) | (values > 1.0))
+    ):
+        raise ValueError("posterior must be a finite probability vector")
+    if not 0.0 < silence_stay < 1.0 or not 0.0 < speech_stay < 1.0:
+        raise ValueError("HMM stay probabilities must lie in (0, 1)")
+    emissions = np.column_stack((1.0 - values, values))
+    emissions = np.clip(emissions, 1e-12, 1.0)
+    transitions = np.array(
+        [[silence_stay, 1.0 - silence_stay], [1.0 - speech_stay, speech_stay]],
+        dtype=np.float64,
+    )
+    return emissions, transitions
+
+
+def hmm_speech_posterior(
+    posterior: ArrayLike, *, silence_stay: float = 0.95, speech_stay: float = 0.95
+) -> FloatArray:
+    """Apply scaled forward-backward smoothing to frame speech evidence."""
+    emissions, transitions = _hmm_inputs(posterior, silence_stay, speech_stay)
+    if emissions.shape[0] == 0:
+        return np.empty(0, dtype=np.float64)
+    forward = np.empty_like(emissions)
+    forward[0] = np.array([0.5, 0.5]) * emissions[0]
+    forward[0] /= np.sum(forward[0])
+    for index in range(1, emissions.shape[0]):
+        forward[index] = (forward[index - 1] @ transitions) * emissions[index]
+        forward[index] /= np.sum(forward[index])
+    backward = np.ones_like(emissions)
+    for index in range(emissions.shape[0] - 2, -1, -1):
+        backward[index] = transitions @ (emissions[index + 1] * backward[index + 1])
+        backward[index] /= np.sum(backward[index])
+    smoothed = forward * backward
+    smoothed /= np.sum(smoothed, axis=1, keepdims=True)
+    return np.round(smoothed[:, 1], 9)
+
+
 # -- extensions --

@@ -206,4 +206,21 @@ def test_vad_config_rejects_negative_hangover() -> None:
         vad.VadConfig(hangover_frames=-1)
 
 
+def test_hmm_smoothing_suppresses_isolated_posterior_spike() -> None:
+    nine = 9
+    raw = np.full(nine, 0.05)
+    raw[nine // 2] = 0.8
+    smoothed = vad.hmm_speech_posterior(raw, silence_stay=0.98, speech_stay=0.9)
+    assert smoothed[nine // 2] < raw[nine // 2]
+    assert np.all(smoothed >= 0.0)
+    assert np.all(smoothed <= 1.0)
+
+
+def test_hmm_smoothing_strengthens_sustained_speech_block() -> None:
+    raw = np.array([0.1, 0.1, 0.8, 0.8, 0.8, 0.8, 0.8, 0.1, 0.1])
+    smoothed = vad.hmm_speech_posterior(raw, silence_stay=0.95, speech_stay=0.95)
+    assert smoothed[4] > raw[4]
+    assert smoothed[0] < smoothed[4]
+
+
 # -- extensions --
