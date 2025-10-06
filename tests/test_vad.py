@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import itertools
+
 import numpy as np
 import pytest
 
@@ -254,6 +256,37 @@ def test_hmm_viterbi_returns_boolean_state_vector() -> None:
     states = vad.hmm_viterbi([0.2, 0.8])
     assert states.dtype == np.bool_
     assert states.shape == (2,)
+
+
+def test_hmm_viterbi_matches_brute_force_path_probability() -> None:
+    posterior = np.array([0.2, 0.7, 0.8, 0.3])
+    silence_stay, speech_stay = 0.8, 0.75
+    decoded = tuple(
+        bool(value)
+        for value in vad.hmm_viterbi(posterior, silence_stay=silence_stay, speech_stay=speech_stay)
+    )
+
+    def probability(path: tuple[bool, ...]) -> float:
+        value = 0.5
+        for index, state in enumerate(path):
+            value *= posterior[index] if state else 1.0 - posterior[index]
+            if index:
+                previous = path[index - 1]
+                value *= (
+                    (speech_stay if state else 1.0 - speech_stay)
+                    if previous
+                    else ((1.0 - silence_stay) if state else silence_stay)
+                )
+        return value
+
+    paths = tuple(itertools.product((False, True), repeat=len(posterior)))
+    assert probability(decoded) == max(probability(path) for path in paths)
+
+
+def test_hmm_viterbi_handles_empty_input_and_invalid_transitions() -> None:
+    assert vad.hmm_viterbi([]).shape == (0,)
+    with pytest.raises(ValueError, match="stay probabilities"):
+        vad.hmm_viterbi([0.5], speech_stay=1.0)
 
 
 # -- extensions --
