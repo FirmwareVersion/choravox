@@ -349,4 +349,27 @@ def test_empty_or_silent_decisions_produce_no_segments() -> None:
     assert vad.decisions_to_segments(np.zeros(5, dtype=np.bool_), 0.01, 0.025) == ()
 
 
+def test_vad_decision_segment_roundtrip_is_exact() -> None:
+    decisions = np.array([False, True, True, False, False, True, True, True, False])
+    starts = np.arange(decisions.size) * 0.01
+    segments = vad.decisions_to_segments(decisions, 0.01, 0.025)
+    restored = vad.segments_to_decisions(segments, starts, 0.025)
+    np.testing.assert_array_equal(restored, decisions)
+
+
+def test_segment_conversion_keeps_custom_speaker_label() -> None:
+    segments = vad.decisions_to_segments(np.array([True, True]), 0.02, 0.03, speaker="detected")
+    assert len(segments) == 1
+    assert segments[0].speaker == "detected"
+
+
+def test_segment_conversion_rejects_invalid_vectors_and_timing() -> None:
+    with pytest.raises(ValueError, match="boolean vector"):
+        vad.decisions_to_segments([0, 1], 0.01, 0.02)
+    with pytest.raises(ValueError, match="timing"):
+        vad.decisions_to_segments(np.array([True]), 0.0, 0.02)
+    with pytest.raises(ValueError, match="frame starts"):
+        vad.segments_to_decisions((), [[0.0]], 0.02)
+
+
 # -- extensions --
