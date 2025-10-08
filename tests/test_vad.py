@@ -289,4 +289,25 @@ def test_hmm_viterbi_handles_empty_input_and_invalid_transitions() -> None:
         vad.hmm_viterbi([0.5], speech_stay=1.0)
 
 
+def test_integrated_vad_detects_clean_tone_between_silences() -> None:
+    sample_rate = 8000
+    signal = np.zeros(sample_rate)
+    times = np.arange(3200) / sample_rate
+    signal[2400:5600] = 0.3 * np.sin(2.0 * np.pi * 220.0 * times)
+    result = vad.detect_speech(
+        signal,
+        vad.VadConfig(sample_rate=sample_rate, margin_db=10.0, hangover_frames=2),
+    )
+    assert not result.speech[5]
+    assert result.speech[len(result.speech) // 2]
+    assert not result.speech[-1]
+    assert result.posterior.shape == result.speech.shape == result.frames.dbfs.shape
+
+
+def test_integrated_vad_empty_audio_returns_empty_result() -> None:
+    result = vad.detect_speech([], vad.VadConfig(sample_rate=8000))
+    assert result.threshold_db == -120.0
+    assert result.posterior.shape == result.speech.shape == (0,)
+
+
 # -- extensions --

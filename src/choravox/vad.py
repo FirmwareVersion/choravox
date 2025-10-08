@@ -243,4 +243,30 @@ def hmm_viterbi(
     return states.astype(np.bool_)
 
 
+def detect_speech(samples: ArrayLike, config: VadConfig | None = None) -> VadResult:
+    """Run energy measurement, adaptive calibration, HMM smoothing, and state rules."""
+    settings = VadConfig() if config is None else config
+    frames = frame_energy_db(
+        samples,
+        settings.sample_rate,
+        frame_ms=settings.frame_ms,
+        hop_ms=settings.hop_ms,
+    )
+    if frames.dbfs.size == 0:
+        empty_float = np.empty(0, dtype=np.float64)
+        empty_bool = np.empty(0, dtype=np.bool_)
+        return VadResult(frames, -120.0, empty_float, empty_bool)
+    threshold = adaptive_threshold_db(
+        frames.dbfs,
+        noise_quantile=settings.noise_quantile,
+        margin_db=settings.margin_db,
+    )
+    posterior = energy_posterior(frames.dbfs, threshold, temperature_db=settings.temperature_db)
+    if settings.hmm_smoothing:
+        posterior = hmm_speech_posterior(posterior)
+    speech = hysteresis_decode(posterior, onset=settings.onset, offset=settings.offset)
+    speech = apply_hangover(speech, settings.hangover_frames)
+    return VadResult(frames, threshold, posterior, speech)
+
+
 # -- extensions --
