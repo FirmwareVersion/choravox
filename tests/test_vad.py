@@ -310,4 +310,31 @@ def test_integrated_vad_empty_audio_returns_empty_result() -> None:
     assert result.posterior.shape == result.speech.shape == (0,)
 
 
+def test_disabling_hmm_returns_direct_energy_posterior() -> None:
+    signal = np.concatenate((np.zeros(400), np.ones(400) * 0.2, np.zeros(400)))
+    config = vad.VadConfig(sample_rate=8000, hmm_smoothing=False)
+    result = vad.detect_speech(signal, config)
+    expected = vad.energy_posterior(
+        result.frames.dbfs, result.threshold_db, temperature_db=config.temperature_db
+    )
+    np.testing.assert_array_equal(result.posterior, expected)
+
+
+def test_hmm_mode_reduces_posterior_frame_to_frame_variation() -> None:
+    generator = np.random.default_rng(4)
+    signal = generator.normal(0.0, 0.01, 4000)
+    signal[1500:2500] += generator.normal(0.0, 0.1, 1000)
+    raw = vad.detect_speech(signal, vad.VadConfig(sample_rate=8000, hmm_smoothing=False))
+    smooth = vad.detect_speech(signal, vad.VadConfig(sample_rate=8000, hmm_smoothing=True))
+    assert np.sum(np.abs(np.diff(smooth.posterior))) < np.sum(np.abs(np.diff(raw.posterior)))
+
+
+def test_integrated_vad_is_byte_deterministic() -> None:
+    signal = np.sin(np.arange(2000) / 7.0)
+    first = vad.detect_speech(signal, vad.VadConfig(sample_rate=8000))
+    second = vad.detect_speech(signal, vad.VadConfig(sample_rate=8000))
+    assert first.posterior.tobytes() == second.posterior.tobytes()
+    assert first.speech.tobytes() == second.speech.tobytes()
+
+
 # -- extensions --
