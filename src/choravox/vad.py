@@ -10,6 +10,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from choravox.audio import to_mono
 from choravox.features import frame_signal
+from choravox.types import Segment
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -267,6 +268,56 @@ def detect_speech(samples: ArrayLike, config: VadConfig | None = None) -> VadRes
     speech = hysteresis_decode(posterior, onset=settings.onset, offset=settings.offset)
     speech = apply_hangover(speech, settings.hangover_frames)
     return VadResult(frames, threshold, posterior, speech)
+
+
+def decisions_to_segments(
+    decisions: ArrayLike,
+    hop_s: float,
+    frame_duration_s: float,
+    *,
+    speaker: str = "speech",
+) -> tuple[Segment, ...]:
+    """Merge consecutive positive frame decisions into half-open segments."""
+    values = np.asarray(decisions)
+    if values.ndim != 1 or values.dtype.kind != "b":
+        raise ValueError("decisions must be a boolean vector")
+    if hop_s <= 0.0 or frame_duration_s <= 0.0 or not speaker:
+        raise ValueError("segment timing and speaker must be valid")
+    segments: list[Segment] = []
+    start_index: int | None = None
+    for index, active in enumerate(np.append(values, False)):
+        if active and start_index is None:
+            start_index = index
+        elif not active and start_index is not None:
+            segments.append(
+                Segment(
+                    round(start_index * hop_s, 9),
+                    round((index - 1) * hop_s + frame_duration_s, 9),
+                    speaker,
+                )
+            )
+            start_index = None
+    return tuple(segments)
+
+
+def segments_to_decisions(
+    segments: tuple[Segment, ...], frame_starts_s: ArrayLike, frame_duration_s: float
+) -> BoolArray:
+    """Mark frames fully contained by at least one same-clock speech segment."""
+    starts = np.asarray(frame_starts_s, dtype=np.float64)
+    if starts.ndim != 1 or not np.all(np.isfinite(starts)) or frame_duration_s <= 0.0:
+        raise ValueError("frame starts and duration must be valid")
+    ends = starts + frame_duration_s
+    return np.asarray(
+        [
+            any(
+                start >= segment.start - 1e-12 and end <= segment.end + 1e-12
+                for segment in segments
+            )
+            for start, end in zip(starts, ends, strict=True)
+        ],
+        dtype=np.bool_,
+    )
 
 
 # -- extensions --

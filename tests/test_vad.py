@@ -337,4 +337,16 @@ def test_integrated_vad_is_byte_deterministic() -> None:
     assert first.speech.tobytes() == second.speech.tobytes()
 
 
+def test_vad_decisions_merge_into_half_open_segments() -> None:
+    decisions = np.array([False, True, True, False, True])
+    segments = vad.decisions_to_segments(decisions, 0.01, 0.025)
+    assert [(segment.start, segment.end) for segment in segments] == [(0.01, 0.045), (0.04, 0.065)]
+    assert {segment.speaker for segment in segments} == {"speech"}
+
+
+def test_empty_or_silent_decisions_produce_no_segments() -> None:
+    assert vad.decisions_to_segments(np.array([], dtype=np.bool_), 0.01, 0.025) == ()
+    assert vad.decisions_to_segments(np.zeros(5, dtype=np.bool_), 0.01, 0.025) == ()
+
+
 # -- extensions --
