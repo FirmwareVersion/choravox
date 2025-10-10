@@ -87,4 +87,25 @@ def test_planted_activity_rejects_nonpositive_duration() -> None:
         vad_eval.planted_frame_activity(DialogueScript(1.0, ()), [0.0], 0.0)
 
 
+def test_evaluate_result_counts_known_decision_errors() -> None:
+    from choravox.dialogue import DialogueScript, DialogueTurn
+    from choravox.vad import FrameEnergy, VadResult
+
+    starts = np.array([0.0, 0.1, 0.2, 0.3])
+    frames = FrameEnergy(starts, starts + 0.05, np.zeros(4), 0.1)
+    result = VadResult(frames, -20.0, np.full(4, 0.5), np.array([False, False, True, True]))
+    script = DialogueScript(0.4, (DialogueTurn(0.1, 0.3, "spk", ("mava",)),))
+    assert vad_eval.evaluate_result(result, script) == vad_eval.VadCounts(1, 1, 2, 2)
+
+
+def test_evaluate_result_rejects_misaligned_decisions() -> None:
+    from choravox.dialogue import DialogueScript
+    from choravox.vad import FrameEnergy, VadResult
+
+    frames = FrameEnergy(np.array([0.0]), np.array([0.05]), np.array([0.0]), 0.1)
+    result = VadResult(frames, 0.0, np.array([]), np.array([], dtype=np.bool_))
+    with pytest.raises(ValueError, match="align"):
+        vad_eval.evaluate_result(result, DialogueScript(0.1, ()))
+
+
 # -- extensions --

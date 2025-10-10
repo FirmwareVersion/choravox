@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from choravox.dialogue import DialogueScript
+from choravox.vad import VadResult
 
 BoolArray = NDArray[np.bool_]
 
@@ -80,6 +81,16 @@ def planted_frame_activity(
         [any(turn.start_s <= center < turn.end_s for turn in script.turns) for center in centers],
         dtype=np.bool_,
     )
+
+
+def evaluate_result(result: VadResult, script: DialogueScript) -> VadCounts:
+    """Compare a VAD result to center-sampled planted speech activity."""
+    if result.speech.shape != result.frames.starts_s.shape:
+        raise ValueError("VAD result decisions and frame times must align")
+    reference = planted_frame_activity(
+        script, result.frames.starts_s, result.frames.frame_duration_s
+    )
+    return binary_counts(reference, result.speech)
 
 
 # -- extensions --
