@@ -64,4 +64,27 @@ def test_overlapping_turns_still_produce_binary_speech_truth() -> None:
     np.testing.assert_array_equal(activity, [True, True, False])
 
 
+def test_planted_activity_empty_script_is_all_silence() -> None:
+    from choravox.dialogue import DialogueScript
+
+    activity = vad_eval.planted_frame_activity(DialogueScript(1.0, ()), [0.0, 0.1], 0.025)
+    np.testing.assert_array_equal(activity, [False, False])
+
+
+def test_planted_activity_rejects_negative_or_matrix_starts() -> None:
+    from choravox.dialogue import DialogueScript
+
+    with pytest.raises(ValueError, match="nonnegative vector"):
+        vad_eval.planted_frame_activity(DialogueScript(1.0, ()), [-0.1], 0.02)
+    with pytest.raises(ValueError, match="nonnegative vector"):
+        vad_eval.planted_frame_activity(DialogueScript(1.0, ()), [[0.0]], 0.02)
+
+
+def test_planted_activity_rejects_nonpositive_duration() -> None:
+    from choravox.dialogue import DialogueScript
+
+    with pytest.raises(ValueError, match="positive"):
+        vad_eval.planted_frame_activity(DialogueScript(1.0, ()), [0.0], 0.0)
+
+
 # -- extensions --
