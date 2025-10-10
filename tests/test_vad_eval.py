@@ -44,4 +44,24 @@ def test_binary_counts_rejects_shape_and_dtype_mismatch() -> None:
         vad_eval.binary_counts([0, 1], np.array([False, True]))
 
 
+def test_planted_frame_activity_uses_frame_centers() -> None:
+    from choravox.dialogue import DialogueScript, DialogueTurn
+
+    script = DialogueScript(1.0, (DialogueTurn(0.2, 0.6, "spk", ("mava",)),))
+    starts = np.array([0.0, 0.15, 0.2, 0.55, 0.6])
+    activity = vad_eval.planted_frame_activity(script, starts, 0.1)
+    np.testing.assert_array_equal(activity, [False, True, True, False, False])
+
+
+def test_overlapping_turns_still_produce_binary_speech_truth() -> None:
+    from choravox.dialogue import DialogueScript, DialogueTurn
+
+    script = DialogueScript(
+        1.0,
+        (DialogueTurn(0.0, 0.7, "a", ("mava",)), DialogueTurn(0.3, 0.8, "b", ("sito",))),
+    )
+    activity = vad_eval.planted_frame_activity(script, [0.25, 0.45, 0.75], 0.1)
+    np.testing.assert_array_equal(activity, [True, True, False])
+
+
 # -- extensions --

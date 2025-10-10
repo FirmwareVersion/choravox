@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.dialogue import DialogueScript
+
 BoolArray = NDArray[np.bool_]
 
 
@@ -61,6 +63,22 @@ def binary_counts(reference: ArrayLike, hypothesis: ArrayLike) -> VadCounts:
         int(np.sum(~truth & predicted)),
         int(np.sum(truth)),
         int(np.sum(~truth)),
+    )
+
+
+def planted_frame_activity(
+    script: DialogueScript, frame_starts_s: ArrayLike, frame_duration_s: float
+) -> BoolArray:
+    """Label a frame active when its center lies inside any planted turn."""
+    starts = np.asarray(frame_starts_s, dtype=np.float64)
+    if starts.ndim != 1 or not np.all(np.isfinite(starts)) or np.any(starts < 0.0):
+        raise ValueError("frame_starts_s must be a finite nonnegative vector")
+    if not np.isfinite(frame_duration_s) or frame_duration_s <= 0.0:
+        raise ValueError("frame_duration_s must be finite and positive")
+    centers = starts + frame_duration_s / 2.0
+    return np.asarray(
+        [any(turn.start_s <= center < turn.end_s for turn in script.turns) for center in centers],
+        dtype=np.bool_,
     )
 
 
