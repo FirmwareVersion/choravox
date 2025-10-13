@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -133,6 +134,40 @@ def det_curve(
             DetPoint(round(float(threshold), 6), counts.miss_rate, counts.false_alarm_rate)
         )
     return tuple(points)
+
+
+@dataclass(frozen=True, slots=True)
+class SnrSlice:
+    """VAD counts for a half-open SNR interval."""
+
+    lower_db: float
+    upper_db: float
+    counts: VadCounts
+
+
+def slice_by_snr(
+    reference: ArrayLike,
+    hypothesis: ArrayLike,
+    snr_db: ArrayLike,
+    edges_db: tuple[float, ...],
+) -> tuple[SnrSlice, ...]:
+    """Aggregate frame errors into increasing half-open SNR bins."""
+    truth = _booleans(reference, "reference")
+    predicted = _booleans(hypothesis, "hypothesis")
+    levels = np.asarray(snr_db, dtype=np.float64)
+    if (
+        truth.shape != predicted.shape
+        or truth.shape != levels.shape
+        or not np.all(np.isfinite(levels))
+    ):
+        raise ValueError("reference, hypothesis, and SNR must be aligned finite vectors")
+    if len(edges_db) < 2 or any(right <= left for left, right in pairwise(edges_db)):
+        raise ValueError("SNR bin edges must be strictly increasing")
+    output = []
+    for lower, upper in pairwise(edges_db):
+        selected = (levels >= lower) & (levels < upper)
+        output.append(SnrSlice(lower, upper, binary_counts(truth[selected], predicted[selected])))
+    return tuple(output)
 
 
 # -- extensions --

@@ -177,4 +177,21 @@ def test_det_curve_empty_input_preserves_requested_thresholds() -> None:
     assert points == (vad_eval.DetPoint(0.25, 0.0, 0.0), vad_eval.DetPoint(0.75, 0.0, 0.0))
 
 
+def test_snr_slices_assign_frames_to_half_open_bins() -> None:
+    reference = np.array([True, True, False, False])
+    hypothesis = np.array([False, True, True, False])
+    slices = vad_eval.slice_by_snr(
+        reference, hypothesis, [-10.0, -0.1, 0.0, 9.9], (-10.0, 0.0, 10.0)
+    )
+    assert slices[0].counts == vad_eval.VadCounts(1, 0, 2, 0)
+    assert slices[1].counts == vad_eval.VadCounts(0, 1, 0, 2)
+    assert (slices[0].lower_db, slices[0].upper_db) == (-10.0, 0.0)
+
+
+def test_empty_snr_bin_has_zero_rates() -> None:
+    slices = vad_eval.slice_by_snr(np.array([True]), np.array([True]), [5.0], (-10.0, 0.0, 10.0))
+    assert slices[0].counts.error_rate == 0.0
+    assert slices[0].counts.reference_speech == 0
+
+
 # -- extensions --
