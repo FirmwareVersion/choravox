@@ -153,4 +153,28 @@ def test_default_det_curve_has_inclusive_probability_grid() -> None:
     assert points[-1].threshold == 1.0
 
 
+def test_det_miss_rises_and_false_alarm_falls_with_threshold() -> None:
+    posterior = np.linspace(0.0, 1.0, 20)
+    reference = posterior >= 0.55
+    points = vad_eval.det_curve(posterior, reference)
+    misses = np.array([point.miss_rate for point in points])
+    false_alarms = np.array([point.false_alarm_rate for point in points])
+    assert np.all(np.diff(misses) >= 0.0)
+    assert np.all(np.diff(false_alarms) <= 0.0)
+
+
+def test_det_curve_rejects_misaligned_or_out_of_range_values() -> None:
+    with pytest.raises(ValueError, match="aligned"):
+        vad_eval.det_curve([0.5], np.array([True, False]))
+    with pytest.raises(ValueError, match=r"\[0, 1\]"):
+        vad_eval.det_curve([1.1], np.array([True]))
+    with pytest.raises(ValueError, match="thresholds"):
+        vad_eval.det_curve([0.5], np.array([True]), thresholds=[-0.1])
+
+
+def test_det_curve_empty_input_preserves_requested_thresholds() -> None:
+    points = vad_eval.det_curve([], np.array([], dtype=np.bool_), thresholds=[0.25, 0.75])
+    assert points == (vad_eval.DetPoint(0.25, 0.0, 0.0), vad_eval.DetPoint(0.75, 0.0, 0.0))
+
+
 # -- extensions --
