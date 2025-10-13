@@ -108,4 +108,33 @@ def test_evaluate_result_rejects_misaligned_decisions() -> None:
         vad_eval.evaluate_result(result, DialogueScript(0.1, ()))
 
 
+def test_clean_synthetic_meeting_vad_beats_all_silence_baseline() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+    from choravox.vad import VadConfig, detect_speech
+
+    meeting = MeetingFactory(
+        MeetingConfig(duration_s=2.0, overlap_ratio=0.1, silence_ratio=0.3, seed=7), 8000
+    ).build()
+    result = detect_speech(meeting.samples, VadConfig(sample_rate=8000, margin_db=6.0))
+    counts = vad_eval.evaluate_result(result, meeting.script)
+    reference = vad_eval.planted_frame_activity(
+        meeting.script, result.frames.starts_s, result.frames.frame_duration_s
+    )
+    silent = vad_eval.binary_counts(reference, np.zeros(reference.size, dtype=np.bool_))
+    assert counts.error_rate < silent.error_rate
+
+
+def test_planted_evaluation_is_deterministic() -> None:
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+    from choravox.vad import VadConfig, detect_speech
+
+    meeting = MeetingFactory(MeetingConfig(duration_s=1.0, seed=2), 4000).build()
+    result = detect_speech(meeting.samples, VadConfig(sample_rate=4000))
+    assert vad_eval.evaluate_result(result, meeting.script) == vad_eval.evaluate_result(
+        result, meeting.script
+    )
+
+
 # -- extensions --
