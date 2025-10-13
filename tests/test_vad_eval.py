@@ -137,4 +137,20 @@ def test_planted_evaluation_is_deterministic() -> None:
     )
 
 
+def test_det_curve_matches_hand_computed_thresholds() -> None:
+    posterior = [0.1, 0.4, 0.6, 0.9]
+    reference = np.array([False, True, False, True])
+    points = vad_eval.det_curve(posterior, reference, thresholds=[0.0, 0.5, 1.0])
+    assert points[0] == vad_eval.DetPoint(0.0, 0.0, 1.0)
+    assert points[1] == vad_eval.DetPoint(0.5, 0.5, 0.5)
+    assert points[2] == vad_eval.DetPoint(1.0, 1.0, 0.0)
+
+
+def test_default_det_curve_has_inclusive_probability_grid() -> None:
+    points = vad_eval.det_curve([0.2, 0.8], np.array([False, True]))
+    assert len(points) == 101
+    assert points[0].threshold == 0.0
+    assert points[-1].threshold == 1.0
+
+
 # -- extensions --

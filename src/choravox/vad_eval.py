@@ -93,4 +93,46 @@ def evaluate_result(result: VadResult, script: DialogueScript) -> VadCounts:
     return binary_counts(reference, result.speech)
 
 
+@dataclass(frozen=True, slots=True)
+class DetPoint:
+    """Miss and false-alarm rates at one posterior threshold."""
+
+    threshold: float
+    miss_rate: float
+    false_alarm_rate: float
+
+
+def det_curve(
+    posterior: ArrayLike,
+    reference: ArrayLike,
+    *,
+    thresholds: ArrayLike | None = None,
+) -> tuple[DetPoint, ...]:
+    """Sweep posterior thresholds into a deterministic DET curve."""
+    scores = np.asarray(posterior, dtype=np.float64)
+    truth = _booleans(reference, "reference")
+    if scores.ndim != 1 or scores.shape != truth.shape or not np.all(np.isfinite(scores)):
+        raise ValueError("posterior and reference must be aligned finite vectors")
+    if np.any((scores < 0.0) | (scores > 1.0)):
+        raise ValueError("posterior values must lie in [0, 1]")
+    levels = (
+        np.linspace(0.0, 1.0, 101)
+        if thresholds is None
+        else np.asarray(thresholds, dtype=np.float64)
+    )
+    if (
+        levels.ndim != 1
+        or not np.all(np.isfinite(levels))
+        or np.any((levels < 0.0) | (levels > 1.0))
+    ):
+        raise ValueError("DET thresholds must be a finite vector in [0, 1]")
+    points = []
+    for threshold in levels:
+        counts = binary_counts(truth, scores >= threshold)
+        points.append(
+            DetPoint(round(float(threshold), 6), counts.miss_rate, counts.false_alarm_rate)
+        )
+    return tuple(points)
+
+
 # -- extensions --
