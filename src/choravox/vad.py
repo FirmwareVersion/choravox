@@ -320,4 +320,27 @@ def segments_to_decisions(
     )
 
 
+def statistical_features(
+    samples: ArrayLike,
+    sample_rate: int,
+    *,
+    frame_ms: float = 25.0,
+    hop_ms: float = 10.0,
+) -> FloatArray:
+    """Extract frame log-energy and zero-crossing rate for statistical VAD."""
+    energy = frame_energy_db(samples, sample_rate, frame_ms=frame_ms, hop_ms=hop_ms)
+    frame_length = round(sample_rate * frame_ms / 1000.0)
+    hop_length = round(sample_rate * hop_ms / 1000.0)
+    frames = frame_signal(to_mono(samples), frame_length, hop_length, end="pad")
+    if frames.shape[0] == 0:
+        return np.empty((0, 2), dtype=np.float64)
+    signs = frames >= 0.0
+    crossings = (
+        np.mean(signs[:, 1:] != signs[:, :-1], axis=1)
+        if frame_length > 1
+        else np.zeros(frames.shape[0])
+    )
+    return np.round(np.column_stack((energy.dbfs, crossings)), 6)
+
+
 # -- extensions --

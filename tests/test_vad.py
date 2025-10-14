@@ -372,4 +372,22 @@ def test_segment_conversion_rejects_invalid_vectors_and_timing() -> None:
         vad.segments_to_decisions((), [[0.0]], 0.02)
 
 
+def test_statistical_features_pair_energy_and_crossing_rate() -> None:
+    sample_rate = 8000
+    constant = np.ones(800)
+    alternating = np.tile([-1.0, 1.0], 400)
+    constant_features = vad.statistical_features(constant, sample_rate, frame_ms=20.0, hop_ms=20.0)
+    alternating_features = vad.statistical_features(
+        alternating, sample_rate, frame_ms=20.0, hop_ms=20.0
+    )
+    assert constant_features.shape == alternating_features.shape == (5, 2)
+    assert np.all(constant_features[:, 1] == 0.0)
+    assert np.all(alternating_features[:, 1] == 1.0)
+    np.testing.assert_allclose(constant_features[:, 0], alternating_features[:, 0])
+
+
+def test_statistical_features_empty_audio_has_two_columns() -> None:
+    assert vad.statistical_features([], 8000).shape == (0, 2)
+
+
 # -- extensions --
