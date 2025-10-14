@@ -409,4 +409,21 @@ def test_statistical_features_share_timing_validation() -> None:
         vad.statistical_features(np.ones(10), 8000, frame_ms=10.0, hop_ms=20.0)
 
 
+def test_gaussian_vad_fit_recovers_class_centers() -> None:
+    features = np.array([[-50.0, 0.1], [-48.0, 0.2], [-15.0, 0.5], [-13.0, 0.6]])
+    labels = np.array([False, False, True, True])
+    model = vad.fit_gaussian_vad(features, labels)
+    np.testing.assert_array_equal(model.silence_mean, [-49.0, 0.15])
+    np.testing.assert_array_equal(model.speech_mean, [-14.0, 0.55])
+    assert model.speech_prior == 0.5
+
+
+def test_gaussian_vad_fit_applies_variance_floor() -> None:
+    features = np.array([[-50.0, 0.1], [-50.0, 0.1], [-10.0, 0.5], [-10.0, 0.5]])
+    labels = np.array([False, False, True, True])
+    model = vad.fit_gaussian_vad(features, labels, variance_floor=0.01)
+    np.testing.assert_array_equal(model.silence_variance, [0.01, 0.01])
+    np.testing.assert_array_equal(model.speech_variance, [0.01, 0.01])
+
+
 # -- extensions --

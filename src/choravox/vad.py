@@ -343,4 +343,70 @@ def statistical_features(
     return np.round(np.column_stack((energy.dbfs, crossings)), 6)
 
 
+@dataclass(frozen=True, slots=True)
+class GaussianVadModel:
+    """Two-class diagonal Gaussian emissions estimated from planted frames."""
+
+    silence_mean: FloatArray
+    silence_variance: FloatArray
+    speech_mean: FloatArray
+    speech_variance: FloatArray
+    speech_prior: float
+
+    def __post_init__(self) -> None:
+        arrays = tuple(
+            np.asarray(value, dtype=np.float64)
+            for value in (
+                self.silence_mean,
+                self.silence_variance,
+                self.speech_mean,
+                self.speech_variance,
+            )
+        )
+        if any(array.ndim != 1 or array.size == 0 for array in arrays):
+            raise ValueError("Gaussian VAD parameters must be nonempty vectors")
+        if any(
+            array.shape != arrays[0].shape or not np.all(np.isfinite(array)) for array in arrays
+        ):
+            raise ValueError("Gaussian VAD parameter shapes and values must match")
+        if np.any(arrays[1] <= 0.0) or np.any(arrays[3] <= 0.0):
+            raise ValueError("Gaussian VAD variances must be positive")
+        if not 0.0 < self.speech_prior < 1.0:
+            raise ValueError("Gaussian VAD speech_prior must lie in (0, 1)")
+
+
+def fit_gaussian_vad(
+    features: ArrayLike,
+    speech: ArrayLike,
+    *,
+    variance_floor: float = 1e-4,
+) -> GaussianVadModel:
+    """Estimate two diagonal emissions from planted speech labels."""
+    values = np.asarray(features, dtype=np.float64)
+    labels = np.asarray(speech)
+    if values.ndim != 2 or values.shape[0] == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("training features must be a nonempty finite matrix")
+    if labels.shape != (values.shape[0],) or labels.dtype.kind != "b":
+        raise ValueError("training speech labels must align as booleans")
+    if not math.isfinite(variance_floor) or variance_floor <= 0.0:
+        raise ValueError("variance_floor must be finite and positive")
+    if not np.any(labels) or np.all(labels):
+        raise ValueError("training labels must contain speech and silence")
+
+    def statistics(selected: FloatArray) -> tuple[FloatArray, FloatArray]:
+        mean = np.mean(selected, axis=0)
+        variance = np.maximum(np.var(selected, axis=0), variance_floor)
+        return np.round(mean, 6), np.round(variance, 6)
+
+    silence_mean, silence_variance = statistics(values[~labels])
+    speech_mean, speech_variance = statistics(values[labels])
+    return GaussianVadModel(
+        silence_mean,
+        silence_variance,
+        speech_mean,
+        speech_variance,
+        round(float(np.mean(labels)), 6),
+    )
+
+
 # -- extensions --
