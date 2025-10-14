@@ -390,4 +390,23 @@ def test_statistical_features_empty_audio_has_two_columns() -> None:
     assert vad.statistical_features([], 8000).shape == (0, 2)
 
 
+def test_zero_crossing_feature_stays_in_unit_interval() -> None:
+    generator = np.random.default_rng(8)
+    features = vad.statistical_features(generator.normal(size=2000), 8000)
+    assert np.all(features[:, 1] >= 0.0)
+    assert np.all(features[:, 1] <= 1.0)
+
+
+def test_statistical_feature_energy_matches_energy_frontend() -> None:
+    signal = np.sin(np.arange(1000) / 9.0)
+    features = vad.statistical_features(signal, 8000, frame_ms=20.0, hop_ms=10.0)
+    energy = vad.frame_energy_db(signal, 8000, frame_ms=20.0, hop_ms=10.0)
+    np.testing.assert_array_equal(features[:, 0], energy.dbfs)
+
+
+def test_statistical_features_share_timing_validation() -> None:
+    with pytest.raises(ValueError, match="positive and ordered"):
+        vad.statistical_features(np.ones(10), 8000, frame_ms=10.0, hop_ms=20.0)
+
+
 # -- extensions --
