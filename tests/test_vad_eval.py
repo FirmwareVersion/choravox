@@ -194,4 +194,25 @@ def test_empty_snr_bin_has_zero_rates() -> None:
     assert slices[0].counts.reference_speech == 0
 
 
+def test_snr_slices_reject_unsorted_edges() -> None:
+    with pytest.raises(ValueError, match="strictly increasing"):
+        vad_eval.slice_by_snr(np.array([True]), np.array([True]), [0.0], (0.0, 0.0, 10.0))
+
+
+def test_snr_slices_reject_misaligned_frame_metadata() -> None:
+    with pytest.raises(ValueError, match="aligned"):
+        vad_eval.slice_by_snr(np.array([True]), np.array([True]), [0.0, 1.0], (-10.0, 10.0))
+
+
+def test_snr_slice_counts_sum_when_edges_cover_all_frames() -> None:
+    reference = np.array([True, False, True, False, True])
+    hypothesis = np.array([False, True, True, False, False])
+    levels = np.array([-15.0, -5.0, 0.0, 5.0, 15.0])
+    slices = vad_eval.slice_by_snr(reference, hypothesis, levels, (-20.0, -10.0, 10.0, 20.0))
+    overall = vad_eval.binary_counts(reference, hypothesis)
+    assert sum(item.counts.missed for item in slices) == overall.missed
+    assert sum(item.counts.false_alarm for item in slices) == overall.false_alarm
+    assert sum(item.counts.reference_speech for item in slices) == overall.reference_speech
+
+
 # -- extensions --
