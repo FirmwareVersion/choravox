@@ -508,4 +508,31 @@ def test_statistical_detector_preserves_frame_alignment() -> None:
     assert result.frames.dbfs.shape == result.posterior.shape == result.speech.shape == (0,)
 
 
+def test_statistical_detector_differs_when_crossing_rate_is_informative() -> None:
+    model = vad.GaussianVadModel(
+        np.array([-3.0, 0.0]),
+        np.array([4.0, 0.001]),
+        np.array([-3.0, 1.0]),
+        np.array([4.0, 0.001]),
+        0.5,
+    )
+    signal = np.tile([-1.0, 1.0], 800)
+    config = vad.VadConfig(sample_rate=8000, hmm_smoothing=False, hangover_frames=0)
+    statistical = vad.detect_statistical(signal, model, config)
+    energy = vad.detect_speech(signal, config)
+    assert np.all(statistical.speech)
+    assert not np.array_equal(statistical.posterior, energy.posterior)
+
+
+def test_statistical_detector_is_repeatable() -> None:
+    model = vad.GaussianVadModel(
+        np.array([-60.0, 0.1]), np.ones(2), np.array([-10.0, 0.5]), np.ones(2), 0.5
+    )
+    signal = np.sin(np.arange(1200) / 6.0)
+    first = vad.detect_statistical(signal, model, vad.VadConfig(sample_rate=8000))
+    second = vad.detect_statistical(signal, model, vad.VadConfig(sample_rate=8000))
+    assert first.posterior.tobytes() == second.posterior.tobytes()
+    assert first.speech.tobytes() == second.speech.tobytes()
+
+
 # -- extensions --
