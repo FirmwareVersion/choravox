@@ -426,4 +426,24 @@ def test_gaussian_vad_fit_applies_variance_floor() -> None:
     np.testing.assert_array_equal(model.speech_variance, [0.01, 0.01])
 
 
+def test_gaussian_vad_fit_requires_both_classes() -> None:
+    features = np.ones((3, 2))
+    with pytest.raises(ValueError, match="speech and silence"):
+        vad.fit_gaussian_vad(features, np.ones(3, dtype=np.bool_))
+
+
+def test_gaussian_vad_fit_rejects_misaligned_labels() -> None:
+    with pytest.raises(ValueError, match="align as booleans"):
+        vad.fit_gaussian_vad(np.ones((3, 2)), np.array([True, False]))
+    with pytest.raises(ValueError, match="align as booleans"):
+        vad.fit_gaussian_vad(np.ones((3, 2)), [0, 1, 0])
+
+
+def test_gaussian_model_rejects_shape_and_variance_errors() -> None:
+    with pytest.raises(ValueError, match="shapes"):
+        vad.GaussianVadModel(np.zeros(2), np.ones(1), np.ones(2), np.ones(2), 0.5)
+    with pytest.raises(ValueError, match="variances"):
+        vad.GaussianVadModel(np.zeros(2), np.zeros(2), np.ones(2), np.ones(2), 0.5)
+
+
 # -- extensions --
