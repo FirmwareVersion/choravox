@@ -485,4 +485,27 @@ def test_gaussian_posterior_is_byte_deterministic() -> None:
     assert first.tobytes() == second.tobytes()
 
 
+def test_statistical_detector_uses_fitted_synthetic_classes() -> None:
+    sample_rate = 8000
+    training = np.array([[-80.0, 0.05], [-70.0, 0.1], [-10.0, 0.4], [-8.0, 0.5]])
+    model = vad.fit_gaussian_vad(training, np.array([False, False, True, True]))
+    signal = np.concatenate((np.zeros(800), np.sin(np.arange(1600) / 4.0), np.zeros(800)))
+    result = vad.detect_statistical(
+        signal,
+        model,
+        vad.VadConfig(sample_rate=sample_rate, hmm_smoothing=False, hangover_frames=0),
+    )
+    assert not result.speech[2]
+    assert result.speech[len(result.speech) // 2]
+    assert not result.speech[-2]
+
+
+def test_statistical_detector_preserves_frame_alignment() -> None:
+    model = vad.GaussianVadModel(
+        np.array([-80.0, 0.0]), np.ones(2), np.array([0.0, 0.5]), np.ones(2), 0.5
+    )
+    result = vad.detect_statistical([], model, vad.VadConfig(sample_rate=8000))
+    assert result.frames.dbfs.shape == result.posterior.shape == result.speech.shape == (0,)
+
+
 # -- extensions --

@@ -432,4 +432,26 @@ def gaussian_speech_posterior(features: ArrayLike, model: GaussianVadModel) -> F
     return np.round(1.0 / (1.0 + np.exp(difference)), 9)
 
 
+def detect_statistical(
+    samples: ArrayLike,
+    model: GaussianVadModel,
+    config: VadConfig | None = None,
+) -> VadResult:
+    """Run planted-trained Gaussian emissions through shared HMM state mechanics."""
+    settings = VadConfig() if config is None else config
+    frames = frame_energy_db(
+        samples, settings.sample_rate, frame_ms=settings.frame_ms, hop_ms=settings.hop_ms
+    )
+    features = statistical_features(
+        samples, settings.sample_rate, frame_ms=settings.frame_ms, hop_ms=settings.hop_ms
+    )
+    posterior = gaussian_speech_posterior(features, model)
+    if settings.hmm_smoothing:
+        posterior = hmm_speech_posterior(posterior)
+    speech = hysteresis_decode(posterior, onset=settings.onset, offset=settings.offset)
+    speech = apply_hangover(speech, settings.hangover_frames)
+    threshold = float((model.silence_mean[0] + model.speech_mean[0]) / 2.0)
+    return VadResult(frames, round(threshold, 6), posterior, speech)
+
+
 # -- extensions --
