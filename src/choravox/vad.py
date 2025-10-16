@@ -409,4 +409,27 @@ def fit_gaussian_vad(
     )
 
 
+def gaussian_speech_posterior(features: ArrayLike, model: GaussianVadModel) -> FloatArray:
+    """Evaluate normalized two-class diagonal Gaussian posterior probabilities."""
+    values = np.asarray(features, dtype=np.float64)
+    if (
+        values.ndim != 2
+        or values.shape[1:] != model.speech_mean.shape
+        or not np.all(np.isfinite(values))
+    ):
+        raise ValueError("inference features must be a finite matrix matching the model")
+
+    def log_density(mean: FloatArray, variance: FloatArray) -> FloatArray:
+        return -0.5 * np.sum(
+            np.log(2.0 * np.pi * variance) + np.square(values - mean) / variance, axis=1
+        )
+
+    silence = log_density(model.silence_mean, model.silence_variance) + math.log(
+        1.0 - model.speech_prior
+    )
+    speech = log_density(model.speech_mean, model.speech_variance) + math.log(model.speech_prior)
+    difference = np.clip(silence - speech, -60.0, 60.0)
+    return np.round(1.0 / (1.0 + np.exp(difference)), 9)
+
+
 # -- extensions --

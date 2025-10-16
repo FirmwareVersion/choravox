@@ -446,4 +446,22 @@ def test_gaussian_model_rejects_shape_and_variance_errors() -> None:
         vad.GaussianVadModel(np.zeros(2), np.zeros(2), np.ones(2), np.ones(2), 0.5)
 
 
+def test_gaussian_posterior_separates_class_centers() -> None:
+    model = vad.GaussianVadModel(
+        np.array([-50.0, 0.1]),
+        np.array([4.0, 0.01]),
+        np.array([-15.0, 0.5]),
+        np.array([4.0, 0.01]),
+        0.5,
+    )
+    posterior = vad.gaussian_speech_posterior([[-50.0, 0.1], [-15.0, 0.5]], model)
+    assert posterior[0] < 1e-6
+    assert posterior[1] > 1.0 - 1e-6
+
+
+def test_gaussian_posterior_reflects_class_prior_at_equal_likelihood() -> None:
+    model = vad.GaussianVadModel(np.zeros(2), np.ones(2), np.zeros(2), np.ones(2), 0.7)
+    assert vad.gaussian_speech_posterior([[0.0, 0.0]], model)[0] == 0.7
+
+
 # -- extensions --
