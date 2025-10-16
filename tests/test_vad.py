@@ -464,4 +464,25 @@ def test_gaussian_posterior_reflects_class_prior_at_equal_likelihood() -> None:
     assert vad.gaussian_speech_posterior([[0.0, 0.0]], model)[0] == 0.7
 
 
+def test_gaussian_posterior_accepts_empty_matching_matrix() -> None:
+    model = vad.GaussianVadModel(np.zeros(2), np.ones(2), np.ones(2), np.ones(2), 0.5)
+    assert vad.gaussian_speech_posterior(np.empty((0, 2)), model).shape == (0,)
+
+
+def test_gaussian_posterior_rejects_wrong_width_and_nonfinite_values() -> None:
+    model = vad.GaussianVadModel(np.zeros(2), np.ones(2), np.ones(2), np.ones(2), 0.5)
+    with pytest.raises(ValueError, match="matching"):
+        vad.gaussian_speech_posterior(np.ones((3, 1)), model)
+    with pytest.raises(ValueError, match="finite matrix"):
+        vad.gaussian_speech_posterior([[0.0, float("nan")]], model)
+
+
+def test_gaussian_posterior_is_byte_deterministic() -> None:
+    model = vad.GaussianVadModel(np.zeros(2), np.ones(2), np.ones(2), np.ones(2), 0.5)
+    features = np.linspace(0.0, 1.0, 20).reshape(10, 2)
+    first = vad.gaussian_speech_posterior(features, model)
+    second = vad.gaussian_speech_posterior(features, model)
+    assert first.tobytes() == second.tobytes()
+
+
 # -- extensions --
