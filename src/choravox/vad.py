@@ -454,4 +454,38 @@ def detect_statistical(
     return VadResult(frames, round(threshold, 6), posterior, speech)
 
 
+def _runs(values: BoolArray) -> tuple[tuple[int, int, bool], ...]:
+    if values.size == 0:
+        return ()
+    boundaries = np.flatnonzero(values[1:] != values[:-1]) + 1
+    starts = np.concatenate(([0], boundaries))
+    ends = np.concatenate((boundaries, [values.size]))
+    return tuple(
+        (int(start), int(end), bool(values[start])) for start, end in zip(starts, ends, strict=True)
+    )
+
+
+def enforce_minimum_durations(
+    decisions: ArrayLike,
+    *,
+    min_speech_frames: int = 1,
+    min_silence_frames: int = 1,
+) -> BoolArray:
+    """Remove short speech islands, then fill short internal silence gaps."""
+    values = np.asarray(decisions)
+    if values.ndim != 1 or values.dtype.kind != "b":
+        raise ValueError("decisions must be a boolean vector")
+    if min_speech_frames < 1 or min_silence_frames < 1:
+        raise ValueError("minimum state durations must be positive")
+    output = values.astype(np.bool_, copy=True)
+    for start, end, active in _runs(output):
+        if active and end - start < min_speech_frames:
+            output[start:end] = False
+    for start, end, active in _runs(output):
+        internal = start > 0 and end < output.size
+        if not active and internal and end - start < min_silence_frames:
+            output[start:end] = True
+    return output
+
+
 # -- extensions --

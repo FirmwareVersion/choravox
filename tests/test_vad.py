@@ -535,4 +535,16 @@ def test_statistical_detector_is_repeatable() -> None:
     assert first.speech.tobytes() == second.speech.tobytes()
 
 
+def test_minimum_duration_removes_short_speech_islands() -> None:
+    decisions = np.array([False, True, False, True, True, True, False])
+    filtered = vad.enforce_minimum_durations(decisions, min_speech_frames=2)
+    np.testing.assert_array_equal(filtered, [False, False, False, True, True, True, False])
+
+
+def test_minimum_duration_fills_only_internal_silence_gaps() -> None:
+    decisions = np.array([False, True, True, False, True, True, False])
+    filtered = vad.enforce_minimum_durations(decisions, min_silence_frames=2)
+    np.testing.assert_array_equal(filtered, [False, True, True, True, True, True, False])
+
+
 # -- extensions --
