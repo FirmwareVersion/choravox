@@ -547,4 +547,22 @@ def test_minimum_duration_fills_only_internal_silence_gaps() -> None:
     np.testing.assert_array_equal(filtered, [False, True, True, True, True, True, False])
 
 
+def test_minimum_duration_identity_returns_copy() -> None:
+    decisions = np.array([False, True, False])
+    output = vad.enforce_minimum_durations(decisions)
+    np.testing.assert_array_equal(output, decisions)
+    assert output is not decisions
+
+
+def test_minimum_duration_handles_empty_sequence() -> None:
+    assert vad.enforce_minimum_durations(np.array([], dtype=np.bool_)).shape == (0,)
+
+
+def test_minimum_duration_rejects_dtype_and_nonpositive_controls() -> None:
+    with pytest.raises(ValueError, match="boolean vector"):
+        vad.enforce_minimum_durations([0, 1])
+    with pytest.raises(ValueError, match="positive"):
+        vad.enforce_minimum_durations(np.array([True]), min_speech_frames=0)
+
+
 # -- extensions --
