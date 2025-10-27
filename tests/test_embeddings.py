@@ -90,4 +90,22 @@ def test_gmm_initialization_repeats_by_seed() -> None:
     np.testing.assert_array_equal(first.variances, second.variances)
 
 
+def test_gmm_initialization_rejects_too_many_components() -> None:
+    with pytest.raises(ValueError, match="fit the observation"):
+        embeddings.initialize_gmm(np.ones((2, 3)), 3, seed=0)
+
+
+def test_gmm_initialization_rejects_empty_or_nonfinite_features() -> None:
+    with pytest.raises(ValueError, match="nonempty finite matrix"):
+        embeddings.initialize_gmm(np.empty((0, 2)), 1, seed=0)
+    with pytest.raises(ValueError, match="nonempty finite matrix"):
+        embeddings.initialize_gmm([[np.inf]], 1, seed=0)
+
+
+def test_gmm_initialization_floors_constant_dimensions() -> None:
+    features = np.column_stack((np.arange(6.0), np.ones(6)))
+    model = embeddings.initialize_gmm(features, 2, seed=1, variance_floor=0.02)
+    np.testing.assert_array_equal(model.variances[:, 1], 0.02)
+
+
 # -- extensions --
