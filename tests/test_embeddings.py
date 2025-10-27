@@ -55,4 +55,23 @@ def test_diagonal_gmm_accepts_normalized_positive_parameters() -> None:
     assert np.all(model.variances > 0.0)
 
 
+def test_gmm_rejects_weights_off_simplex() -> None:
+    with pytest.raises(ValueError, match="sum to one"):
+        embeddings.DiagonalGmm(np.array([0.2, 0.2]), np.zeros((2, 1)), np.ones((2, 1)))
+    with pytest.raises(ValueError, match="positive"):
+        embeddings.DiagonalGmm(np.array([1.0, 0.0]), np.zeros((2, 1)), np.ones((2, 1)))
+
+
+def test_gmm_rejects_variance_and_shape_errors() -> None:
+    with pytest.raises(ValueError, match="shapes"):
+        embeddings.DiagonalGmm(np.ones(1), np.zeros((2, 1)), np.ones((2, 1)))
+    with pytest.raises(ValueError, match="variances"):
+        embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 2)), np.zeros((1, 2)))
+
+
+def test_gmm_rejects_nonfinite_means() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        embeddings.DiagonalGmm(np.ones(1), np.array([[np.nan]]), np.ones((1, 1)))
+
+
 # -- extensions --

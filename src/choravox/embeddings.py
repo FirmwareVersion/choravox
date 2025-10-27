@@ -67,11 +67,10 @@ class DiagonalGmm:
             or weights.size == 0
             or means.ndim != 2
             or means.shape != variances.shape
+            or means.shape[0] != weights.size
         ):
             raise ValueError("GMM parameter shapes are invalid")
-        if means.shape[0] != weights.size or not all(
-            np.all(np.isfinite(value)) for value in (weights, means, variances)
-        ):
+        if not all(np.all(np.isfinite(value)) for value in (weights, means, variances)):
             raise ValueError("GMM parameters must be aligned and finite")
         if np.any(weights <= 0.0) or not np.isclose(np.sum(weights), 1.0, atol=1e-8):
             raise ValueError("GMM weights must be positive and sum to one")
