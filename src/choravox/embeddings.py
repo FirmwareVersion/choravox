@@ -50,4 +50,41 @@ def accumulate_statistics(features: ArrayLike, responsibilities: ArrayLike) -> S
     return SufficientStatistics(np.round(counts, 9), np.round(first, 9), np.round(second, 9))
 
 
+@dataclass(frozen=True, slots=True)
+class DiagonalGmm:
+    """A normalized finite mixture with diagonal component covariance."""
+
+    weights: FloatArray
+    means: FloatArray
+    variances: FloatArray
+
+    def __post_init__(self) -> None:
+        weights = np.asarray(self.weights, dtype=np.float64)
+        means = np.asarray(self.means, dtype=np.float64)
+        variances = np.asarray(self.variances, dtype=np.float64)
+        if (
+            weights.ndim != 1
+            or weights.size == 0
+            or means.ndim != 2
+            or means.shape != variances.shape
+        ):
+            raise ValueError("GMM parameter shapes are invalid")
+        if means.shape[0] != weights.size or not all(
+            np.all(np.isfinite(value)) for value in (weights, means, variances)
+        ):
+            raise ValueError("GMM parameters must be aligned and finite")
+        if np.any(weights <= 0.0) or not np.isclose(np.sum(weights), 1.0, atol=1e-8):
+            raise ValueError("GMM weights must be positive and sum to one")
+        if np.any(variances <= 0.0):
+            raise ValueError("GMM variances must be positive")
+
+    @property
+    def components(self) -> int:
+        return int(self.weights.size)
+
+    @property
+    def dimension(self) -> int:
+        return int(self.means.shape[1])
+
+
 # -- extensions --

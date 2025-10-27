@@ -41,4 +41,18 @@ def test_statistics_allow_fractional_occupancy() -> None:
     assert np.sum(stats.first_order) == 6.0
 
 
+def test_diagonal_gmm_exposes_component_geometry() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.25, 0.75]), np.zeros((2, 3)), np.ones((2, 3)))
+    assert model.components == 2
+    assert model.dimension == 3
+
+
+def test_diagonal_gmm_accepts_normalized_positive_parameters() -> None:
+    model = embeddings.DiagonalGmm(
+        np.array([0.4, 0.6]), np.array([[0.0], [1.0]]), np.array([[1.0], [2.0]])
+    )
+    assert np.sum(model.weights) == 1.0
+    assert np.all(model.variances > 0.0)
+
+
 # -- extensions --
