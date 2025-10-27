@@ -111,4 +111,33 @@ def initialize_gmm(
     return DiagonalGmm(np.round(weights, 12), np.round(means, 9), np.round(variances, 9))
 
 
+def gmm_log_probabilities(features: ArrayLike, model: DiagonalGmm) -> FloatArray:
+    """Evaluate weighted component log densities for every feature frame."""
+    values = np.asarray(features, dtype=np.float64)
+    if (
+        values.ndim != 2
+        or values.shape[1:] != (model.dimension,)
+        or not np.all(np.isfinite(values))
+    ):
+        raise ValueError("features must be a finite matrix matching the GMM")
+    differences = values[:, None, :] - model.means[None, :, :]
+    log_density = -0.5 * np.sum(
+        np.log(2.0 * np.pi * model.variances)[None, :, :]
+        + np.square(differences) / model.variances[None, :, :],
+        axis=2,
+    )
+    return np.asarray(log_density + np.log(model.weights)[None, :], dtype=np.float64)
+
+
+def gmm_responsibilities(features: ArrayLike, model: DiagonalGmm) -> FloatArray:
+    """Normalize component log densities with stable log-sum-exp."""
+    scores = gmm_log_probabilities(features, model)
+    if scores.shape[0] == 0:
+        return np.empty((0, model.components), dtype=np.float64)
+    maximum = np.max(scores, axis=1, keepdims=True)
+    probabilities = np.exp(scores - maximum)
+    probabilities /= np.sum(probabilities, axis=1, keepdims=True)
+    return np.round(probabilities, 12)
+
+
 # -- extensions --

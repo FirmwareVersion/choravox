@@ -108,4 +108,17 @@ def test_gmm_initialization_floors_constant_dimensions() -> None:
     np.testing.assert_array_equal(model.variances[:, 1], 0.02)
 
 
+def test_gmm_responsibilities_sum_to_one_per_frame() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.5, 0.5]), np.array([[-2.0], [2.0]]), np.ones((2, 1)))
+    responsibilities = embeddings.gmm_responsibilities([[-2.0], [0.0], [2.0]], model)
+    np.testing.assert_allclose(np.sum(responsibilities, axis=1), 1.0, atol=1e-12)
+    assert responsibilities[0, 0] > responsibilities[0, 1]
+    assert responsibilities[2, 1] > responsibilities[2, 0]
+
+
+def test_equal_components_split_responsibility_by_weight() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.25, 0.75]), np.zeros((2, 1)), np.ones((2, 1)))
+    np.testing.assert_allclose(embeddings.gmm_responsibilities([[0.0]], model)[0], model.weights)
+
+
 # -- extensions --
