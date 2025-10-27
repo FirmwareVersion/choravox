@@ -74,4 +74,20 @@ def test_gmm_rejects_nonfinite_means() -> None:
         embeddings.DiagonalGmm(np.ones(1), np.array([[np.nan]]), np.ones((1, 1)))
 
 
+def test_gmm_initialization_selects_observed_centroids() -> None:
+    features = np.arange(20.0).reshape(10, 2)
+    model = embeddings.initialize_gmm(features, 3, seed=7)
+    assert model.means.shape == (3, 2)
+    assert all(any(np.array_equal(mean, row) for row in features) for mean in model.means)
+    np.testing.assert_allclose(model.weights, 1.0 / 3.0, atol=1e-12)
+
+
+def test_gmm_initialization_repeats_by_seed() -> None:
+    features = np.arange(30.0).reshape(10, 3)
+    first = embeddings.initialize_gmm(features, 4, seed=8)
+    second = embeddings.initialize_gmm(features, 4, seed=8)
+    np.testing.assert_array_equal(first.means, second.means)
+    np.testing.assert_array_equal(first.variances, second.variances)
+
+
 # -- extensions --

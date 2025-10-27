@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.random import rng
+
 FloatArray = NDArray[np.float64]
 
 
@@ -84,6 +86,29 @@ class DiagonalGmm:
     @property
     def dimension(self) -> int:
         return int(self.means.shape[1])
+
+
+def initialize_gmm(
+    features: ArrayLike,
+    components: int,
+    *,
+    seed: int,
+    variance_floor: float = 1e-4,
+) -> DiagonalGmm:
+    """Choose seeded observations as initial means with shared global variance."""
+    values = np.asarray(features, dtype=np.float64)
+    if values.ndim != 2 or values.shape[0] == 0 or not np.all(np.isfinite(values)):
+        raise ValueError("GMM initialization features must be a nonempty finite matrix")
+    if components < 1 or components > values.shape[0]:
+        raise ValueError("component count must fit the observation count")
+    if variance_floor <= 0.0:
+        raise ValueError("variance_floor must be positive")
+    indices = rng(seed, "gmm-initialize").choice(values.shape[0], components, replace=False)
+    means = values[indices]
+    global_variance = np.maximum(np.var(values, axis=0), variance_floor)
+    variances = np.repeat(global_variance[None, :], components, axis=0)
+    weights = np.full(components, 1.0 / components)
+    return DiagonalGmm(np.round(weights, 12), np.round(means, 9), np.round(variances, 9))
 
 
 # -- extensions --
