@@ -139,4 +139,25 @@ def test_gmm_inference_rejects_wrong_feature_width() -> None:
         embeddings.gmm_responsibilities(np.ones((3, 1)), model)
 
 
+def test_gmm_estimation_matches_hand_computed_moments() -> None:
+    stats = embeddings.SufficientStatistics(
+        np.array([2.0, 1.0]),
+        np.array([[4.0], [5.0]]),
+        np.array([[10.0], [25.0]]),
+    )
+    model = embeddings.estimate_gmm(stats)
+    np.testing.assert_allclose(model.weights, [2.0 / 3.0, 1.0 / 3.0], atol=1e-12)
+    np.testing.assert_array_equal(model.means[:, 0], [2.0, 5.0])
+    np.testing.assert_allclose(model.variances[:, 0], [1.0, 1e-4])
+
+
+def test_gmm_estimation_requires_occupied_components_and_positive_floor() -> None:
+    empty = embeddings.SufficientStatistics(np.array([0.0]), np.zeros((1, 1)), np.zeros((1, 1)))
+    with pytest.raises(ValueError, match="positive occupancy"):
+        embeddings.estimate_gmm(empty)
+    occupied = embeddings.SufficientStatistics(np.ones(1), np.zeros((1, 1)), np.ones((1, 1)))
+    with pytest.raises(ValueError, match="finite and positive"):
+        embeddings.estimate_gmm(occupied, variance_floor=0.0)
+
+
 # -- extensions --

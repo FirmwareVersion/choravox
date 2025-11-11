@@ -140,4 +140,18 @@ def gmm_responsibilities(features: ArrayLike, model: DiagonalGmm) -> FloatArray:
     return np.round(probabilities, 12)
 
 
+def estimate_gmm(statistics: SufficientStatistics, *, variance_floor: float = 1e-4) -> DiagonalGmm:
+    """Estimate mixture parameters from sufficient statistics."""
+    if variance_floor <= 0.0 or not np.isfinite(variance_floor):
+        raise ValueError("variance_floor must be finite and positive")
+    if statistics.counts.size == 0 or np.any(statistics.counts <= 0.0):
+        raise ValueError("every GMM component must have positive occupancy")
+    total = float(np.sum(statistics.counts))
+    means = statistics.first_order / statistics.counts[:, None]
+    raw_variances = statistics.second_order / statistics.counts[:, None] - np.square(means)
+    variances = np.maximum(raw_variances, variance_floor)
+    weights = statistics.counts / total
+    return DiagonalGmm(np.round(weights, 12), np.round(means, 9), np.round(variances, 9))
+
+
 # -- extensions --
