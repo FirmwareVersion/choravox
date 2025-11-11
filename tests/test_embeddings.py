@@ -121,4 +121,22 @@ def test_equal_components_split_responsibility_by_weight() -> None:
     np.testing.assert_allclose(embeddings.gmm_responsibilities([[0.0]], model)[0], model.weights)
 
 
+def test_gmm_responsibilities_remain_finite_far_from_means() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.5, 0.5]), np.array([[-1e6], [1e6]]), np.ones((2, 1)))
+    responsibilities = embeddings.gmm_responsibilities([[0.0], [1e9]], model)
+    assert np.all(np.isfinite(responsibilities))
+    np.testing.assert_allclose(np.sum(responsibilities, axis=1), 1.0, atol=1e-12)
+
+
+def test_gmm_inference_accepts_empty_matching_matrix() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 2)), np.ones((1, 2)))
+    assert embeddings.gmm_responsibilities(np.empty((0, 2)), model).shape == (0, 1)
+
+
+def test_gmm_inference_rejects_wrong_feature_width() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 2)), np.ones((1, 2)))
+    with pytest.raises(ValueError, match="matching"):
+        embeddings.gmm_responsibilities(np.ones((3, 1)), model)
+
+
 # -- extensions --
