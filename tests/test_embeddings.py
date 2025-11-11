@@ -183,4 +183,25 @@ def test_variance_floor_only_changes_degenerate_dimensions() -> None:
     assert high.variances[0, 1] == 0.5
 
 
+def test_combined_statistics_equal_one_pass_accumulation() -> None:
+    features = np.arange(12.0).reshape(6, 2)
+    weights = np.tile([[0.25, 0.75]], (6, 1))
+    first = embeddings.accumulate_statistics(features[:2], weights[:2])
+    second = embeddings.accumulate_statistics(features[2:], weights[2:])
+    combined = embeddings.combine_statistics([first, second])
+    direct = embeddings.accumulate_statistics(features, weights)
+    np.testing.assert_array_equal(combined.counts, direct.counts)
+    np.testing.assert_array_equal(combined.first_order, direct.first_order)
+    np.testing.assert_array_equal(combined.second_order, direct.second_order)
+
+
+def test_combining_statistics_rejects_empty_and_incompatible_inputs() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        embeddings.combine_statistics([])
+    one = embeddings.accumulate_statistics(np.ones((1, 2)), np.ones((1, 1)))
+    two = embeddings.accumulate_statistics(np.ones((1, 3)), np.ones((1, 1)))
+    with pytest.raises(ValueError, match="share"):
+        embeddings.combine_statistics([one, two])
+
+
 # -- extensions --

@@ -154,4 +154,18 @@ def estimate_gmm(statistics: SufficientStatistics, *, variance_floor: float = 1e
     return DiagonalGmm(np.round(weights, 12), np.round(means, 9), np.round(variances, 9))
 
 
+def combine_statistics(items: list[SufficientStatistics]) -> SufficientStatistics:
+    """Combine utterance statistics without revisiting their feature frames."""
+    if not items:
+        raise ValueError("at least one statistics item is required")
+    shape = items[0].first_order.shape
+    if any(item.first_order.shape != shape for item in items):
+        raise ValueError("statistics items must share component and feature dimensions")
+    return SufficientStatistics(
+        np.round(np.sum([item.counts for item in items], axis=0), 9),
+        np.round(np.sum([item.first_order for item in items], axis=0), 9),
+        np.round(np.sum([item.second_order for item in items], axis=0), 9),
+    )
+
+
 # -- extensions --
