@@ -160,4 +160,27 @@ def test_gmm_estimation_requires_occupied_components_and_positive_floor() -> Non
         embeddings.estimate_gmm(occupied, variance_floor=0.0)
 
 
+def test_reestimated_gmm_reproduces_weighted_feature_moments() -> None:
+    features = np.array([[-2.0], [-1.0], [3.0], [4.0]])
+    assignments = np.array([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
+    model = embeddings.estimate_gmm(embeddings.accumulate_statistics(features, assignments))
+    reconstructed_mean = float(np.sum(model.weights * model.means[:, 0]))
+    reconstructed_second = float(
+        np.sum(model.weights * (model.variances[:, 0] + np.square(model.means[:, 0])))
+    )
+    assert reconstructed_mean == pytest.approx(float(np.mean(features)))
+    assert reconstructed_second == pytest.approx(float(np.mean(np.square(features))))
+
+
+def test_variance_floor_only_changes_degenerate_dimensions() -> None:
+    stats = embeddings.SufficientStatistics(
+        np.array([3.0]), np.array([[6.0, 9.0]]), np.array([[14.0, 27.0]])
+    )
+    low = embeddings.estimate_gmm(stats, variance_floor=1e-4)
+    high = embeddings.estimate_gmm(stats, variance_floor=0.5)
+    assert low.variances[0, 0] == high.variances[0, 0]
+    assert low.variances[0, 1] == 1e-4
+    assert high.variances[0, 1] == 0.5
+
+
 # -- extensions --
