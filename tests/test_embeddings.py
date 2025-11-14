@@ -234,4 +234,17 @@ def test_expectation_step_respects_asymmetric_prior_at_shared_mean() -> None:
     np.testing.assert_allclose(stats.counts, [0.4, 1.6], atol=1e-12)
 
 
+def test_average_likelihood_matches_standard_normal_density() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 1)), np.ones((1, 1)))
+    observed = embeddings.average_log_likelihood([[0.0], [1.0]], model)
+    expected = (-0.5 * np.log(2.0 * np.pi) + (-0.5 * np.log(2.0 * np.pi) - 0.5)) / 2.0
+    assert observed == pytest.approx(expected, abs=1e-9)
+
+
+def test_average_likelihood_rejects_empty_sequence() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 2)), np.ones((1, 2)))
+    with pytest.raises(ValueError, match="at least one"):
+        embeddings.average_log_likelihood(np.empty((0, 2)), model)
+
+
 # -- extensions --

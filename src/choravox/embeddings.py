@@ -174,4 +174,14 @@ def expectation_statistics(features: ArrayLike, model: DiagonalGmm) -> Sufficien
     return accumulate_statistics(values, gmm_responsibilities(values, model))
 
 
+def average_log_likelihood(features: ArrayLike, model: DiagonalGmm) -> float:
+    """Return mean log likelihood under a mixture using stable reduction."""
+    scores = gmm_log_probabilities(features, model)
+    if scores.shape[0] == 0:
+        raise ValueError("likelihood requires at least one feature frame")
+    maximum = np.max(scores, axis=1)
+    values = maximum + np.log(np.sum(np.exp(scores - maximum[:, None]), axis=1))
+    return round(float(np.mean(values)), 9)
+
+
 # -- extensions --
