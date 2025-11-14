@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 
@@ -257,6 +259,24 @@ def test_gmm_fit_separates_two_compact_feature_clouds() -> None:
 def test_gmm_fit_validates_iteration_count() -> None:
     with pytest.raises(ValueError, match="iterations"):
         embeddings.fit_gmm([[0.0]], 1, seed=0, iterations=0)
+
+
+def test_em_objective_is_monotone_with_numerical_tolerance() -> None:
+    generator = np.random.default_rng(4)
+    features = np.concatenate((generator.normal(-2.0, 0.4, 60), generator.normal(2.0, 0.7, 80)))[
+        :, None
+    ]
+    trace = embeddings.fit_gmm(features, 2, seed=3, iterations=10).likelihoods
+    assert all(right >= left - 1e-8 for left, right in pairwise(trace))
+
+
+def test_em_fit_repeats_bitwise_for_same_seed() -> None:
+    features = np.column_stack((np.linspace(-2.0, 2.0, 30), np.linspace(3.0, 5.0, 30)))
+    first = embeddings.fit_gmm(features, 3, seed=19, iterations=4)
+    second = embeddings.fit_gmm(features, 3, seed=19, iterations=4)
+    np.testing.assert_array_equal(first.model.means, second.model.means)
+    np.testing.assert_array_equal(first.model.variances, second.model.variances)
+    assert first.likelihoods == second.likelihoods
 
 
 # -- extensions --
