@@ -279,4 +279,22 @@ def test_em_fit_repeats_bitwise_for_same_seed() -> None:
     assert first.likelihoods == second.likelihoods
 
 
+def test_centered_statistics_are_zero_for_component_means() -> None:
+    model = embeddings.DiagonalGmm(
+        np.array([0.5, 0.5]), np.array([[-2.0, 1.0], [3.0, 4.0]]), np.ones((2, 2))
+    )
+    counts = np.array([2.0, 3.0])
+    stats = embeddings.SufficientStatistics(
+        counts, counts[:, None] * model.means, counts[:, None] * np.square(model.means)
+    )
+    np.testing.assert_array_equal(embeddings.centered_statistics(stats, model), np.zeros((2, 2)))
+
+
+def test_centered_statistics_reject_mismatched_ubm() -> None:
+    stats = embeddings.SufficientStatistics(np.ones(1), np.zeros((1, 2)), np.ones((1, 2)))
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 3)), np.ones((1, 3)))
+    with pytest.raises(ValueError, match="UBM geometry"):
+        embeddings.centered_statistics(stats, model)
+
+
 # -- extensions --

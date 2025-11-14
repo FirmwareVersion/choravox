@@ -213,4 +213,12 @@ def fit_gmm(
     return GmmFit(model, tuple(trace))
 
 
+def centered_statistics(statistics: SufficientStatistics, model: DiagonalGmm) -> FloatArray:
+    """Center first-order statistics relative to UBM component means."""
+    if statistics.first_order.shape != model.means.shape:
+        raise ValueError("statistics must match the UBM geometry")
+    centered = statistics.first_order - statistics.counts[:, None] * model.means
+    return np.round(centered, 9)
+
+
 # -- extensions --
