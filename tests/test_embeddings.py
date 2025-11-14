@@ -219,4 +219,19 @@ def test_expectation_statistics_support_empty_utterance() -> None:
     assert stats.first_order.shape == (1, 2)
 
 
+def test_expectation_step_approaches_hard_assignment_for_separated_components() -> None:
+    model = embeddings.DiagonalGmm(
+        np.array([0.5, 0.5]), np.array([[-10.0], [10.0]]), np.full((2, 1), 0.1)
+    )
+    stats = embeddings.expectation_statistics([[-10.1], [-9.9], [9.8]], model)
+    np.testing.assert_allclose(stats.counts, [2.0, 1.0], atol=1e-9)
+    np.testing.assert_allclose(stats.first_order[:, 0], [-20.0, 9.8], atol=1e-9)
+
+
+def test_expectation_step_respects_asymmetric_prior_at_shared_mean() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.2, 0.8]), np.zeros((2, 1)), np.ones((2, 1)))
+    stats = embeddings.expectation_statistics([[1.0], [2.0]], model)
+    np.testing.assert_allclose(stats.counts, [0.4, 1.6], atol=1e-12)
+
+
 # -- extensions --
