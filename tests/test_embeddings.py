@@ -204,4 +204,19 @@ def test_combining_statistics_rejects_empty_and_incompatible_inputs() -> None:
         embeddings.combine_statistics([one, two])
 
 
+def test_expectation_statistics_preserve_frame_occupancy() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.5, 0.5]), np.array([[-3.0], [3.0]]), np.ones((2, 1)))
+    stats = embeddings.expectation_statistics([[-3.0], [0.0], [3.0]], model)
+    assert np.sum(stats.counts) == pytest.approx(3.0)
+    assert stats.counts[0] == pytest.approx(stats.counts[1])
+    assert stats.first_order[0, 0] < 0.0 < stats.first_order[1, 0]
+
+
+def test_expectation_statistics_support_empty_utterance() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 2)), np.ones((1, 2)))
+    stats = embeddings.expectation_statistics(np.empty((0, 2)), model)
+    assert stats.counts.tolist() == [0.0]
+    assert stats.first_order.shape == (1, 2)
+
+
 # -- extensions --

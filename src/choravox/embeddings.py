@@ -168,4 +168,10 @@ def combine_statistics(items: list[SufficientStatistics]) -> SufficientStatistic
     )
 
 
+def expectation_statistics(features: ArrayLike, model: DiagonalGmm) -> SufficientStatistics:
+    """Run the GMM expectation step for a feature sequence."""
+    values = np.asarray(features, dtype=np.float64)
+    return accumulate_statistics(values, gmm_responsibilities(values, model))
+
+
 # -- extensions --
