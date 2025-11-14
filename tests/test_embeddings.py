@@ -247,4 +247,16 @@ def test_average_likelihood_rejects_empty_sequence() -> None:
         embeddings.average_log_likelihood(np.empty((0, 2)), model)
 
 
+def test_gmm_fit_separates_two_compact_feature_clouds() -> None:
+    features = np.concatenate((np.linspace(-4.2, -3.8, 20), np.linspace(3.8, 4.2, 20)))[:, None]
+    fitted = embeddings.fit_gmm(features, 2, seed=11, iterations=6)
+    np.testing.assert_allclose(np.sort(fitted.model.means[:, 0]), [-4.0, 4.0], atol=0.05)
+    assert len(fitted.likelihoods) == 6
+
+
+def test_gmm_fit_validates_iteration_count() -> None:
+    with pytest.raises(ValueError, match="iterations"):
+        embeddings.fit_gmm([[0.0]], 1, seed=0, iterations=0)
+
+
 # -- extensions --

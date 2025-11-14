@@ -184,4 +184,33 @@ def average_log_likelihood(features: ArrayLike, model: DiagonalGmm) -> float:
     return round(float(np.mean(values)), 9)
 
 
+@dataclass(frozen=True, slots=True)
+class GmmFit:
+    """A fitted mixture and its expectation-maximization objective trace."""
+
+    model: DiagonalGmm
+    likelihoods: tuple[float, ...]
+
+
+def fit_gmm(
+    features: ArrayLike,
+    components: int,
+    *,
+    seed: int,
+    iterations: int = 8,
+    variance_floor: float = 1e-4,
+) -> GmmFit:
+    """Fit a diagonal GMM with deterministic expectation-maximization."""
+    if iterations < 1:
+        raise ValueError("iterations must be positive")
+    values = np.asarray(features, dtype=np.float64)
+    model = initialize_gmm(values, components, seed=seed, variance_floor=variance_floor)
+    trace: list[float] = []
+    for _ in range(iterations):
+        statistics = expectation_statistics(values, model)
+        model = estimate_gmm(statistics, variance_floor=variance_floor)
+        trace.append(average_log_likelihood(values, model))
+    return GmmFit(model, tuple(trace))
+
+
 # -- extensions --
