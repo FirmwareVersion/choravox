@@ -297,4 +297,22 @@ def test_centered_statistics_reject_mismatched_ubm() -> None:
         embeddings.centered_statistics(stats, model)
 
 
+def test_statistics_supervector_whitens_and_flattens_components() -> None:
+    model = embeddings.DiagonalGmm(
+        np.array([0.5, 0.5]), np.zeros((2, 2)), np.array([[1.0, 4.0], [9.0, 16.0]])
+    )
+    stats = embeddings.SufficientStatistics(
+        np.array([4.0, 1.0]), np.array([[2.0, 4.0], [3.0, 4.0]]), np.ones((2, 2))
+    )
+    np.testing.assert_array_equal(embeddings.statistics_supervector(stats, model), [1, 1, 1, 1])
+
+
+def test_supervector_dimension_depends_only_on_ubm_geometry() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 3)), np.ones((1, 3)))
+    empty = embeddings.expectation_statistics(np.empty((0, 3)), model)
+    observed = embeddings.statistics_supervector(empty, model)
+    assert observed.shape == (3,)
+    np.testing.assert_array_equal(observed, 0.0)
+
+
 # -- extensions --

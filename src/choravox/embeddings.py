@@ -221,4 +221,11 @@ def centered_statistics(statistics: SufficientStatistics, model: DiagonalGmm) ->
     return np.round(centered, 9)
 
 
+def statistics_supervector(statistics: SufficientStatistics, model: DiagonalGmm) -> FloatArray:
+    """Whiten and flatten UBM-centered statistics into a fixed-size vector."""
+    centered = centered_statistics(statistics, model)
+    scale = np.sqrt(np.maximum(statistics.counts[:, None], 1.0) * model.variances)
+    return np.round((centered / scale).reshape(-1), 9)
+
+
 # -- extensions --
