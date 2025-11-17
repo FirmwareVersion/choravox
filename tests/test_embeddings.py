@@ -338,4 +338,19 @@ def test_embedding_extraction_rejects_empty_and_zero_vectors() -> None:
         embeddings.embed_features(np.empty((0, 1)), model)
 
 
+def test_embedding_is_invariant_to_repeating_the_same_feature_sequence() -> None:
+    model = embeddings.DiagonalGmm(np.array([0.5, 0.5]), np.array([[-1.0], [1.0]]), np.ones((2, 1)))
+    features = np.tile(np.array([[-2.0], [-1.5], [0.5]]), (10, 1))
+    once = embeddings.embed_features(features, model)
+    repeated = embeddings.embed_features(np.tile(features, (4, 1)), model)
+    np.testing.assert_allclose(once, repeated, atol=1e-11)
+
+
+def test_opposite_utterance_offsets_produce_opposite_directions() -> None:
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 2)), np.ones((1, 2)))
+    positive = embeddings.embed_features([[1.0, 2.0], [2.0, 1.0]], model)
+    negative = embeddings.embed_features([[-1.0, -2.0], [-2.0, -1.0]], model)
+    np.testing.assert_allclose(positive, -negative, atol=1e-12)
+
+
 # -- extensions --
