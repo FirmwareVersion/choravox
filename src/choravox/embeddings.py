@@ -228,4 +228,23 @@ def statistics_supervector(statistics: SufficientStatistics, model: DiagonalGmm)
     return np.round((centered / scale).reshape(-1), 9)
 
 
+def normalize_embedding(values: ArrayLike) -> FloatArray:
+    """Length-normalize one finite speaker embedding."""
+    vector = np.asarray(values, dtype=np.float64)
+    if vector.ndim != 1 or vector.size == 0 or not np.all(np.isfinite(vector)):
+        raise ValueError("embedding must be a nonempty finite vector")
+    norm = float(np.linalg.norm(vector))
+    if norm == 0.0:
+        raise ValueError("embedding norm must be positive")
+    return np.round(vector / norm, 12)
+
+
+def embed_features(features: ArrayLike, model: DiagonalGmm) -> FloatArray:
+    """Extract a length-normalized statistics embedding from one utterance."""
+    values = np.asarray(features, dtype=np.float64)
+    if values.ndim != 2 or values.shape[0] == 0:
+        raise ValueError("embedding extraction requires feature frames")
+    return normalize_embedding(statistics_supervector(expectation_statistics(values, model), model))
+
+
 # -- extensions --

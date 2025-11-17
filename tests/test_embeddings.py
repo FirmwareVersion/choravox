@@ -315,4 +315,27 @@ def test_supervector_dimension_depends_only_on_ubm_geometry() -> None:
     np.testing.assert_array_equal(observed, 0.0)
 
 
+def test_embedding_normalization_has_unit_length_and_preserves_direction() -> None:
+    observed = embeddings.normalize_embedding([3.0, 4.0])
+    np.testing.assert_allclose(observed, [0.6, 0.8], atol=1e-12)
+    assert np.linalg.norm(observed) == pytest.approx(1.0)
+
+
+def test_embedding_extraction_has_fixed_dimension_and_is_repeatable() -> None:
+    training = np.concatenate((np.linspace(-2.0, -1.0, 20), np.linspace(1.0, 2.0, 20)))[:, None]
+    model = embeddings.fit_gmm(training, 2, seed=2, iterations=4).model
+    first = embeddings.embed_features(training[:15], model)
+    second = embeddings.embed_features(training[:15], model)
+    assert first.shape == (2,)
+    np.testing.assert_array_equal(first, second)
+
+
+def test_embedding_extraction_rejects_empty_and_zero_vectors() -> None:
+    with pytest.raises(ValueError, match="norm"):
+        embeddings.normalize_embedding([0.0, 0.0])
+    model = embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 1)), np.ones((1, 1)))
+    with pytest.raises(ValueError, match="feature frames"):
+        embeddings.embed_features(np.empty((0, 1)), model)
+
+
 # -- extensions --
