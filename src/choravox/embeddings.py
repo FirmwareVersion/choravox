@@ -310,4 +310,54 @@ class PldaModel:
         return int(self.projection.shape[1])
 
 
+def _stable_eigen_signs(vectors: FloatArray) -> FloatArray:
+    result = vectors.copy()
+    for column in range(result.shape[1]):
+        pivot = int(np.argmax(np.abs(result[:, column])))
+        if result[pivot, column] < 0.0:
+            result[:, column] *= -1.0
+    return result
+
+
+def fit_plda(
+    values: ArrayLike,
+    labels: list[str] | tuple[str, ...],
+    *,
+    output_dimension: int | None = None,
+    regularization: float = 1e-3,
+) -> PldaModel:
+    """Estimate a regularized PLDA-like discriminant projection."""
+    matrix = np.asarray(values, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] != len(labels) or not np.all(np.isfinite(matrix)):
+        raise ValueError("embeddings and labels must form an aligned finite matrix")
+    speakers = tuple(dict.fromkeys(labels))
+    if matrix.shape[0] < 2 or len(speakers) < 2 or any(not label for label in labels):
+        raise ValueError("PLDA training requires at least two labeled speakers")
+    dimension = matrix.shape[1]
+    target = min(len(speakers) - 1, dimension) if output_dimension is None else output_dimension
+    if target < 1 or target > dimension:
+        raise ValueError("output_dimension must fit the embedding dimension")
+    if regularization <= 0.0 or not np.isfinite(regularization):
+        raise ValueError("regularization must be finite and positive")
+    mean = np.mean(matrix, axis=0)
+    within = np.zeros((dimension, dimension), dtype=np.float64)
+    between = np.zeros_like(within)
+    for speaker in speakers:
+        group = matrix[np.asarray(labels) == speaker]
+        group_mean = np.mean(group, axis=0)
+        residual = group - group_mean
+        within += residual.T @ residual
+        offset = group_mean - mean
+        between += group.shape[0] * np.outer(offset, offset)
+    within = within / matrix.shape[0] + regularization * np.eye(dimension)
+    between /= matrix.shape[0]
+    eigenvalues, eigenvectors = np.linalg.eigh(within)
+    whitening = eigenvectors @ np.diag(1.0 / np.sqrt(eigenvalues)) @ eigenvectors.T
+    discriminant = whitening.T @ between @ whitening
+    values_between, vectors_between = np.linalg.eigh(discriminant)
+    order = np.argsort(values_between)[::-1][:target]
+    projection = _stable_eigen_signs(whitening @ vectors_between[:, order])
+    return PldaModel(np.round(mean, 12), np.round(projection, 12))
+
+
 # -- extensions --

@@ -417,4 +417,25 @@ def test_plda_model_rejects_misaligned_or_nonfinite_parameters() -> None:
         embeddings.PldaModel(np.zeros(1), np.array([[np.inf]]))
 
 
+def test_plda_fit_selects_between_speaker_direction() -> None:
+    values = np.array([[-3.0, -0.1], [-2.8, 0.1], [2.9, -0.1], [3.1, 0.1]])
+    model = embeddings.fit_plda(values, ["a", "a", "b", "b"], output_dimension=1)
+    assert model.projection.shape == (2, 1)
+    projected = (values - model.mean) @ model.projection
+    between = abs(float(np.mean(projected[:2]) - np.mean(projected[2:])))
+    within = max(float(np.ptp(projected[:2])), float(np.ptp(projected[2:])))
+    assert between > 10.0 * within
+
+
+def test_plda_fit_validates_labels_dimension_and_regularization() -> None:
+    with pytest.raises(ValueError, match="aligned"):
+        embeddings.fit_plda(np.ones((2, 2)), ["a"])
+    with pytest.raises(ValueError, match="two labeled"):
+        embeddings.fit_plda(np.ones((2, 2)), ["a", "a"])
+    with pytest.raises(ValueError, match="output_dimension"):
+        embeddings.fit_plda(np.eye(2), ["a", "b"], output_dimension=3)
+    with pytest.raises(ValueError, match="regularization"):
+        embeddings.fit_plda(np.eye(2), ["a", "b"], regularization=0.0)
+
+
 # -- extensions --
