@@ -247,4 +247,28 @@ def embed_features(features: ArrayLike, model: DiagonalGmm) -> FloatArray:
     return normalize_embedding(statistics_supervector(expectation_statistics(values, model), model))
 
 
+def cosine_similarity(left: ArrayLike, right: ArrayLike) -> float:
+    """Score two speaker embeddings by their normalized dot product."""
+    first = normalize_embedding(left)
+    second = normalize_embedding(right)
+    if first.shape != second.shape:
+        raise ValueError("speaker embeddings must have matching dimensions")
+    return round(float(first @ second), 12)
+
+
+def pairwise_cosine(enrollment: ArrayLike, probes: ArrayLike) -> FloatArray:
+    """Build an enrollment-by-probe cosine score matrix."""
+    left = np.asarray(enrollment, dtype=np.float64)
+    right = np.asarray(probes, dtype=np.float64)
+    if left.ndim != 2 or right.ndim != 2 or left.shape[1:] != right.shape[1:]:
+        raise ValueError("embedding matrices must have matching dimensions")
+    if not np.all(np.isfinite(left)) or not np.all(np.isfinite(right)):
+        raise ValueError("embedding matrices must be finite")
+    left_norms = np.linalg.norm(left, axis=1, keepdims=True)
+    right_norms = np.linalg.norm(right, axis=1, keepdims=True)
+    if np.any(left_norms == 0.0) or np.any(right_norms == 0.0):
+        raise ValueError("embedding rows must have positive norm")
+    return np.round((left / left_norms) @ (right / right_norms).T, 12)
+
+
 # -- extensions --

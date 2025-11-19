@@ -353,4 +353,25 @@ def test_opposite_utterance_offsets_produce_opposite_directions() -> None:
     np.testing.assert_allclose(positive, -negative, atol=1e-12)
 
 
+def test_cosine_similarity_covers_identity_orthogonal_and_opposite_vectors() -> None:
+    assert embeddings.cosine_similarity([1.0, 0.0], [2.0, 0.0]) == 1.0
+    assert embeddings.cosine_similarity([1.0, 0.0], [0.0, 3.0]) == 0.0
+    assert embeddings.cosine_similarity([1.0, 0.0], [-1.0, 0.0]) == -1.0
+
+
+def test_pairwise_cosine_matches_scalar_scores_and_is_symmetric_on_one_set() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+    matrix = embeddings.pairwise_cosine(values, values)
+    np.testing.assert_array_equal(matrix, matrix.T)
+    np.testing.assert_array_equal(np.diag(matrix), 1.0)
+    assert matrix[0, 1] == embeddings.cosine_similarity(values[0], values[1])
+
+
+def test_cosine_scoring_rejects_dimension_and_zero_norm_errors() -> None:
+    with pytest.raises(ValueError, match="matching"):
+        embeddings.cosine_similarity([1.0], [1.0, 2.0])
+    with pytest.raises(ValueError, match="positive norm"):
+        embeddings.pairwise_cosine([[0.0, 0.0]], [[1.0, 0.0]])
+
+
 # -- extensions --
