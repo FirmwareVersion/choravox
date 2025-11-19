@@ -388,4 +388,20 @@ def test_cohort_centering_rejects_empty_or_nonfinite_matrix() -> None:
         embeddings.center_cohort([[np.nan]])
 
 
+def test_cosine_matrix_is_invariant_to_independent_positive_row_scaling() -> None:
+    left = np.array([[1.0, 2.0], [-3.0, 4.0]])
+    right = np.array([[5.0, -1.0], [2.0, 2.0]])
+    original = embeddings.pairwise_cosine(left, right)
+    scaled = embeddings.pairwise_cosine(left * [[2.0], [0.5]], right * [[3.0], [7.0]])
+    np.testing.assert_allclose(original, scaled, atol=1e-12)
+
+
+def test_pairwise_cosine_transpose_matches_reversed_arguments() -> None:
+    left = np.array([[1.0, 3.0], [2.0, -1.0]])
+    right = np.array([[0.5, 2.0], [-2.0, 4.0], [3.0, 3.0]])
+    np.testing.assert_array_equal(
+        embeddings.pairwise_cosine(left, right), embeddings.pairwise_cosine(right, left).T
+    )
+
+
 # -- extensions --
