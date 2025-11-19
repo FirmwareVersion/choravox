@@ -404,4 +404,17 @@ def test_pairwise_cosine_transpose_matches_reversed_arguments() -> None:
     )
 
 
+def test_plda_model_reports_input_and_output_geometry() -> None:
+    model = embeddings.PldaModel(np.zeros(3), np.ones((3, 2)))
+    assert model.input_dimension == 3
+    assert model.output_dimension == 2
+
+
+def test_plda_model_rejects_misaligned_or_nonfinite_parameters() -> None:
+    with pytest.raises(ValueError, match="shapes"):
+        embeddings.PldaModel(np.zeros(2), np.ones((3, 1)))
+    with pytest.raises(ValueError, match="finite"):
+        embeddings.PldaModel(np.zeros(1), np.array([[np.inf]]))
+
+
 # -- extensions --

@@ -280,4 +280,34 @@ def center_cohort(embeddings: ArrayLike) -> tuple[FloatArray, FloatArray]:
     return np.round(matrix - mean, 12), np.round(mean, 12)
 
 
+@dataclass(frozen=True, slots=True)
+class PldaModel:
+    """Synthetic-trained linear discriminant transform for speaker scoring."""
+
+    mean: FloatArray
+    projection: FloatArray
+
+    def __post_init__(self) -> None:
+        mean = np.asarray(self.mean, dtype=np.float64)
+        projection = np.asarray(self.projection, dtype=np.float64)
+        if (
+            mean.ndim != 1
+            or mean.size == 0
+            or projection.ndim != 2
+            or projection.shape[0] != mean.size
+            or projection.shape[1] == 0
+        ):
+            raise ValueError("PLDA parameter shapes are invalid")
+        if not np.all(np.isfinite(mean)) or not np.all(np.isfinite(projection)):
+            raise ValueError("PLDA parameters must be finite")
+
+    @property
+    def input_dimension(self) -> int:
+        return int(self.mean.size)
+
+    @property
+    def output_dimension(self) -> int:
+        return int(self.projection.shape[1])
+
+
 # -- extensions --
