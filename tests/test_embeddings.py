@@ -374,4 +374,18 @@ def test_cosine_scoring_rejects_dimension_and_zero_norm_errors() -> None:
         embeddings.pairwise_cosine([[0.0, 0.0]], [[1.0, 0.0]])
 
 
+def test_cohort_centering_returns_zero_mean_and_reusable_offset() -> None:
+    values = np.array([[1.0, 2.0], [3.0, 7.0], [5.0, 3.0]])
+    centered, mean = embeddings.center_cohort(values)
+    np.testing.assert_allclose(np.mean(centered, axis=0), 0.0, atol=1e-12)
+    np.testing.assert_array_equal(centered + mean, values)
+
+
+def test_cohort_centering_rejects_empty_or_nonfinite_matrix() -> None:
+    with pytest.raises(ValueError, match="nonempty finite"):
+        embeddings.center_cohort(np.empty((0, 2)))
+    with pytest.raises(ValueError, match="nonempty finite"):
+        embeddings.center_cohort([[np.nan]])
+
+
 # -- extensions --

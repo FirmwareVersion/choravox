@@ -271,4 +271,13 @@ def pairwise_cosine(enrollment: ArrayLike, probes: ArrayLike) -> FloatArray:
     return np.round((left / left_norms) @ (right / right_norms).T, 12)
 
 
+def center_cohort(embeddings: ArrayLike) -> tuple[FloatArray, FloatArray]:
+    """Center an embedding cohort and return its reusable mean vector."""
+    matrix = np.asarray(embeddings, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or not np.all(np.isfinite(matrix)):
+        raise ValueError("cohort must be a nonempty finite matrix")
+    mean = np.mean(matrix, axis=0)
+    return np.round(matrix - mean, 12), np.round(mean, 12)
+
+
 # -- extensions --
