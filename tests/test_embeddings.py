@@ -438,4 +438,21 @@ def test_plda_fit_validates_labels_dimension_and_regularization() -> None:
         embeddings.fit_plda(np.eye(2), ["a", "b"], regularization=0.0)
 
 
+def test_plda_fit_is_repeatable_and_has_stable_eigenvector_sign() -> None:
+    values = np.array([[-2.0, 0.0], [-1.8, 0.1], [2.0, 0.0], [1.8, -0.1]])
+    labels = ["left", "left", "right", "right"]
+    first = embeddings.fit_plda(values, labels)
+    second = embeddings.fit_plda(values, labels)
+    np.testing.assert_array_equal(first.mean, second.mean)
+    np.testing.assert_array_equal(first.projection, second.projection)
+    pivot = int(np.argmax(np.abs(first.projection[:, 0])))
+    assert first.projection[pivot, 0] > 0.0
+
+
+def test_plda_default_rank_is_bounded_by_speakers_minus_one() -> None:
+    values = np.array([[-2.0, 0.0, 1.0], [-1.0, 0.1, 1.1], [2.0, 0.0, 0.9], [1.0, -0.1, 1.0]])
+    model = embeddings.fit_plda(values, ["a", "a", "b", "b"])
+    assert model.output_dimension == 1
+
+
 # -- extensions --
