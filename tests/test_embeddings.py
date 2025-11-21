@@ -488,4 +488,18 @@ def test_plda_scores_separate_training_speakers_on_clean_vectors() -> None:
     assert scores[2, 3] > scores[2, 0]
 
 
+def test_plda_score_matrix_is_bounded_and_self_scores_are_exact() -> None:
+    model = embeddings.PldaModel(np.zeros(3), np.eye(3))
+    values = np.array([[1.0, 2.0, 3.0], [-2.0, 0.5, 1.0]])
+    scores = embeddings.plda_scores(values, values, model)
+    assert np.all(scores >= -1.0) and np.all(scores <= 1.0)
+    np.testing.assert_allclose(np.diag(scores), 1.0, atol=1e-12)
+
+
+def test_plda_scoring_requires_matrix_arguments() -> None:
+    model = embeddings.PldaModel(np.zeros(2), np.eye(2))
+    with pytest.raises(ValueError, match="matrices"):
+        embeddings.plda_scores([1.0, 0.0], [[1.0, 0.0]], model)
+
+
 # -- extensions --
