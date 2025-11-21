@@ -360,4 +360,20 @@ def fit_plda(
     return PldaModel(np.round(mean, 12), np.round(projection, 12))
 
 
+def project_plda(values: ArrayLike, model: PldaModel, *, normalize: bool = True) -> FloatArray:
+    """Project one embedding or a matrix into PLDA score space."""
+    matrix = np.asarray(values, dtype=np.float64)
+    if matrix.ndim not in {1, 2} or matrix.shape[-1] != model.input_dimension:
+        raise ValueError("embeddings must match the PLDA input dimension")
+    if not np.all(np.isfinite(matrix)):
+        raise ValueError("embeddings must be finite")
+    projected = (matrix - model.mean) @ model.projection
+    if normalize:
+        norms = np.linalg.norm(projected, axis=-1, keepdims=True)
+        if np.any(norms == 0.0):
+            raise ValueError("centered PLDA embeddings must have positive norm")
+        projected = projected / norms
+    return np.round(np.asarray(projected, dtype=np.float64), 12)
+
+
 # -- extensions --

@@ -455,4 +455,20 @@ def test_plda_default_rank_is_bounded_by_speakers_minus_one() -> None:
     assert model.output_dimension == 1
 
 
+def test_plda_projection_centers_transforms_and_normalizes_rows() -> None:
+    model = embeddings.PldaModel(np.array([1.0, 2.0]), np.array([[2.0], [0.0]]))
+    projected = embeddings.project_plda([[3.0, 5.0], [-1.0, 4.0]], model)
+    np.testing.assert_array_equal(projected[:, 0], [1.0, -1.0])
+    raw = embeddings.project_plda([3.0, 5.0], model, normalize=False)
+    np.testing.assert_array_equal(raw, [4.0])
+
+
+def test_plda_projection_rejects_wrong_width_and_zero_centered_vector() -> None:
+    model = embeddings.PldaModel(np.zeros(2), np.eye(2))
+    with pytest.raises(ValueError, match="input dimension"):
+        embeddings.project_plda([1.0], model)
+    with pytest.raises(ValueError, match="positive norm"):
+        embeddings.project_plda([0.0, 0.0], model)
+
+
 # -- extensions --
