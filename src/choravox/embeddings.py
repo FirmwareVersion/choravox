@@ -376,4 +376,13 @@ def project_plda(values: ArrayLike, model: PldaModel, *, normalize: bool = True)
     return np.round(np.asarray(projected, dtype=np.float64), 12)
 
 
+def plda_scores(enrollment: ArrayLike, probes: ArrayLike, model: PldaModel) -> FloatArray:
+    """Score enrollment and probe matrices after a learned projection."""
+    left = project_plda(enrollment, model)
+    right = project_plda(probes, model)
+    if left.ndim != 2 or right.ndim != 2:
+        raise ValueError("PLDA scoring requires embedding matrices")
+    return np.round(left @ right.T, 12)
+
+
 # -- extensions --

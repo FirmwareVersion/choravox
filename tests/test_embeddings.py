@@ -471,4 +471,21 @@ def test_plda_projection_rejects_wrong_width_and_zero_centered_vector() -> None:
         embeddings.project_plda([0.0, 0.0], model)
 
 
+def test_plda_scores_match_cosine_in_projected_space() -> None:
+    model = embeddings.PldaModel(np.zeros(2), np.eye(2))
+    values = np.array([[1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+    observed = embeddings.plda_scores(values, values, model)
+    expected = embeddings.pairwise_cosine(values, values)
+    np.testing.assert_allclose(observed, expected, atol=1e-12)
+
+
+def test_plda_scores_separate_training_speakers_on_clean_vectors() -> None:
+    values = np.array([[-3.0, 0.0], [-2.8, 0.1], [2.8, -0.1], [3.0, 0.0]])
+    labels = ["a", "a", "b", "b"]
+    model = embeddings.fit_plda(values, labels)
+    scores = embeddings.plda_scores(values, values, model)
+    assert scores[0, 1] > scores[0, 2]
+    assert scores[2, 3] > scores[2, 0]
+
+
 # -- extensions --
