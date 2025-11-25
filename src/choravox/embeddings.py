@@ -392,6 +392,18 @@ class ScoreDistributions:
     genuine: FloatArray
     impostor: FloatArray
 
+    @property
+    def genuine_mean(self) -> float:
+        return round(float(np.mean(self.genuine)), 12)
+
+    @property
+    def impostor_mean(self) -> float:
+        return round(float(np.mean(self.impostor)), 12)
+
+    @property
+    def separation(self) -> float:
+        return round(self.genuine_mean - self.impostor_mean, 12)
+
 
 def score_distributions(
     scores: ArrayLike, labels: list[str] | tuple[str, ...]

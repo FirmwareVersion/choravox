@@ -518,4 +518,11 @@ def test_score_distributions_reject_invalid_geometry_and_missing_trial_classes()
         embeddings.score_distributions(np.eye(2), ["a", "b"])
 
 
+def test_score_distribution_summary_measures_planted_separation() -> None:
+    trials = embeddings.ScoreDistributions(np.array([0.7, 0.9]), np.array([-0.4, 0.0]))
+    assert trials.genuine_mean == 0.8
+    assert trials.impostor_mean == -0.2
+    assert trials.separation == 1.0
+
+
 # -- extensions --
