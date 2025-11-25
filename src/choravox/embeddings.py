@@ -385,4 +385,37 @@ def plda_scores(enrollment: ArrayLike, probes: ArrayLike, model: PldaModel) -> F
     return np.round(left @ right.T, 12)
 
 
+@dataclass(frozen=True, slots=True)
+class ScoreDistributions:
+    """Genuine and impostor scores from planted speaker identities."""
+
+    genuine: FloatArray
+    impostor: FloatArray
+
+
+def score_distributions(
+    scores: ArrayLike, labels: list[str] | tuple[str, ...]
+) -> ScoreDistributions:
+    """Split the upper triangle of a score matrix by identity agreement."""
+    matrix = np.asarray(scores, dtype=np.float64)
+    if (
+        matrix.ndim != 2
+        or matrix.shape[0] != matrix.shape[1]
+        or matrix.shape[0] != len(labels)
+        or not np.all(np.isfinite(matrix))
+    ):
+        raise ValueError("scores and labels must form an aligned finite square matrix")
+    if not np.allclose(matrix, matrix.T, atol=1e-10):
+        raise ValueError("trial score matrix must be symmetric")
+    genuine: list[float] = []
+    impostor: list[float] = []
+    for left in range(len(labels)):
+        for right in range(left + 1, len(labels)):
+            target = genuine if labels[left] == labels[right] else impostor
+            target.append(round(float(matrix[left, right]), 12))
+    if not genuine or not impostor:
+        raise ValueError("trials require both genuine and impostor pairs")
+    return ScoreDistributions(np.asarray(genuine), np.asarray(impostor))
+
+
 # -- extensions --

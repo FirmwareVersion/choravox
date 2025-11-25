@@ -502,4 +502,20 @@ def test_plda_scoring_requires_matrix_arguments() -> None:
         embeddings.plda_scores([1.0, 0.0], [[1.0, 0.0]], model)
 
 
+def test_score_distributions_follow_planted_identity_pairs() -> None:
+    scores = np.array([[1.0, 0.8, -0.2], [0.8, 1.0, -0.1], [-0.2, -0.1, 1.0]])
+    trials = embeddings.score_distributions(scores, ["a", "a", "b"])
+    np.testing.assert_array_equal(trials.genuine, [0.8])
+    np.testing.assert_array_equal(trials.impostor, [-0.2, -0.1])
+
+
+def test_score_distributions_reject_invalid_geometry_and_missing_trial_classes() -> None:
+    with pytest.raises(ValueError, match="square"):
+        embeddings.score_distributions(np.ones((2, 3)), ["a", "b"])
+    with pytest.raises(ValueError, match="symmetric"):
+        embeddings.score_distributions([[1.0, 0.0], [0.2, 1.0]], ["a", "b"])
+    with pytest.raises(ValueError, match="both genuine"):
+        embeddings.score_distributions(np.eye(2), ["a", "b"])
+
+
 # -- extensions --
