@@ -465,4 +465,28 @@ def eer_like(distributions: ScoreDistributions) -> EerPoint:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class EmbeddingQuality:
+    """Measured quality of embeddings on a planted synthetic speaker set."""
+
+    trials: int
+    genuine_mean: float
+    impostor_mean: float
+    separation: float
+    eer: EerPoint
+
+
+def evaluate_embeddings(values: ArrayLike, labels: list[str] | tuple[str, ...]) -> EmbeddingQuality:
+    """Evaluate normalized embeddings against planted speaker labels."""
+    matrix = np.asarray(values, dtype=np.float64)
+    distributions = score_distributions(pairwise_cosine(matrix, matrix), labels)
+    return EmbeddingQuality(
+        int(distributions.genuine.size + distributions.impostor.size),
+        distributions.genuine_mean,
+        distributions.impostor_mean,
+        distributions.separation,
+        eer_like(distributions),
+    )
+
+
 # -- extensions --

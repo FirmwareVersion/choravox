@@ -561,4 +561,13 @@ def test_eer_like_rejects_empty_trial_side() -> None:
         embeddings.eer_like(trials)
 
 
+def test_embedding_quality_uses_every_unordered_synthetic_trial() -> None:
+    values = np.array([[1.0, 0.0], [0.9, 0.1], [-1.0, 0.0], [-0.9, -0.1]])
+    quality = embeddings.evaluate_embeddings(values, ["a", "a", "b", "b"])
+    assert quality.trials == 6
+    assert quality.genuine_mean > quality.impostor_mean
+    assert quality.separation > 1.0
+    assert quality.eer.rate == 0.0
+
+
 # -- extensions --
