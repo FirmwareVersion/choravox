@@ -540,4 +540,25 @@ def test_eer_like_reports_crossing_error_for_overlapping_trials() -> None:
     assert point.false_acceptance == point.false_rejection == 0.5
 
 
+def test_eer_threshold_minimizes_rate_gap_over_all_observed_scores() -> None:
+    trials = embeddings.ScoreDistributions(
+        np.array([0.15, 0.4, 0.9]), np.array([-0.2, 0.3, 0.8, 0.85])
+    )
+    point = embeddings.eer_like(trials)
+    differences = []
+    for threshold in np.unique(np.concatenate((trials.genuine, trials.impostor))):
+        rejection = float(np.mean(trials.genuine < threshold))
+        acceptance = float(np.mean(trials.impostor >= threshold))
+        differences.append(abs(acceptance - rejection))
+    assert abs(point.false_acceptance - point.false_rejection) == pytest.approx(
+        min(differences), abs=1e-12
+    )
+
+
+def test_eer_like_rejects_empty_trial_side() -> None:
+    trials = embeddings.ScoreDistributions(np.array([]), np.array([0.0]))
+    with pytest.raises(ValueError, match="both trial classes"):
+        embeddings.eer_like(trials)
+
+
 # -- extensions --
