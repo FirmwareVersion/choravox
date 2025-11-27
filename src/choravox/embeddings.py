@@ -479,6 +479,8 @@ class EmbeddingQuality:
 def evaluate_embeddings(values: ArrayLike, labels: list[str] | tuple[str, ...]) -> EmbeddingQuality:
     """Evaluate normalized embeddings against planted speaker labels."""
     matrix = np.asarray(values, dtype=np.float64)
+    if any(not isinstance(label, str) or not label.strip() for label in labels):
+        raise ValueError("speaker labels must be nonempty strings")
     distributions = score_distributions(pairwise_cosine(matrix, matrix), labels)
     return EmbeddingQuality(
         int(distributions.genuine.size + distributions.impostor.size),

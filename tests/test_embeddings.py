@@ -570,4 +570,12 @@ def test_embedding_quality_uses_every_unordered_synthetic_trial() -> None:
     assert quality.eer.rate == 0.0
 
 
+def test_embedding_quality_rejects_blank_or_nonstring_labels() -> None:
+    values = np.eye(3)
+    with pytest.raises(ValueError, match="nonempty strings"):
+        embeddings.evaluate_embeddings(values, ["a", "", "b"])
+    with pytest.raises(ValueError, match="nonempty strings"):
+        embeddings.evaluate_embeddings(values, ["a", 3, "b"])  # type: ignore[list-item]
+
+
 # -- extensions --
