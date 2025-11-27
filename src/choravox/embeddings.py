@@ -430,4 +430,39 @@ def score_distributions(
     return ScoreDistributions(np.asarray(genuine), np.asarray(impostor))
 
 
+@dataclass(frozen=True, slots=True)
+class EerPoint:
+    """Nearest equal-error operating point for synthetic verification trials."""
+
+    rate: float
+    threshold: float
+    false_acceptance: float
+    false_rejection: float
+
+
+def eer_like(distributions: ScoreDistributions) -> EerPoint:
+    """Find the deterministic threshold nearest equal false-accept/reject rates."""
+    genuine = np.asarray(distributions.genuine, dtype=np.float64)
+    impostor = np.asarray(distributions.impostor, dtype=np.float64)
+    if genuine.size == 0 or impostor.size == 0:
+        raise ValueError("EER-like evaluation requires both trial classes")
+    candidates = np.unique(np.concatenate((genuine, impostor)))
+    best: tuple[float, float, float, float] | None = None
+    for threshold in candidates:
+        false_rejection = float(np.mean(genuine < threshold))
+        false_acceptance = float(np.mean(impostor >= threshold))
+        difference = abs(false_acceptance - false_rejection)
+        candidate = (difference, float(threshold), false_acceptance, false_rejection)
+        if best is None or candidate[:2] < best[:2]:
+            best = candidate
+    assert best is not None
+    _, threshold, false_acceptance, false_rejection = best
+    return EerPoint(
+        round((false_acceptance + false_rejection) / 2.0, 12),
+        round(threshold, 12),
+        round(false_acceptance, 12),
+        round(false_rejection, 12),
+    )
+
+
 # -- extensions --

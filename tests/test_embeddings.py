@@ -525,4 +525,19 @@ def test_score_distribution_summary_measures_planted_separation() -> None:
     assert trials.separation == 1.0
 
 
+def test_eer_like_is_zero_for_separated_synthetic_trials() -> None:
+    trials = embeddings.ScoreDistributions(np.array([0.7, 0.8]), np.array([-0.2, 0.1]))
+    point = embeddings.eer_like(trials)
+    assert point.rate == 0.0
+    assert point.false_acceptance == point.false_rejection == 0.0
+    assert 0.1 < point.threshold <= 0.7
+
+
+def test_eer_like_reports_crossing_error_for_overlapping_trials() -> None:
+    trials = embeddings.ScoreDistributions(np.array([0.2, 0.8]), np.array([0.1, 0.7]))
+    point = embeddings.eer_like(trials)
+    assert point.rate == 0.5
+    assert point.false_acceptance == point.false_rejection == 0.5
+
+
 # -- extensions --
