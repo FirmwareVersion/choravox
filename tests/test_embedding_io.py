@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 import numpy as np
@@ -54,6 +55,29 @@ def test_embedding_decoder_rejects_tampering_and_wrong_version() -> None:
     document = json.loads(embedding_io.embeddings_to_json(record))
     document["payload"]["records"][0]["values"][0] = 2.0
     with pytest.raises(ValueError, match="digest"):
+        embedding_io.embeddings_from_json(json.dumps(document))
+
+
+def test_embedding_artifact_has_stable_golden_digest() -> None:
+    records = (
+        embedding_io.EmbeddingRecord("alpha-01", "alpha", np.array([0.0, 1.0])),
+        embedding_io.EmbeddingRecord("beta-01", "beta", np.array([-0.5, 0.5])),
+    )
+    encoded = embedding_io.embeddings_to_json(records).encode()
+    assert (
+        hashlib.sha256(encoded).hexdigest()
+        == "4bcfe2b63750c55251e5af2f36ab7e9a2efcaf46fff3a2aeb335d1bb2962025b"
+    )
+
+
+def test_embedding_decoder_rejects_shape_spoofing_with_valid_digest() -> None:
+    from choravox.hashing import content_hash
+
+    record = (embedding_io.EmbeddingRecord("utt", "speaker", np.ones(2)),)
+    document = json.loads(embedding_io.embeddings_to_json(record))
+    document["payload"]["dimension"] = 3
+    document["digest"] = content_hash(document["payload"])
+    with pytest.raises(ValueError, match="dimension mismatch"):
         embedding_io.embeddings_from_json(json.dumps(document))
     document = json.loads(embedding_io.embeddings_to_json(record))
     document["version"] = 2
