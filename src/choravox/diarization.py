@@ -27,4 +27,21 @@ class FrameWindow:
         return self.end - self.start
 
 
+def sliding_windows(
+    frame_count: int, window_size: int, shift: int, *, include_tail: bool = True
+) -> tuple[FrameWindow, ...]:
+    """Generate fixed windows and optionally anchor one final window at the tail."""
+    if frame_count < 0 or window_size < 1 or shift < 1:
+        raise ValueError("frame_count must be nonnegative and window geometry positive")
+    if frame_count == 0:
+        return ()
+    if frame_count <= window_size:
+        return (FrameWindow(0, frame_count),)
+    starts = list(range(0, frame_count - window_size + 1, shift))
+    tail_start = frame_count - window_size
+    if include_tail and starts[-1] != tail_start:
+        starts.append(tail_start)
+    return tuple(FrameWindow(start, start + window_size) for start in starts)
+
+
 # -- extensions --
