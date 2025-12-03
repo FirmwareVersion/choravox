@@ -9,11 +9,13 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from choravox.embeddings import DiagonalGmm, PldaModel
 from choravox.hashing import canonical_json, content_hash
 
 FloatArray = NDArray[np.float64]
 SCHEMA = "choravox.embeddings"
 VERSION = 1
+MODEL_SCHEMA = "choravox.speaker-models"
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,3 +97,60 @@ def embeddings_from_json(text: str) -> tuple[EmbeddingRecord, ...]:
     if any(record.values.size != dimension for record in records):
         raise ValueError("embedding artifact dimension mismatch")
     return records
+
+
+@dataclass(frozen=True, slots=True)
+class SpeakerModels:
+    """A UBM and PLDA-like transform trained only on synthetic speakers."""
+
+    ubm: DiagonalGmm
+    plda: PldaModel
+
+
+def models_to_json(models: SpeakerModels) -> str:
+    """Serialize classical speaker models as a versioned JSON artifact."""
+    payload = {
+        "plda": {"mean": models.plda.mean.tolist(), "projection": models.plda.projection.tolist()},
+        "ubm": {
+            "means": models.ubm.means.tolist(),
+            "variances": models.ubm.variances.tolist(),
+            "weights": models.ubm.weights.tolist(),
+        },
+    }
+    document = {
+        "digest": content_hash(payload),
+        "payload": payload,
+        "schema": MODEL_SCHEMA,
+        "version": VERSION,
+    }
+    return canonical_json(document).decode("utf-8")
+
+
+def models_from_json(text: str) -> SpeakerModels:
+    """Deserialize and validate a classical synthetic speaker model bundle."""
+    try:
+        document: Any = json.loads(text)
+        payload = document["payload"]
+        if set(document) != {"digest", "payload", "schema", "version"}:
+            raise ValueError
+        if document["schema"] != MODEL_SCHEMA or document["version"] != VERSION:
+            raise ValueError("unsupported speaker model schema or version")
+        if document["digest"] != content_hash(payload) or set(payload) != {"plda", "ubm"}:
+            raise ValueError("speaker model artifact digest mismatch")
+        ubm_data = payload["ubm"]
+        plda_data = payload["plda"]
+        if set(ubm_data) != {"means", "variances", "weights"} or set(plda_data) != {
+            "mean",
+            "projection",
+        }:
+            raise ValueError
+        return SpeakerModels(
+            DiagonalGmm(
+                np.asarray(ubm_data["weights"]),
+                np.asarray(ubm_data["means"]),
+                np.asarray(ubm_data["variances"]),
+            ),
+            PldaModel(np.asarray(plda_data["mean"]), np.asarray(plda_data["projection"])),
+        )
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise ValueError("speaker model artifact is malformed") from error

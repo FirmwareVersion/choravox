@@ -6,7 +6,7 @@ import json
 import numpy as np
 import pytest
 
-from choravox import embedding_io
+from choravox import embedding_io, embeddings
 
 
 def test_embedding_encoding_is_canonical_and_contains_schema() -> None:
@@ -56,6 +56,10 @@ def test_embedding_decoder_rejects_tampering_and_wrong_version() -> None:
     document["payload"]["records"][0]["values"][0] = 2.0
     with pytest.raises(ValueError, match="digest"):
         embedding_io.embeddings_from_json(json.dumps(document))
+    document = json.loads(embedding_io.embeddings_to_json(record))
+    document["version"] = 2
+    with pytest.raises(ValueError, match="unsupported"):
+        embedding_io.embeddings_from_json(json.dumps(document))
 
 
 def test_embedding_artifact_has_stable_golden_digest() -> None:
@@ -79,7 +83,25 @@ def test_embedding_decoder_rejects_shape_spoofing_with_valid_digest() -> None:
     document["digest"] = content_hash(document["payload"])
     with pytest.raises(ValueError, match="dimension mismatch"):
         embedding_io.embeddings_from_json(json.dumps(document))
-    document = json.loads(embedding_io.embeddings_to_json(record))
-    document["version"] = 2
-    with pytest.raises(ValueError, match="unsupported"):
-        embedding_io.embeddings_from_json(json.dumps(document))
+
+
+def test_speaker_model_bundle_roundtrip_preserves_parameters() -> None:
+    bundle = embedding_io.SpeakerModels(
+        embeddings.DiagonalGmm(np.ones(1), np.array([[1.0, 2.0]]), np.array([[3.0, 4.0]])),
+        embeddings.PldaModel(np.array([0.5, -0.5]), np.eye(2)),
+    )
+    decoded = embedding_io.models_from_json(embedding_io.models_to_json(bundle))
+    np.testing.assert_array_equal(decoded.ubm.means, bundle.ubm.means)
+    np.testing.assert_array_equal(decoded.ubm.variances, bundle.ubm.variances)
+    np.testing.assert_array_equal(decoded.plda.projection, bundle.plda.projection)
+
+
+def test_speaker_model_bundle_rejects_integrity_failure() -> None:
+    bundle = embedding_io.SpeakerModels(
+        embeddings.DiagonalGmm(np.ones(1), np.zeros((1, 1)), np.ones((1, 1))),
+        embeddings.PldaModel(np.zeros(1), np.ones((1, 1))),
+    )
+    document = json.loads(embedding_io.models_to_json(bundle))
+    document["payload"]["ubm"]["means"][0][0] = 2.0
+    with pytest.raises(ValueError, match="digest"):
+        embedding_io.models_from_json(json.dumps(document))
