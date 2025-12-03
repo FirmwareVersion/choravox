@@ -578,4 +578,29 @@ def test_embedding_quality_rejects_blank_or_nonstring_labels() -> None:
         embeddings.evaluate_embeddings(values, ["a", 3, "b"])  # type: ignore[list-item]
 
 
+def test_classical_embedding_pipeline_separates_planted_synthetic_speakers() -> None:
+    generator = np.random.default_rng(24)
+    centers = (np.array([-2.0, -1.0]), np.array([2.0, 1.0]), np.array([-1.0, 2.0]))
+    utterances: list[np.ndarray] = []
+    labels: list[str] = []
+    for speaker, center in enumerate(centers):
+        for _ in range(3):
+            utterances.append(generator.normal(center, 0.15, size=(30, 2)))
+            labels.append(f"speaker-{speaker}")
+    training = np.concatenate(utterances)
+    ubm = embeddings.fit_gmm(training, 3, seed=4, iterations=8).model
+    vectors = np.stack([embeddings.embed_features(item, ubm) for item in utterances])
+    quality = embeddings.evaluate_embeddings(vectors, labels)
+    assert quality.genuine_mean > quality.impostor_mean
+    assert quality.eer.rate <= 0.1
+
+
+def test_embedding_quality_is_exactly_perfect_for_identical_labeled_directions() -> None:
+    values = np.array([[1.0, 0.0], [2.0, 0.0], [0.0, 1.0], [0.0, 3.0]])
+    quality = embeddings.evaluate_embeddings(values, ["a", "a", "b", "b"])
+    assert quality.genuine_mean == 1.0
+    assert quality.impostor_mean == 0.0
+    assert quality.eer.rate == 0.0
+
+
 # -- extensions --
