@@ -44,4 +44,16 @@ def sliding_windows(
     return tuple(FrameWindow(start, start + window_size) for start in starts)
 
 
+def window_times(
+    windows: tuple[FrameWindow, ...], *, hop_seconds: float
+) -> tuple[tuple[float, float], ...]:
+    """Convert frame windows to quantized wall-clock spans."""
+    if hop_seconds <= 0.0 or not np.isfinite(hop_seconds):
+        raise ValueError("hop_seconds must be finite and positive")
+    return tuple(
+        (round(window.start * hop_seconds, 9), round(window.end * hop_seconds, 9))
+        for window in windows
+    )
+
+
 # -- extensions --

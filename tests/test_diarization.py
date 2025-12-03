@@ -53,4 +53,14 @@ def test_sliding_windows_validate_all_geometry() -> None:
         diarization.sliding_windows(5, 2, 0)
 
 
+def test_window_times_attach_frame_hop_clock() -> None:
+    windows = (diarization.FrameWindow(0, 4), diarization.FrameWindow(3, 7))
+    assert diarization.window_times(windows, hop_seconds=0.01) == ((0.0, 0.04), (0.03, 0.07))
+
+
+def test_window_times_reject_invalid_hop() -> None:
+    with pytest.raises(ValueError, match="finite and positive"):
+        diarization.window_times((), hop_seconds=0.0)
+
+
 # -- extensions --
