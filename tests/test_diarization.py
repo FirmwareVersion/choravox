@@ -75,4 +75,17 @@ def test_window_pooling_preserves_empty_output_dimension() -> None:
     assert diarization.pool_windows(np.empty((0, 3)), ()).shape == (0, 3)
 
 
+def test_pooling_constant_features_is_independent_of_window_geometry() -> None:
+    features = np.tile([2.0, -1.0], (9, 1))
+    windows = diarization.sliding_windows(9, 4, 2)
+    np.testing.assert_array_equal(diarization.pool_windows(features, windows), [[2.0, -1.0]] * 4)
+
+
+def test_pooling_rejects_nonfinite_features_and_out_of_range_windows() -> None:
+    with pytest.raises(ValueError, match="finite matrix"):
+        diarization.pool_windows([[np.nan]], (diarization.FrameWindow(0, 1),))
+    with pytest.raises(ValueError, match="exceeds"):
+        diarization.pool_windows(np.ones((2, 1)), (diarization.FrameWindow(0, 3),))
+
+
 # -- extensions --
