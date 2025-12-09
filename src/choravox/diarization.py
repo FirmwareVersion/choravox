@@ -70,4 +70,18 @@ def pool_windows(features: ArrayLike, windows: tuple[FrameWindow, ...]) -> Float
     )
 
 
+def adjacent_change_scores(embeddings: ArrayLike) -> FloatArray:
+    """Measure cosine distance between consecutive window embeddings."""
+    matrix = np.asarray(embeddings, dtype=np.float64)
+    if matrix.ndim != 2 or not np.all(np.isfinite(matrix)):
+        raise ValueError("embeddings must be a finite matrix")
+    if matrix.shape[0] < 2:
+        return np.empty(0, dtype=np.float64)
+    norms = np.linalg.norm(matrix, axis=1)
+    if np.any(norms == 0.0):
+        raise ValueError("embedding rows must have positive norm")
+    normalized = matrix / norms[:, None]
+    return np.round(1.0 - np.sum(normalized[:-1] * normalized[1:], axis=1), 12)
+
+
 # -- extensions --

@@ -88,4 +88,15 @@ def test_pooling_rejects_nonfinite_features_and_out_of_range_windows() -> None:
         diarization.pool_windows(np.ones((2, 1)), (diarization.FrameWindow(0, 3),))
 
 
+def test_adjacent_change_scores_cover_same_orthogonal_and_opposite_vectors() -> None:
+    values = np.array([[1.0, 0.0], [2.0, 0.0], [0.0, 1.0], [0.0, -2.0]])
+    np.testing.assert_array_equal(diarization.adjacent_change_scores(values), [0.0, 1.0, 2.0])
+
+
+def test_adjacent_change_scores_handle_short_sequence_and_reject_zero_norm() -> None:
+    assert diarization.adjacent_change_scores([[1.0, 0.0]]).size == 0
+    with pytest.raises(ValueError, match="positive norm"):
+        diarization.adjacent_change_scores([[1.0, 0.0], [0.0, 0.0]])
+
+
 # -- extensions --
