@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.int64]
@@ -53,6 +53,20 @@ def window_times(
     return tuple(
         (round(window.start * hop_seconds, 9), round(window.end * hop_seconds, 9))
         for window in windows
+    )
+
+
+def pool_windows(features: ArrayLike, windows: tuple[FrameWindow, ...]) -> FloatArray:
+    """Mean-pool frame features inside each diarization window."""
+    matrix = np.asarray(features, dtype=np.float64)
+    if matrix.ndim != 2 or not np.all(np.isfinite(matrix)):
+        raise ValueError("features must be a finite matrix")
+    if any(window.end > matrix.shape[0] for window in windows):
+        raise ValueError("window exceeds the feature frame count")
+    if not windows:
+        return np.empty((0, matrix.shape[1]), dtype=np.float64)
+    return np.round(
+        np.stack([np.mean(matrix[window.start : window.end], axis=0) for window in windows]), 12
     )
 
 

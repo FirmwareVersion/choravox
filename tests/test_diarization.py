@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import diarization
@@ -61,6 +62,17 @@ def test_window_times_attach_frame_hop_clock() -> None:
 def test_window_times_reject_invalid_hop() -> None:
     with pytest.raises(ValueError, match="finite and positive"):
         diarization.window_times((), hop_seconds=0.0)
+
+
+def test_window_pooling_matches_hand_computed_means() -> None:
+    features = np.arange(12.0).reshape(6, 2)
+    windows = (diarization.FrameWindow(0, 2), diarization.FrameWindow(2, 6))
+    pooled = diarization.pool_windows(features, windows)
+    np.testing.assert_array_equal(pooled, [[1.0, 2.0], [7.0, 8.0]])
+
+
+def test_window_pooling_preserves_empty_output_dimension() -> None:
+    assert diarization.pool_windows(np.empty((0, 3)), ()).shape == (0, 3)
 
 
 # -- extensions --
