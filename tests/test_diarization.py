@@ -99,4 +99,12 @@ def test_adjacent_change_scores_handle_short_sequence_and_reject_zero_norm() -> 
         diarization.adjacent_change_scores([[1.0, 0.0], [0.0, 0.0]])
 
 
+def test_change_point_detection_uses_boundary_after_score() -> None:
+    assert diarization.detect_change_points([0.1, 0.8, 0.2, 1.1], 0.7) == (2, 4)
+
+
+def test_change_point_detection_keeps_strongest_within_minimum_gap() -> None:
+    assert diarization.detect_change_points([0.8, 1.2, 0.9, 0.1], 0.7, minimum_gap=3) == (2,)
+
+
 # -- extensions --

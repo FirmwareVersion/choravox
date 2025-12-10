@@ -84,4 +84,23 @@ def adjacent_change_scores(embeddings: ArrayLike) -> FloatArray:
     return np.round(1.0 - np.sum(normalized[:-1] * normalized[1:], axis=1), 12)
 
 
+def detect_change_points(
+    scores: ArrayLike, threshold: float, *, minimum_gap: int = 1
+) -> tuple[int, ...]:
+    """Select boundary indices from ordered adjacent-change scores."""
+    values = np.asarray(scores, dtype=np.float64)
+    if values.ndim != 1 or not np.all(np.isfinite(values)):
+        raise ValueError("change scores must be a finite vector")
+    if not 0.0 <= threshold <= 2.0 or minimum_gap < 1:
+        raise ValueError("threshold and minimum_gap are invalid")
+    candidates = [index + 1 for index, value in enumerate(values) if value >= threshold]
+    selected: list[int] = []
+    for candidate in candidates:
+        if not selected or candidate - selected[-1] >= minimum_gap:
+            selected.append(candidate)
+        elif values[candidate - 1] > values[selected[-1] - 1]:
+            selected[-1] = candidate
+    return tuple(selected)
+
+
 # -- extensions --
