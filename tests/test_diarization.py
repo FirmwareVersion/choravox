@@ -107,4 +107,23 @@ def test_change_point_detection_keeps_strongest_within_minimum_gap() -> None:
     assert diarization.detect_change_points([0.8, 1.2, 0.9, 0.1], 0.7, minimum_gap=3) == (2,)
 
 
+def test_change_scores_and_boundaries_ignore_positive_embedding_scale() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.2], [0.0, 1.0], [0.1, 1.0]])
+    first = diarization.adjacent_change_scores(values)
+    second = diarization.adjacent_change_scores(values * [[2.0], [5.0], [0.5], [3.0]])
+    np.testing.assert_allclose(first, second, atol=1e-12)
+    assert diarization.detect_change_points(first, 0.5) == diarization.detect_change_points(
+        second, 0.5
+    )
+
+
+def test_change_point_detection_validates_vector_and_controls() -> None:
+    with pytest.raises(ValueError, match="finite vector"):
+        diarization.detect_change_points([[0.2]], 0.5)
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.detect_change_points([0.2], 2.1)
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.detect_change_points([0.2], 0.5, minimum_gap=0)
+
+
 # -- extensions --
