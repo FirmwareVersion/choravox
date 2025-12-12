@@ -183,4 +183,24 @@ def majority_smooth(labels: list[str] | tuple[str, ...], radius: int) -> tuple[s
     return tuple(result)
 
 
+def speaker_centroids(values: ArrayLike, labels: list[int] | tuple[int, ...]) -> FloatArray:
+    """Compute centroids ordered by contiguous nonnegative cluster index."""
+    matrix = np.asarray(values, dtype=np.float64)
+    assignments = np.asarray(labels, dtype=np.int64)
+    if (
+        matrix.ndim != 2
+        or assignments.shape != (matrix.shape[0],)
+        or not np.all(np.isfinite(matrix))
+    ):
+        raise ValueError("values and labels must be aligned finite arrays")
+    if assignments.size == 0 or np.any(assignments < 0):
+        raise ValueError("cluster labels must be nonempty and nonnegative")
+    unique = np.unique(assignments)
+    if not np.array_equal(unique, np.arange(unique.size)):
+        raise ValueError("cluster labels must be contiguous from zero")
+    return np.round(
+        np.stack([np.mean(matrix[assignments == label], axis=0) for label in unique]), 12
+    )
+
+
 # -- extensions --

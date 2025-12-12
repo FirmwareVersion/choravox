@@ -213,4 +213,17 @@ def test_majority_smoothing_validates_radius_and_labels() -> None:
         diarization.majority_smooth(("a", ""), 1)
 
 
+def test_speaker_centroids_average_each_cluster() -> None:
+    values = np.array([[0.0, 0.0], [2.0, 2.0], [10.0, 4.0]])
+    centroids = diarization.speaker_centroids(values, [0, 0, 1])
+    np.testing.assert_array_equal(centroids, [[1.0, 1.0], [10.0, 4.0]])
+
+
+def test_speaker_centroids_reject_alignment_and_label_gaps() -> None:
+    with pytest.raises(ValueError, match="aligned"):
+        diarization.speaker_centroids(np.ones((2, 1)), [0])
+    with pytest.raises(ValueError, match="contiguous"):
+        diarization.speaker_centroids(np.ones((2, 1)), [0, 2])
+
+
 # -- extensions --
