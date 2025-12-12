@@ -201,4 +201,16 @@ def test_majority_smoothing_preserves_current_label_on_tie() -> None:
     assert diarization.majority_smooth(("a", "b"), 0) == ("a", "b")
 
 
+def test_majority_smoothing_does_not_move_stable_change_boundary() -> None:
+    labels = ("a", "a", "a", "b", "b", "b")
+    assert diarization.majority_smooth(labels, 1) == labels
+
+
+def test_majority_smoothing_validates_radius_and_labels() -> None:
+    with pytest.raises(ValueError, match="nonnegative"):
+        diarization.majority_smooth(("a",), -1)
+    with pytest.raises(ValueError, match="nonempty"):
+        diarization.majority_smooth(("a", ""), 1)
+
+
 # -- extensions --
