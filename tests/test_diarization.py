@@ -191,4 +191,14 @@ def test_adjacent_equal_segments_remain_decodable_without_information_loss() -> 
     assert diarization.segments_to_labels(segments, 4) == ("a", "a", "a", "a")
 
 
+def test_majority_smoothing_removes_one_frame_label_spike() -> None:
+    labels = ("a", "a", "b", "a", "a")
+    assert diarization.majority_smooth(labels, 1) == ("a", "a", "a", "a", "a")
+
+
+def test_majority_smoothing_preserves_current_label_on_tie() -> None:
+    assert diarization.majority_smooth(("a", "b"), 1) == ("a", "b")
+    assert diarization.majority_smooth(("a", "b"), 0) == ("a", "b")
+
+
 # -- extensions --

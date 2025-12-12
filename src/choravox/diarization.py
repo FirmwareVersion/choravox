@@ -167,4 +167,20 @@ def segments_to_labels(segments: tuple[LabeledFrames, ...], frame_count: int) ->
     return tuple(labels)
 
 
+def majority_smooth(labels: list[str] | tuple[str, ...], radius: int) -> tuple[str, ...]:
+    """Smooth isolated label noise with a centered majority vote."""
+    if radius < 0:
+        raise ValueError("smoothing radius must be nonnegative")
+    if any(not label for label in labels):
+        raise ValueError("speaker labels must be nonempty")
+    result: list[str] = []
+    for index, current in enumerate(labels):
+        neighborhood = labels[max(0, index - radius) : min(len(labels), index + radius + 1)]
+        counts = {label: neighborhood.count(label) for label in set(neighborhood)}
+        maximum = max(counts.values())
+        winners = {label for label, count in counts.items() if count == maximum}
+        result.append(current if current in winners else min(winners))
+    return tuple(result)
+
+
 # -- extensions --
