@@ -158,4 +158,21 @@ def test_label_runs_handle_empty_input_and_reject_blank_label() -> None:
         diarization.labels_to_segments(["a", ""])
 
 
+def test_segment_decoding_restores_frame_labels() -> None:
+    labels = ("a", "a", "b", "b", "a")
+    assert (
+        diarization.segments_to_labels(diarization.labels_to_segments(labels), len(labels))
+        == labels
+    )
+
+
+def test_segment_decoding_rejects_gaps_overlaps_and_incomplete_coverage() -> None:
+    with pytest.raises(ValueError, match="cover"):
+        diarization.segments_to_labels((diarization.LabeledFrames(1, 3, "a"),), 3)
+    with pytest.raises(ValueError, match="contiguous"):
+        diarization.segments_to_labels(
+            (diarization.LabeledFrames(0, 2, "a"), diarization.LabeledFrames(1, 3, "b")), 3
+        )
+
+
 # -- extensions --

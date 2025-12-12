@@ -148,4 +148,23 @@ def labels_to_segments(labels: list[str] | tuple[str, ...]) -> tuple[LabeledFram
     return tuple(segments)
 
 
+def segments_to_labels(segments: tuple[LabeledFrames, ...], frame_count: int) -> tuple[str, ...]:
+    """Decode contiguous segments while rejecting gaps and overlaps."""
+    if frame_count < 0:
+        raise ValueError("frame_count must be nonnegative")
+    if not segments:
+        if frame_count:
+            raise ValueError("segments must cover every frame")
+        return ()
+    if segments[0].start != 0 or segments[-1].end != frame_count:
+        raise ValueError("segments must cover every frame")
+    for left, right in pairwise(segments):
+        if left.end != right.start:
+            raise ValueError("segments must be contiguous and nonoverlapping")
+    labels: list[str] = []
+    for segment in segments:
+        labels.extend([segment.speaker] * (segment.end - segment.start))
+    return tuple(labels)
+
+
 # -- extensions --
