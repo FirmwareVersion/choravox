@@ -120,4 +120,32 @@ def partition_frames(frame_count: int, change_points: tuple[int, ...]) -> tuple[
     return tuple(FrameWindow(left, right) for left, right in pairwise(boundaries))
 
 
+@dataclass(frozen=True, slots=True, order=True)
+class LabeledFrames:
+    """A contiguous frame span assigned to one speaker label."""
+
+    start: int
+    end: int
+    speaker: str
+
+    def __post_init__(self) -> None:
+        if self.start < 0 or self.end <= self.start or not self.speaker:
+            raise ValueError("labeled frame span is invalid")
+
+
+def labels_to_segments(labels: list[str] | tuple[str, ...]) -> tuple[LabeledFrames, ...]:
+    """Run-length encode frame-level speaker labels."""
+    if any(not isinstance(label, str) or not label for label in labels):
+        raise ValueError("frame labels must be nonempty strings")
+    if not labels:
+        return ()
+    segments: list[LabeledFrames] = []
+    start = 0
+    for index in range(1, len(labels) + 1):
+        if index == len(labels) or labels[index] != labels[start]:
+            segments.append(LabeledFrames(start, index, labels[start]))
+            start = index
+    return tuple(segments)
+
+
 # -- extensions --

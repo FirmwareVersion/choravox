@@ -143,4 +143,19 @@ def test_frame_partition_handles_empty_axis_and_rejects_bad_boundaries() -> None
         diarization.partition_frames(5, (5,))
 
 
+def test_label_runs_encode_contiguous_speaker_spans() -> None:
+    segments = diarization.labels_to_segments(["a", "a", "b", "a"])
+    assert segments == (
+        diarization.LabeledFrames(0, 2, "a"),
+        diarization.LabeledFrames(2, 3, "b"),
+        diarization.LabeledFrames(3, 4, "a"),
+    )
+
+
+def test_label_runs_handle_empty_input_and_reject_blank_label() -> None:
+    assert diarization.labels_to_segments([]) == ()
+    with pytest.raises(ValueError, match="nonempty"):
+        diarization.labels_to_segments(["a", ""])
+
+
 # -- extensions --
