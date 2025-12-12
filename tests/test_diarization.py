@@ -175,4 +175,20 @@ def test_segment_decoding_rejects_gaps_overlaps_and_incomplete_coverage() -> Non
         )
 
 
+def test_label_segment_roundtrip_is_exhaustive_for_short_binary_sequences() -> None:
+    for mask in range(1 << 6):
+        labels = tuple("a" if mask & (1 << index) else "b" for index in range(6))
+        encoded = diarization.labels_to_segments(labels)
+        assert diarization.segments_to_labels(encoded, 6) == labels
+        assert sum(segment.end - segment.start for segment in encoded) == 6
+
+
+def test_adjacent_equal_segments_remain_decodable_without_information_loss() -> None:
+    segments = (
+        diarization.LabeledFrames(0, 2, "a"),
+        diarization.LabeledFrames(2, 4, "a"),
+    )
+    assert diarization.segments_to_labels(segments, 4) == ("a", "a", "a", "a")
+
+
 # -- extensions --
