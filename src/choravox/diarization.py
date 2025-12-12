@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -101,6 +102,22 @@ def detect_change_points(
         elif values[candidate - 1] > values[selected[-1] - 1]:
             selected[-1] = candidate
     return tuple(selected)
+
+
+def partition_frames(frame_count: int, change_points: tuple[int, ...]) -> tuple[FrameWindow, ...]:
+    """Partition a frame axis at strictly increasing interior boundaries."""
+    if frame_count < 0:
+        raise ValueError("frame_count must be nonnegative")
+    if frame_count == 0:
+        if change_points:
+            raise ValueError("empty frame axis cannot have change points")
+        return ()
+    if tuple(sorted(set(change_points))) != change_points or any(
+        point <= 0 or point >= frame_count for point in change_points
+    ):
+        raise ValueError("change points must be unique ordered interior indices")
+    boundaries = (0, *change_points, frame_count)
+    return tuple(FrameWindow(left, right) for left, right in pairwise(boundaries))
 
 
 # -- extensions --

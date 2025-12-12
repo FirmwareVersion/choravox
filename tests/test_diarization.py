@@ -126,4 +126,21 @@ def test_change_point_detection_validates_vector_and_controls() -> None:
         diarization.detect_change_points([0.2], 0.5, minimum_gap=0)
 
 
+def test_frame_partition_covers_axis_without_gaps() -> None:
+    parts = diarization.partition_frames(10, (2, 7))
+    assert parts == (
+        diarization.FrameWindow(0, 2),
+        diarization.FrameWindow(2, 7),
+        diarization.FrameWindow(7, 10),
+    )
+
+
+def test_frame_partition_handles_empty_axis_and_rejects_bad_boundaries() -> None:
+    assert diarization.partition_frames(0, ()) == ()
+    with pytest.raises(ValueError, match="ordered interior"):
+        diarization.partition_frames(5, (3, 2))
+    with pytest.raises(ValueError, match="ordered interior"):
+        diarization.partition_frames(5, (5,))
+
+
 # -- extensions --
