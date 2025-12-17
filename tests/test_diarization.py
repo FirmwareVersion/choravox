@@ -238,4 +238,20 @@ def test_centroid_assignment_breaks_exact_tie_by_first_index() -> None:
     assert distances.tolist() == [1.0]
 
 
+def test_centroid_reassignment_recovers_clean_planted_clusters() -> None:
+    values = np.array([[-2.1, 0.0], [-1.9, 0.1], [3.9, 1.0], [4.1, 0.9]])
+    planted = [0, 0, 1, 1]
+    centroids = diarization.speaker_centroids(values, planted)
+    recovered, distances = diarization.assign_centroids(values, centroids)
+    np.testing.assert_array_equal(recovered, planted)
+    assert np.max(distances) < 0.2
+
+
+def test_centroid_assignment_rejects_empty_and_dimension_mismatch() -> None:
+    with pytest.raises(ValueError, match="compatible"):
+        diarization.assign_centroids(np.ones((2, 2)), np.empty((0, 2)))
+    with pytest.raises(ValueError, match="compatible"):
+        diarization.assign_centroids(np.ones((2, 2)), np.ones((1, 3)))
+
+
 # -- extensions --
