@@ -254,4 +254,20 @@ def test_centroid_assignment_rejects_empty_and_dimension_mismatch() -> None:
         diarization.assign_centroids(np.ones((2, 2)), np.ones((1, 3)))
 
 
+def test_cosine_distance_matrix_is_symmetric_with_zero_diagonal() -> None:
+    values = np.array([[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]])
+    distances = diarization.cosine_distance_matrix(values)
+    np.testing.assert_array_equal(distances, distances.T)
+    np.testing.assert_array_equal(np.diag(distances), 0.0)
+    assert distances[0, 1] == 1.0
+    assert distances[0, 2] == 2.0
+
+
+def test_cosine_distance_matrix_rejects_empty_and_zero_rows() -> None:
+    with pytest.raises(ValueError, match="nonempty"):
+        diarization.cosine_distance_matrix(np.empty((0, 2)))
+    with pytest.raises(ValueError, match="positive norm"):
+        diarization.cosine_distance_matrix([[0.0, 0.0]])
+
+
 # -- extensions --

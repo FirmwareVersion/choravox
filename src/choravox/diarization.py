@@ -222,4 +222,18 @@ def assign_centroids(values: ArrayLike, centroids: ArrayLike) -> tuple[IntArray,
     return labels, np.round(selected, 12)
 
 
+def cosine_distance_matrix(values: ArrayLike) -> FloatArray:
+    """Return a symmetric cosine-distance matrix for nonzero embeddings."""
+    matrix = np.asarray(values, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or not np.all(np.isfinite(matrix)):
+        raise ValueError("embeddings must be a nonempty finite matrix")
+    norms = np.linalg.norm(matrix, axis=1)
+    if np.any(norms == 0.0):
+        raise ValueError("embedding rows must have positive norm")
+    normalized = matrix / norms[:, None]
+    distances = np.clip(1.0 - normalized @ normalized.T, 0.0, 2.0)
+    np.fill_diagonal(distances, 0.0)
+    return np.round(distances, 12)
+
+
 # -- extensions --
