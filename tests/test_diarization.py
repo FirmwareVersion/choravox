@@ -226,4 +226,16 @@ def test_speaker_centroids_reject_alignment_and_label_gaps() -> None:
         diarization.speaker_centroids(np.ones((2, 1)), [0, 2])
 
 
+def test_centroid_assignment_returns_nearest_label_and_distance() -> None:
+    labels, distances = diarization.assign_centroids([[0.0], [4.0], [9.0]], [[0.0], [10.0]])
+    np.testing.assert_array_equal(labels, [0, 0, 1])
+    np.testing.assert_array_equal(distances, [0.0, 4.0, 1.0])
+
+
+def test_centroid_assignment_breaks_exact_tie_by_first_index() -> None:
+    labels, distances = diarization.assign_centroids([[1.0]], [[0.0], [2.0]])
+    assert labels.tolist() == [0]
+    assert distances.tolist() == [1.0]
+
+
 # -- extensions --

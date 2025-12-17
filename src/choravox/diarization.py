@@ -203,4 +203,23 @@ def speaker_centroids(values: ArrayLike, labels: list[int] | tuple[int, ...]) ->
     )
 
 
+def assign_centroids(values: ArrayLike, centroids: ArrayLike) -> tuple[IntArray, FloatArray]:
+    """Assign vectors to nearest Euclidean centroid with deterministic ties."""
+    matrix = np.asarray(values, dtype=np.float64)
+    centers = np.asarray(centroids, dtype=np.float64)
+    if (
+        matrix.ndim != 2
+        or centers.ndim != 2
+        or centers.shape[0] == 0
+        or matrix.shape[1:] != centers.shape[1:]
+        or not np.all(np.isfinite(matrix))
+        or not np.all(np.isfinite(centers))
+    ):
+        raise ValueError("values and centroids must be compatible finite matrices")
+    distances = np.linalg.norm(matrix[:, None, :] - centers[None, :, :], axis=2)
+    labels = np.argmin(distances, axis=1).astype(np.int64)
+    selected = distances[np.arange(matrix.shape[0]), labels]
+    return labels, np.round(selected, 12)
+
+
 # -- extensions --
