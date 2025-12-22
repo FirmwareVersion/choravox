@@ -270,4 +270,27 @@ def test_cosine_distance_matrix_rejects_empty_and_zero_rows() -> None:
         diarization.cosine_distance_matrix([[0.0, 0.0]])
 
 
+def test_ahc_recovers_two_clean_directional_clusters() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.05], [0.0, 1.0], [0.05, 1.0]])
+    result = diarization.agglomerative_clustering(values, threshold=0.2)
+    assert result.speaker_count == 2
+    assert result.labels[0] == result.labels[1]
+    assert result.labels[2] == result.labels[3]
+    assert result.labels[0] != result.labels[2]
+
+
+def test_ahc_can_obey_oracle_speaker_count() -> None:
+    values = np.array([[1.0, 0.0], [0.8, 0.2], [0.0, 1.0]])
+    result = diarization.agglomerative_clustering(values, threshold=0.0, speaker_count=1)
+    assert result.speaker_count == 1
+    assert len(result.merge_distances) == 2
+
+
+def test_ahc_validates_threshold_and_requested_count() -> None:
+    with pytest.raises(ValueError, match="threshold"):
+        diarization.agglomerative_clustering([[1.0]], threshold=3.0)
+    with pytest.raises(ValueError, match="speaker_count"):
+        diarization.agglomerative_clustering([[1.0]], speaker_count=2)
+
+
 # -- extensions --

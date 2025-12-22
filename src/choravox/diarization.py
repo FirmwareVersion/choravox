@@ -236,4 +236,46 @@ def cosine_distance_matrix(values: ArrayLike) -> FloatArray:
     return np.round(distances, 12)
 
 
+@dataclass(frozen=True, slots=True)
+class AhcResult:
+    """Agglomerative clustering labels and accepted merge distances."""
+
+    labels: IntArray
+    merge_distances: tuple[float, ...]
+
+    @property
+    def speaker_count(self) -> int:
+        return int(np.unique(self.labels).size)
+
+
+def agglomerative_clustering(
+    values: ArrayLike, *, threshold: float = 0.5, speaker_count: int | None = None
+) -> AhcResult:
+    """Cluster embeddings by deterministic centroid-linkage cosine distance."""
+    matrix = np.asarray(values, dtype=np.float64)
+    cosine_distance_matrix(matrix)
+    if not 0.0 <= threshold <= 2.0:
+        raise ValueError("AHC threshold must lie between zero and two")
+    if speaker_count is not None and not 1 <= speaker_count <= matrix.shape[0]:
+        raise ValueError("speaker_count must fit the observation count")
+    clusters: list[list[int]] = [[index] for index in range(matrix.shape[0])]
+    merges: list[float] = []
+    while len(clusters) > (speaker_count or 1):
+        centroids = np.stack([np.mean(matrix[cluster], axis=0) for cluster in clusters])
+        distances = cosine_distance_matrix(centroids)
+        np.fill_diagonal(distances, np.inf)
+        flat = int(np.argmin(distances))
+        left, right = np.unravel_index(flat, distances.shape)
+        distance = float(distances[left, right])
+        if speaker_count is None and distance > threshold:
+            break
+        clusters[left].extend(clusters[right])
+        del clusters[right]
+        merges.append(round(distance, 12))
+    labels = np.empty(matrix.shape[0], dtype=np.int64)
+    for label, cluster in enumerate(clusters):
+        labels[cluster] = label
+    return AhcResult(labels, tuple(merges))
+
+
 # -- extensions --
