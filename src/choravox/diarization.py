@@ -288,4 +288,18 @@ def affinity_matrix(values: ArrayLike, *, scale: float = 0.5) -> FloatArray:
     return np.round(affinity, 12)
 
 
+def normalized_laplacian(affinity: ArrayLike) -> FloatArray:
+    """Construct the symmetric normalized graph Laplacian."""
+    matrix = np.asarray(affinity, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1] or not np.all(np.isfinite(matrix)):
+        raise ValueError("affinity must be a finite square matrix")
+    if np.any(matrix < 0.0) or not np.allclose(matrix, matrix.T, atol=1e-10):
+        raise ValueError("affinity must be nonnegative and symmetric")
+    degrees = np.sum(matrix, axis=1)
+    if np.any(degrees <= 0.0):
+        raise ValueError("affinity graph must not contain isolated nodes")
+    inverse = np.diag(1.0 / np.sqrt(degrees))
+    return np.round(np.eye(matrix.shape[0]) - inverse @ matrix @ inverse, 12)
+
+
 # -- extensions --

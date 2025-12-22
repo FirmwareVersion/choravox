@@ -334,4 +334,17 @@ def test_affinity_is_symmetric_and_invariant_to_positive_row_scale() -> None:
     np.testing.assert_allclose(first, second, atol=1e-12)
 
 
+def test_normalized_laplacian_has_expected_two_node_spectrum() -> None:
+    laplacian = diarization.normalized_laplacian([[0.0, 2.0], [2.0, 0.0]])
+    np.testing.assert_array_equal(laplacian, [[1.0, -1.0], [-1.0, 1.0]])
+    np.testing.assert_allclose(np.linalg.eigvalsh(laplacian), [0.0, 2.0], atol=1e-12)
+
+
+def test_normalized_laplacian_rejects_asymmetry_and_isolates() -> None:
+    with pytest.raises(ValueError, match="symmetric"):
+        diarization.normalized_laplacian([[0.0, 1.0], [0.0, 0.0]])
+    with pytest.raises(ValueError, match="isolated"):
+        diarization.normalized_laplacian(np.zeros((2, 2)))
+
+
 # -- extensions --
