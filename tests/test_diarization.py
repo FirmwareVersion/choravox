@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 
@@ -291,6 +293,24 @@ def test_ahc_validates_threshold_and_requested_count() -> None:
         diarization.agglomerative_clustering([[1.0]], threshold=3.0)
     with pytest.raises(ValueError, match="speaker_count"):
         diarization.agglomerative_clustering([[1.0]], speaker_count=2)
+
+
+def test_ahc_pair_membership_is_invariant_to_input_permutation() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.1], [0.0, 1.0], [0.1, 1.0]])
+    original = diarization.agglomerative_clustering(values, threshold=0.2).labels
+    permutation = np.array([2, 0, 3, 1])
+    shuffled = diarization.agglomerative_clustering(values[permutation], threshold=0.2).labels
+    restored = np.empty_like(shuffled)
+    restored[permutation] = shuffled
+    for left in range(4):
+        for right in range(4):
+            assert (original[left] == original[right]) == (restored[left] == restored[right])
+
+
+def test_ahc_merge_distances_are_monotone_on_nested_clean_clusters() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.01], [0.7, 0.3], [0.0, 1.0]])
+    result = diarization.agglomerative_clustering(values, speaker_count=1)
+    assert all(left <= right for left, right in pairwise(result.merge_distances))
 
 
 # -- extensions --
