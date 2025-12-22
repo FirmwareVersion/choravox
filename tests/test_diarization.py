@@ -326,4 +326,12 @@ def test_affinity_rejects_nonpositive_scale() -> None:
         diarization.affinity_matrix([[1.0]], scale=0.0)
 
 
+def test_affinity_is_symmetric_and_invariant_to_positive_row_scale() -> None:
+    values = np.array([[1.0, 2.0], [-2.0, 1.0], [0.5, 1.5]])
+    first = diarization.affinity_matrix(values)
+    second = diarization.affinity_matrix(values * [[2.0], [0.5], [4.0]])
+    np.testing.assert_array_equal(first, first.T)
+    np.testing.assert_allclose(first, second, atol=1e-12)
+
+
 # -- extensions --
