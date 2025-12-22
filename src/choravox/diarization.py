@@ -278,4 +278,14 @@ def agglomerative_clustering(
     return AhcResult(labels, tuple(merges))
 
 
+def affinity_matrix(values: ArrayLike, *, scale: float = 0.5) -> FloatArray:
+    """Convert cosine distances into a symmetric Gaussian affinity matrix."""
+    if scale <= 0.0 or not np.isfinite(scale):
+        raise ValueError("affinity scale must be finite and positive")
+    distances = cosine_distance_matrix(values)
+    affinity = np.exp(-np.square(distances) / (2.0 * scale * scale))
+    np.fill_diagonal(affinity, 0.0)
+    return np.round(affinity, 12)
+
+
 # -- extensions --

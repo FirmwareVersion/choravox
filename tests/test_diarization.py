@@ -313,4 +313,17 @@ def test_ahc_merge_distances_are_monotone_on_nested_clean_clusters() -> None:
     assert all(left <= right for left, right in pairwise(result.merge_distances))
 
 
+def test_affinity_is_high_within_and_low_between_clean_speakers() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.05], [0.0, 1.0]])
+    affinity = diarization.affinity_matrix(values, scale=0.3)
+    assert affinity[0, 1] > 0.99
+    assert affinity[0, 2] < 0.01
+    np.testing.assert_array_equal(np.diag(affinity), 0.0)
+
+
+def test_affinity_rejects_nonpositive_scale() -> None:
+    with pytest.raises(ValueError, match="scale"):
+        diarization.affinity_matrix([[1.0]], scale=0.0)
+
+
 # -- extensions --
