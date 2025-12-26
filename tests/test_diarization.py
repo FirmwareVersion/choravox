@@ -347,4 +347,22 @@ def test_normalized_laplacian_rejects_asymmetry_and_isolates() -> None:
         diarization.normalized_laplacian(np.zeros((2, 2)))
 
 
+def test_eigengap_recovers_two_disconnected_speaker_groups() -> None:
+    affinity = np.array(
+        [
+            [0.0, 1.0, 0.01, 0.01],
+            [1.0, 0.0, 0.01, 0.01],
+            [0.01, 0.01, 0.0, 1.0],
+            [0.01, 0.01, 1.0, 0.0],
+        ]
+    )
+    assert diarization.estimate_speaker_count(affinity) == 2
+
+
+def test_eigengap_handles_single_node_and_validates_maximum() -> None:
+    assert diarization.estimate_speaker_count([[1.0]]) == 1
+    with pytest.raises(ValueError, match="maximum"):
+        diarization.estimate_speaker_count([[1.0]], maximum=2)
+
+
 # -- extensions --

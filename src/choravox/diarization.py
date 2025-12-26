@@ -302,4 +302,18 @@ def normalized_laplacian(affinity: ArrayLike) -> FloatArray:
     return np.round(np.eye(matrix.shape[0]) - inverse @ matrix @ inverse, 12)
 
 
+def estimate_speaker_count(affinity: ArrayLike, *, maximum: int | None = None) -> int:
+    """Estimate speaker count from the largest low-spectrum eigengap."""
+    laplacian = normalized_laplacian(affinity)
+    count = laplacian.shape[0]
+    upper = count if maximum is None else maximum
+    if upper < 1 or upper > count:
+        raise ValueError("maximum speaker count must fit the graph")
+    if count == 1:
+        return 1
+    eigenvalues = np.linalg.eigvalsh(laplacian)
+    gaps = np.diff(eigenvalues[: min(upper + 1, count)])
+    return int(np.argmax(gaps) + 1)
+
+
 # -- extensions --
