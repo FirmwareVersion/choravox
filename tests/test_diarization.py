@@ -423,4 +423,18 @@ def test_kmeans_is_bitwise_repeatable() -> None:
     np.testing.assert_array_equal(first.centroids, second.centroids)
 
 
+def test_spectral_clustering_recovers_clean_speaker_count() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.02], [0.0, 1.0], [0.02, 1.0]])
+    result = diarization.spectral_clustering(values, maximum=3)
+    assert result.speaker_count == 2
+    assert result.labels[0] == result.labels[1]
+    assert result.labels[2] == result.labels[3]
+
+
+def test_spectral_clustering_accepts_oracle_count() -> None:
+    result = diarization.spectral_clustering(np.eye(3), speaker_count=3)
+    assert result.speaker_count == 3
+    assert np.unique(result.labels).size == 3
+
+
 # -- extensions --

@@ -366,4 +366,30 @@ def deterministic_kmeans(values: ArrayLike, count: int, *, iterations: int = 30)
     )
 
 
+@dataclass(frozen=True, slots=True)
+class SpectralResult:
+    labels: IntArray
+    speaker_count: int
+    eigenvalues: FloatArray
+
+
+def spectral_clustering(
+    values: ArrayLike, *, speaker_count: int | None = None, maximum: int = 8
+) -> SpectralResult:
+    """Cluster normalized-Laplacian eigenvectors with deterministic k-means."""
+    affinity = affinity_matrix(values)
+    count = (
+        estimate_speaker_count(affinity, maximum=min(maximum, affinity.shape[0]))
+        if speaker_count is None
+        else speaker_count
+    )
+    if count < 1 or count > affinity.shape[0]:
+        raise ValueError("speaker_count must fit observations")
+    eigenvalues, eigenvectors = np.linalg.eigh(normalized_laplacian(affinity))
+    embedding = eigenvectors[:, :count]
+    norms = np.linalg.norm(embedding, axis=1, keepdims=True)
+    labels = deterministic_kmeans(embedding / np.maximum(norms, 1e-12), count).labels
+    return SpectralResult(labels, count, np.round(eigenvalues, 12))
+
+
 # -- extensions --
