@@ -408,4 +408,19 @@ def test_deterministic_kmeans_rejects_zero_iterations() -> None:
         diarization.deterministic_kmeans([[1.0]], 1, iterations=0)
 
 
+def test_kmeans_inertia_matches_squared_residuals() -> None:
+    values = np.array([[0.0, 0.0], [2.0, 0.0], [10.0, 1.0]])
+    result = diarization.deterministic_kmeans(values, 2)
+    residual = values - result.centroids[result.labels]
+    assert result.inertia == pytest.approx(float(np.sum(np.square(residual))))
+
+
+def test_kmeans_is_bitwise_repeatable() -> None:
+    values = np.array([[1.0, 0.0], [0.9, 0.1], [-1.0, 0.0], [-0.9, -0.1]])
+    first = diarization.deterministic_kmeans(values, 2)
+    second = diarization.deterministic_kmeans(values, 2)
+    np.testing.assert_array_equal(first.labels, second.labels)
+    np.testing.assert_array_equal(first.centroids, second.centroids)
+
+
 # -- extensions --
