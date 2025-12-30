@@ -365,4 +365,19 @@ def test_eigengap_handles_single_node_and_validates_maximum() -> None:
         diarization.estimate_speaker_count([[1.0]], maximum=2)
 
 
+def test_eigengap_count_is_stable_under_uniform_affinity_scaling() -> None:
+    affinity = np.array([[0.0, 1.0, 0.1], [1.0, 0.0, 0.1], [0.1, 0.1, 0.0]])
+    assert diarization.estimate_speaker_count(affinity) == diarization.estimate_speaker_count(
+        7.0 * affinity
+    )
+
+
+def test_eigengap_obeys_declared_search_ceiling() -> None:
+    affinity = np.full((4, 4), 0.01)
+    np.fill_diagonal(affinity, 0.0)
+    affinity[0, 1] = affinity[1, 0] = 1.0
+    affinity[2, 3] = affinity[3, 2] = 1.0
+    assert diarization.estimate_speaker_count(affinity, maximum=1) == 1
+
+
 # -- extensions --
