@@ -380,4 +380,18 @@ def test_eigengap_obeys_declared_search_ceiling() -> None:
     assert diarization.estimate_speaker_count(affinity, maximum=1) == 1
 
 
+def test_farthest_centroids_span_clean_cluster_extremes() -> None:
+    values = np.array([[0.0], [1.0], [5.0], [10.0]])
+    np.testing.assert_array_equal(diarization.farthest_centroids(values, 2), [[10.0], [0.0]])
+
+
+def test_farthest_centroids_validate_count_and_repeat_exactly() -> None:
+    values = np.eye(3)
+    with pytest.raises(ValueError, match="count"):
+        diarization.farthest_centroids(values, 4)
+    np.testing.assert_array_equal(
+        diarization.farthest_centroids(values, 2), diarization.farthest_centroids(values, 2)
+    )
+
+
 # -- extensions --

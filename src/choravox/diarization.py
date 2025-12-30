@@ -316,4 +316,21 @@ def estimate_speaker_count(affinity: ArrayLike, *, maximum: int | None = None) -
     return int(np.argmax(gaps) + 1)
 
 
+def farthest_centroids(values: ArrayLike, count: int) -> FloatArray:
+    """Choose deterministic farthest-first centroids for clustering."""
+    matrix = np.asarray(values, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or not np.all(np.isfinite(matrix)):
+        raise ValueError("values must be a nonempty finite matrix")
+    if count < 1 or count > matrix.shape[0]:
+        raise ValueError("centroid count must fit observations")
+    selected = [int(np.argmax(np.linalg.norm(matrix, axis=1)))]
+    while len(selected) < count:
+        distances = np.min(
+            np.linalg.norm(matrix[:, None, :] - matrix[selected][None, :, :], axis=2), axis=1
+        )
+        distances[selected] = -1.0
+        selected.append(int(np.argmax(distances)))
+    return matrix[selected].copy()
+
+
 # -- extensions --
