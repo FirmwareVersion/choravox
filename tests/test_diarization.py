@@ -394,4 +394,18 @@ def test_farthest_centroids_validate_count_and_repeat_exactly() -> None:
     )
 
 
+def test_deterministic_kmeans_recovers_compact_groups() -> None:
+    values = np.array([[-2.1], [-1.9], [3.9], [4.1]])
+    result = diarization.deterministic_kmeans(values, 2)
+    assert result.labels[0] == result.labels[1]
+    assert result.labels[2] == result.labels[3]
+    assert result.labels[0] != result.labels[2]
+    assert result.inertia == pytest.approx(0.04)
+
+
+def test_deterministic_kmeans_rejects_zero_iterations() -> None:
+    with pytest.raises(ValueError, match="iterations"):
+        diarization.deterministic_kmeans([[1.0]], 1, iterations=0)
+
+
 # -- extensions --

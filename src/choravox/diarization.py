@@ -333,4 +333,37 @@ def farthest_centroids(values: ArrayLike, count: int) -> FloatArray:
     return matrix[selected].copy()
 
 
+@dataclass(frozen=True, slots=True)
+class KMeansResult:
+    labels: IntArray
+    centroids: FloatArray
+    inertia: float
+
+
+def deterministic_kmeans(values: ArrayLike, count: int, *, iterations: int = 30) -> KMeansResult:
+    """Cluster rows with farthest-first initialization and stable ties."""
+    matrix = np.asarray(values, dtype=np.float64)
+    centroids = farthest_centroids(matrix, count)
+    if iterations < 1:
+        raise ValueError("iterations must be positive")
+    labels = np.zeros(matrix.shape[0], dtype=np.int64)
+    for _ in range(iterations):
+        next_labels, distances = assign_centroids(matrix, centroids)
+        if np.array_equal(next_labels, labels) and _:
+            break
+        labels = next_labels
+        centroids = np.stack(
+            [
+                np.mean(matrix[labels == index], axis=0)
+                if np.any(labels == index)
+                else centroids[index]
+                for index in range(count)
+            ]
+        )
+    _, distances = assign_centroids(matrix, centroids)
+    return KMeansResult(
+        labels, np.round(centroids, 12), round(float(np.sum(np.square(distances))), 12)
+    )
+
+
 # -- extensions --
