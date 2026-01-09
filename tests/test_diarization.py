@@ -504,4 +504,14 @@ def test_viterbi_rejects_nonstochastic_inputs() -> None:
         diarization.viterbi_speaker_path([[0.8, 0.8]], np.eye(2))
 
 
+def test_minimum_duration_merges_short_interior_run() -> None:
+    observed = diarization.enforce_label_duration([0, 0, 1, 0, 0], 2)
+    np.testing.assert_array_equal(observed, [0, 0, 0, 0, 0])
+
+
+def test_minimum_duration_repairs_short_leading_run_forward() -> None:
+    observed = diarization.enforce_label_duration([1, 0, 0, 0], 2)
+    np.testing.assert_array_equal(observed, [0, 0, 0, 0])
+
+
 # -- extensions --

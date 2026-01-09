@@ -437,4 +437,25 @@ def viterbi_speaker_path(posteriors: ArrayLike, transitions: ArrayLike) -> IntAr
     return path
 
 
+def enforce_label_duration(labels: ArrayLike, minimum_frames: int) -> IntArray:
+    """Merge label runs shorter than a declared frame duration."""
+    values = np.asarray(labels, dtype=np.int64)
+    if values.ndim != 1 or minimum_frames < 1 or np.any(values < 0):
+        raise ValueError("labels and minimum duration are invalid")
+    result = values.copy()
+    changed = True
+    while changed and result.size:
+        changed = False
+        starts = np.r_[0, np.flatnonzero(result[1:] != result[:-1]) + 1]
+        ends = np.r_[starts[1:], result.size]
+        for index, (start, end) in enumerate(zip(starts, ends, strict=True)):
+            if end - start >= minimum_frames or len(starts) == 1:
+                continue
+            replacement = result[ends[index]] if index == 0 else result[starts[index] - 1]
+            result[start:end] = replacement
+            changed = True
+            break
+    return result
+
+
 # -- extensions --
