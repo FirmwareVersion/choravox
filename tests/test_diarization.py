@@ -437,4 +437,17 @@ def test_spectral_clustering_accepts_oracle_count() -> None:
     assert np.unique(result.labels).size == 3
 
 
+def test_spectral_eigenvalues_are_sorted_and_nonnegative() -> None:
+    result = diarization.spectral_clustering([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]], speaker_count=2)
+    assert np.all(np.diff(result.eigenvalues) >= 0.0)
+    assert result.eigenvalues[0] >= -1e-10
+
+
+def test_spectral_partition_repeats_for_same_embeddings() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.1], [0.0, 1.0], [0.1, 1.0]])
+    first = diarization.spectral_clustering(values, speaker_count=2)
+    second = diarization.spectral_clustering(values, speaker_count=2)
+    np.testing.assert_array_equal(first.labels, second.labels)
+
+
 # -- extensions --
