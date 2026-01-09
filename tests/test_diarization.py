@@ -462,4 +462,20 @@ def test_speaker_transition_matrix_handles_single_state_and_bad_controls() -> No
         diarization.speaker_transition_matrix(2, 0.0)
 
 
+def test_viterbi_smoothing_suppresses_weak_single_frame_switch() -> None:
+    posteriors = np.array([[0.9, 0.1], [0.9, 0.1], [0.4, 0.6], [0.9, 0.1]])
+    path = diarization.viterbi_speaker_path(
+        posteriors, diarization.speaker_transition_matrix(2, 0.95)
+    )
+    np.testing.assert_array_equal(path, [0, 0, 0, 0])
+
+
+def test_viterbi_follows_sustained_strong_change() -> None:
+    posteriors = np.array([[0.99, 0.01], [0.99, 0.01], [0.01, 0.99], [0.01, 0.99]])
+    path = diarization.viterbi_speaker_path(
+        posteriors, diarization.speaker_transition_matrix(2, 0.8)
+    )
+    np.testing.assert_array_equal(path, [0, 0, 1, 1])
+
+
 # -- extensions --

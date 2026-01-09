@@ -404,4 +404,37 @@ def speaker_transition_matrix(count: int, stay_probability: float = 0.95) -> Flo
     return np.round(matrix, 12)
 
 
+def viterbi_speaker_path(posteriors: ArrayLike, transitions: ArrayLike) -> IntArray:
+    """Decode the most likely speaker path from frame posteriors."""
+    emissions = np.asarray(posteriors, dtype=np.float64)
+    matrix = np.asarray(transitions, dtype=np.float64)
+    if (
+        emissions.ndim != 2
+        or emissions.shape[0] == 0
+        or matrix.shape != (emissions.shape[1], emissions.shape[1])
+    ):
+        raise ValueError("posteriors and transitions have incompatible shapes")
+    if (
+        np.any(emissions < 0.0)
+        or np.any(matrix < 0.0)
+        or not np.allclose(np.sum(emissions, axis=1), 1.0, atol=1e-8)
+        or not np.allclose(np.sum(matrix, axis=1), 1.0, atol=1e-8)
+    ):
+        raise ValueError("posteriors and transitions must be stochastic")
+    score = np.log(np.maximum(emissions[0], 1e-300)) - np.log(emissions.shape[1])
+    back = np.zeros(emissions.shape, dtype=np.int64)
+    log_transition = np.log(np.maximum(matrix, 1e-300))
+    for frame in range(1, emissions.shape[0]):
+        candidates = score[:, None] + log_transition
+        back[frame] = np.argmax(candidates, axis=0)
+        score = candidates[back[frame], np.arange(emissions.shape[1])] + np.log(
+            np.maximum(emissions[frame], 1e-300)
+        )
+    path = np.empty(emissions.shape[0], dtype=np.int64)
+    path[-1] = int(np.argmax(score))
+    for frame in range(emissions.shape[0] - 1, 0, -1):
+        path[frame - 1] = back[frame, path[frame]]
+    return path
+
+
 # -- extensions --
