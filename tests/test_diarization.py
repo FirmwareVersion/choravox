@@ -478,4 +478,30 @@ def test_viterbi_follows_sustained_strong_change() -> None:
     np.testing.assert_array_equal(path, [0, 0, 1, 1])
 
 
+def test_viterbi_matches_exhaustive_path_search_on_tiny_case() -> None:
+    from itertools import product
+
+    posterior = np.array([[0.7, 0.3], [0.4, 0.6], [0.2, 0.8]])
+    transition = diarization.speaker_transition_matrix(2, 0.75)
+    decoded = tuple(diarization.viterbi_speaker_path(posterior, transition))
+    paths = list(product(range(2), repeat=3))
+
+    def probability(path: tuple[int, ...]) -> float:
+        return (
+            0.5
+            * posterior[0, path[0]]
+            * transition[path[0], path[1]]
+            * posterior[1, path[1]]
+            * transition[path[1], path[2]]
+            * posterior[2, path[2]]
+        )
+
+    assert decoded == max(paths, key=probability)
+
+
+def test_viterbi_rejects_nonstochastic_inputs() -> None:
+    with pytest.raises(ValueError, match="stochastic"):
+        diarization.viterbi_speaker_path([[0.8, 0.8]], np.eye(2))
+
+
 # -- extensions --
