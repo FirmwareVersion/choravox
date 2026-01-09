@@ -514,4 +514,16 @@ def test_minimum_duration_repairs_short_leading_run_forward() -> None:
     np.testing.assert_array_equal(observed, [0, 0, 0, 0])
 
 
+def test_minimum_duration_is_idempotent_after_repair() -> None:
+    first = diarization.enforce_label_duration([0, 1, 1, 0, 2], 2)
+    second = diarization.enforce_label_duration(first, 2)
+    np.testing.assert_array_equal(first, second)
+
+
+def test_minimum_duration_handles_empty_and_validates_controls() -> None:
+    assert diarization.enforce_label_duration([], 2).size == 0
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.enforce_label_duration([0], 0)
+
+
 # -- extensions --
