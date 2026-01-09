@@ -392,4 +392,16 @@ def spectral_clustering(
     return SpectralResult(labels, count, np.round(eigenvalues, 12))
 
 
+def speaker_transition_matrix(count: int, stay_probability: float = 0.95) -> FloatArray:
+    """Create a row-stochastic speaker HMM transition matrix."""
+    if count < 1 or not 0.0 < stay_probability <= 1.0:
+        raise ValueError("speaker count and stay probability are invalid")
+    if count == 1:
+        return np.ones((1, 1), dtype=np.float64)
+    change = (1.0 - stay_probability) / (count - 1)
+    matrix = np.full((count, count), change)
+    np.fill_diagonal(matrix, stay_probability)
+    return np.round(matrix, 12)
+
+
 # -- extensions --

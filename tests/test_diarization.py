@@ -450,4 +450,16 @@ def test_spectral_partition_repeats_for_same_embeddings() -> None:
     np.testing.assert_array_equal(first.labels, second.labels)
 
 
+def test_speaker_transition_matrix_is_stochastic_with_declared_diagonal() -> None:
+    matrix = diarization.speaker_transition_matrix(3, 0.8)
+    np.testing.assert_allclose(np.sum(matrix, axis=1), 1.0, atol=1e-12)
+    np.testing.assert_array_equal(np.diag(matrix), 0.8)
+
+
+def test_speaker_transition_matrix_handles_single_state_and_bad_controls() -> None:
+    np.testing.assert_array_equal(diarization.speaker_transition_matrix(1), [[1.0]])
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.speaker_transition_matrix(2, 0.0)
+
+
 # -- extensions --
