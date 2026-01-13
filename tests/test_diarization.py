@@ -538,4 +538,16 @@ def test_gaussian_responsibilities_reject_bad_geometry() -> None:
         diarization.gaussian_responsibilities([[1.0, 2.0]], [[1.0]], variance=1.0)
 
 
+def test_vb_refinement_preserves_clean_two_speaker_partition() -> None:
+    values = np.array([[-2.1], [-1.9], [2.9], [3.1]])
+    result = diarization.vb_refinement(values, [0, 0, 1, 1], variance=0.2)
+    np.testing.assert_array_equal(result.labels, [0, 0, 1, 1])
+    np.testing.assert_allclose(np.sum(result.responsibilities, axis=1), 1.0, atol=1e-12)
+
+
+def test_vb_refinement_validates_alignment_and_iterations() -> None:
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.vb_refinement(np.ones((2, 1)), [0], iterations=1)
+
+
 # -- extensions --

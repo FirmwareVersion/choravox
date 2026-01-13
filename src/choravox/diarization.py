@@ -479,4 +479,29 @@ def gaussian_responsibilities(
     return np.round(probabilities, 12)
 
 
+@dataclass(frozen=True, slots=True)
+class VbResult:
+    labels: IntArray
+    responsibilities: FloatArray
+    centroids: FloatArray
+
+
+def vb_refinement(
+    values: ArrayLike, initial_labels: ArrayLike, *, iterations: int = 8, variance: float = 1.0
+) -> VbResult:
+    """Refine a planted initialization with a simplified VB emission loop."""
+    matrix = np.asarray(values, dtype=np.float64)
+    labels = np.asarray(initial_labels, dtype=np.int64)
+    if matrix.ndim != 2 or labels.shape != (matrix.shape[0],) or iterations < 1:
+        raise ValueError("VB inputs and iterations are invalid")
+    centroids = speaker_centroids(matrix, labels.tolist())
+    responsibilities = gaussian_responsibilities(matrix, centroids, variance=variance)
+    for _ in range(iterations):
+        occupancy = np.sum(responsibilities, axis=0)
+        centroids = responsibilities.T @ matrix / np.maximum(occupancy[:, None], 1e-12)
+        responsibilities = gaussian_responsibilities(matrix, centroids, variance=variance)
+    labels = np.argmax(responsibilities, axis=1).astype(np.int64)
+    return VbResult(labels, responsibilities, np.round(centroids, 12))
+
+
 # -- extensions --
