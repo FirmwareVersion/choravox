@@ -526,4 +526,16 @@ def test_minimum_duration_handles_empty_and_validates_controls() -> None:
         diarization.enforce_label_duration([0], 0)
 
 
+def test_gaussian_responsibilities_prefer_nearest_centroid() -> None:
+    probabilities = diarization.gaussian_responsibilities([[0.0], [5.0]], [[0.0], [5.0]])
+    np.testing.assert_allclose(np.sum(probabilities, axis=1), 1.0, atol=1e-12)
+    assert probabilities[0, 0] > 0.99
+    assert probabilities[1, 1] > 0.99
+
+
+def test_gaussian_responsibilities_reject_bad_geometry() -> None:
+    with pytest.raises(ValueError, match="geometry"):
+        diarization.gaussian_responsibilities([[1.0, 2.0]], [[1.0]], variance=1.0)
+
+
 # -- extensions --

@@ -458,4 +458,25 @@ def enforce_label_duration(labels: ArrayLike, minimum_frames: int) -> IntArray:
     return result
 
 
+def gaussian_responsibilities(
+    values: ArrayLike, centroids: ArrayLike, *, variance: float = 1.0
+) -> FloatArray:
+    """Infer normalized cluster responsibilities under spherical emissions."""
+    matrix = np.asarray(values, dtype=np.float64)
+    centers = np.asarray(centroids, dtype=np.float64)
+    if (
+        matrix.ndim != 2
+        or centers.ndim != 2
+        or centers.shape[0] == 0
+        or matrix.shape[1:] != centers.shape[1:]
+        or variance <= 0.0
+    ):
+        raise ValueError("VB emission geometry is invalid")
+    logits = -0.5 * np.sum(np.square(matrix[:, None, :] - centers[None, :, :]), axis=2) / variance
+    logits -= np.max(logits, axis=1, keepdims=True)
+    probabilities = np.exp(logits)
+    probabilities /= np.sum(probabilities, axis=1, keepdims=True)
+    return np.round(probabilities, 12)
+
+
 # -- extensions --
