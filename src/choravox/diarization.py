@@ -552,4 +552,20 @@ def activity_to_spans(
     return tuple(spans)
 
 
+def spans_to_activity(
+    spans: tuple[MultiSpeakerFrames, ...], frame_count: int, speakers: tuple[str, ...]
+) -> NDArray[np.bool_]:
+    """Decode possibly overlapping spans to a frame activity matrix."""
+    if frame_count < 0 or len(set(speakers)) != len(speakers):
+        raise ValueError("frame count and speaker roster are invalid")
+    lookup = {speaker: index for index, speaker in enumerate(speakers)}
+    matrix = np.zeros((frame_count, len(speakers)), dtype=np.bool_)
+    for span in spans:
+        if span.end > frame_count or any(speaker not in lookup for speaker in span.speakers):
+            raise ValueError("span falls outside declared activity geometry")
+        for speaker in span.speakers:
+            matrix[span.start : span.end, lookup[speaker]] = True
+    return matrix
+
+
 # -- extensions --

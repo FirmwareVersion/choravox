@@ -598,4 +598,15 @@ def test_activity_encoding_skips_silence_and_validates_roster() -> None:
         diarization.activity_to_spans(np.ones((2, 2)), ("a",))
 
 
+def test_multi_speaker_activity_roundtrip_preserves_overlap_and_silence() -> None:
+    activity = np.array([[0, 0], [1, 0], [1, 1], [0, 0], [0, 1]], dtype=bool)
+    spans = diarization.activity_to_spans(activity, ("a", "b"))
+    np.testing.assert_array_equal(diarization.spans_to_activity(spans, 5, ("a", "b")), activity)
+
+
+def test_activity_decoding_rejects_unknown_speaker_and_out_of_range_span() -> None:
+    with pytest.raises(ValueError, match="geometry"):
+        diarization.spans_to_activity((diarization.MultiSpeakerFrames(0, 3, ("x",)),), 2, ("a",))
+
+
 # -- extensions --
