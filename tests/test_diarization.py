@@ -568,4 +568,18 @@ def test_vb_refinement_is_deterministic() -> None:
     np.testing.assert_array_equal(first.responsibilities, second.responsibilities)
 
 
+def test_multi_speaker_span_identifies_overlap() -> None:
+    single = diarization.MultiSpeakerFrames(0, 3, ("a",))
+    overlap = diarization.MultiSpeakerFrames(3, 5, ("a", "b"))
+    assert not single.is_overlap
+    assert overlap.is_overlap
+
+
+def test_multi_speaker_span_requires_sorted_unique_labels() -> None:
+    with pytest.raises(ValueError, match="unique and sorted"):
+        diarization.MultiSpeakerFrames(0, 2, ("b", "a"))
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.MultiSpeakerFrames(2, 2, ("a",))
+
+
 # -- extensions --

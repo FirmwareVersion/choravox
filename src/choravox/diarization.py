@@ -504,4 +504,23 @@ def vb_refinement(
     return VbResult(labels, responsibilities, np.round(centroids, 12))
 
 
+@dataclass(frozen=True, slots=True, order=True)
+class MultiSpeakerFrames:
+    """A half-open frame span with one or more active speakers."""
+
+    start: int
+    end: int
+    speakers: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.start < 0 or self.end <= self.start or not self.speakers:
+            raise ValueError("multi-speaker frame span is invalid")
+        if tuple(sorted(set(self.speakers))) != self.speakers:
+            raise ValueError("active speakers must be unique and sorted")
+
+    @property
+    def is_overlap(self) -> bool:
+        return len(self.speakers) > 1
+
+
 # -- extensions --
