@@ -609,4 +609,11 @@ def test_activity_decoding_rejects_unknown_speaker_and_out_of_range_span() -> No
         diarization.spans_to_activity((diarization.MultiSpeakerFrames(0, 3, ("x",)),), 2, ("a",))
 
 
+def test_activity_roundtrip_is_exhaustive_for_short_two_speaker_masks() -> None:
+    for mask in range(1 << 8):
+        activity = np.array([(mask >> bit) & 1 for bit in range(8)], dtype=bool).reshape(4, 2)
+        spans = diarization.activity_to_spans(activity, ("a", "b"))
+        np.testing.assert_array_equal(diarization.spans_to_activity(spans, 4, ("a", "b")), activity)
+
+
 # -- extensions --
