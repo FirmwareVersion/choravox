@@ -550,4 +550,22 @@ def test_vb_refinement_validates_alignment_and_iterations() -> None:
         diarization.vb_refinement(np.ones((2, 1)), [0], iterations=1)
 
 
+def test_vb_refinement_reduces_centroid_residual_from_noisy_initialization() -> None:
+    values = np.array([[-3.0], [-2.8], [2.8], [3.0]])
+    initial = np.array([0, 1, 1, 1])
+    before = diarization.speaker_centroids(values, initial.tolist())
+    before_labels, before_distances = diarization.assign_centroids(values, before)
+    result = diarization.vb_refinement(values, initial, iterations=10, variance=0.3)
+    _, after_distances = diarization.assign_centroids(values, result.centroids)
+    assert np.sum(after_distances) < np.sum(before_distances)
+    assert np.unique(result.labels).size == np.unique(before_labels).size
+
+
+def test_vb_refinement_is_deterministic() -> None:
+    values = np.array([[-1.0], [-0.8], [1.0], [0.8]])
+    first = diarization.vb_refinement(values, [0, 0, 1, 1])
+    second = diarization.vb_refinement(values, [0, 0, 1, 1])
+    np.testing.assert_array_equal(first.responsibilities, second.responsibilities)
+
+
 # -- extensions --
