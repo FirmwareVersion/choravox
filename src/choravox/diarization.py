@@ -523,4 +523,33 @@ class MultiSpeakerFrames:
         return len(self.speakers) > 1
 
 
+def activity_to_spans(
+    activity: ArrayLike, speakers: tuple[str, ...]
+) -> tuple[MultiSpeakerFrames, ...]:
+    """Run-length encode a boolean frame-by-speaker activity matrix."""
+    matrix = np.asarray(activity, dtype=np.bool_)
+    if (
+        matrix.ndim != 2
+        or matrix.shape[1] != len(speakers)
+        or len(set(speakers)) != len(speakers)
+        or any(not item for item in speakers)
+    ):
+        raise ValueError("activity and speaker roster are invalid")
+    spans: list[MultiSpeakerFrames] = []
+    start = 0
+    previous: tuple[str, ...] = ()
+    for frame in range(matrix.shape[0] + 1):
+        current = (
+            ()
+            if frame == matrix.shape[0]
+            else tuple(speakers[index] for index in np.flatnonzero(matrix[frame]))
+        )
+        if frame and current != previous:
+            if previous:
+                spans.append(MultiSpeakerFrames(start, frame, tuple(sorted(previous))))
+            start = frame
+        previous = current
+    return tuple(spans)
+
+
 # -- extensions --

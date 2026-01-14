@@ -582,4 +582,20 @@ def test_multi_speaker_span_requires_sorted_unique_labels() -> None:
         diarization.MultiSpeakerFrames(2, 2, ("a",))
 
 
+def test_activity_encoding_emits_single_and_overlap_spans() -> None:
+    activity = np.array([[1, 0], [1, 1], [0, 1]], dtype=bool)
+    spans = diarization.activity_to_spans(activity, ("a", "b"))
+    assert spans == (
+        diarization.MultiSpeakerFrames(0, 1, ("a",)),
+        diarization.MultiSpeakerFrames(1, 2, ("a", "b")),
+        diarization.MultiSpeakerFrames(2, 3, ("b",)),
+    )
+
+
+def test_activity_encoding_skips_silence_and_validates_roster() -> None:
+    assert diarization.activity_to_spans(np.zeros((3, 1), dtype=bool), ("a",)) == ()
+    with pytest.raises(ValueError, match="invalid"):
+        diarization.activity_to_spans(np.ones((2, 2)), ("a",))
+
+
 # -- extensions --
