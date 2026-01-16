@@ -640,4 +640,25 @@ class DiarizationResult:
     speaker_count: int
 
 
+def diarize_embeddings(
+    values: ArrayLike, config: DiarizationConfig | None = None
+) -> DiarizationResult:
+    """Cluster, refine, and temporally smooth window embeddings."""
+    settings = config or DiarizationConfig()
+    matrix = np.asarray(values, dtype=np.float64)
+    if settings.method == "ahc":
+        initial = agglomerative_clustering(
+            matrix, threshold=settings.ahc_threshold, speaker_count=settings.speaker_count
+        ).labels
+    else:
+        initial = spectral_clustering(matrix, speaker_count=settings.speaker_count).labels
+    refined = vb_refinement(matrix, initial, iterations=settings.vb_iterations, variance=0.1)
+    count = int(refined.responsibilities.shape[1])
+    path = viterbi_speaker_path(
+        refined.responsibilities, speaker_transition_matrix(count, settings.hmm_stay)
+    )
+    labels = enforce_label_duration(path, settings.minimum_frames)
+    return DiarizationResult(labels, refined.responsibilities, int(np.unique(labels).size))
+
+
 # -- extensions --

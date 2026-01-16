@@ -668,4 +668,20 @@ def test_diarization_config_rejects_bad_controls_coherently() -> None:
         diarization.DiarizationConfig(vb_iterations=0)
 
 
+def test_ahc_pipeline_recovers_clean_planted_speakers() -> None:
+    values = np.array([[1.0, 0.0], [1.0, 0.03], [0.0, 1.0], [0.02, 1.0]])
+    result = diarization.diarize_embeddings(
+        values, diarization.DiarizationConfig(ahc_threshold=0.2)
+    )
+    assert result.speaker_count == 2
+    assert result.labels[0] == result.labels[1]
+    assert result.labels[2] == result.labels[3]
+
+
+def test_pipeline_posteriors_are_normalized_per_window() -> None:
+    values = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.1, 0.9]])
+    result = diarization.diarize_embeddings(values, diarization.DiarizationConfig(speaker_count=2))
+    np.testing.assert_allclose(np.sum(result.posteriors, axis=1), 1.0, atol=1e-12)
+
+
 # -- extensions --
