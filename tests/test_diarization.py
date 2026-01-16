@@ -616,4 +616,18 @@ def test_activity_roundtrip_is_exhaustive_for_short_two_speaker_masks() -> None:
         np.testing.assert_array_equal(diarization.spans_to_activity(spans, 4, ("a", "b")), activity)
 
 
+def test_overlap_spans_emit_parallel_rttm_records() -> None:
+    spans = (diarization.MultiSpeakerFrames(2, 5, ("a", "b")),)
+    entries = diarization.spans_to_rttm(spans, "meeting", 0.01)
+    assert [(item.start_s, item.duration_s, item.speaker) for item in entries] == [
+        (0.02, 0.03, "a"),
+        (0.02, 0.03, "b"),
+    ]
+
+
+def test_rttm_conversion_validates_identity_and_hop() -> None:
+    with pytest.raises(ValueError, match="valid"):
+        diarization.spans_to_rttm((), "", 0.01)
+
+
 # -- extensions --

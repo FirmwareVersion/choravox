@@ -8,6 +8,8 @@ from itertools import pairwise
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.annotations import RttmEntry
+
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.int64]
 
@@ -566,6 +568,27 @@ def spans_to_activity(
         for speaker in span.speakers:
             matrix[span.start : span.end, lookup[speaker]] = True
     return matrix
+
+
+def spans_to_rttm(
+    spans: tuple[MultiSpeakerFrames, ...], recording_id: str, hop_seconds: float
+) -> tuple[RttmEntry, ...]:
+    """Emit one RTTM speaker record per active label, including overlap."""
+    if not recording_id or hop_seconds <= 0.0:
+        raise ValueError("recording identity and hop must be valid")
+    entries = []
+    for span in spans:
+        for speaker in span.speakers:
+            entries.append(
+                RttmEntry(
+                    recording_id,
+                    1,
+                    round(span.start * hop_seconds, 6),
+                    round((span.end - span.start) * hop_seconds, 6),
+                    speaker,
+                )
+            )
+    return tuple(entries)
 
 
 # -- extensions --
