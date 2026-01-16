@@ -591,4 +591,26 @@ def spans_to_rttm(
     return tuple(entries)
 
 
+def rttm_to_spans(
+    entries: tuple[RttmEntry, ...], *, hop_seconds: float
+) -> tuple[MultiSpeakerFrames, ...]:
+    """Rasterize RTTM records and recover canonical multi-speaker spans."""
+    if hop_seconds <= 0.0:
+        raise ValueError("hop_seconds must be positive")
+    if not entries:
+        return ()
+    recording_ids = {entry.recording_id for entry in entries}
+    if len(recording_ids) != 1:
+        raise ValueError("RTTM entries must share a recording")
+    speakers = tuple(sorted({entry.speaker for entry in entries}))
+    frame_count = max(round((entry.start_s + entry.duration_s) / hop_seconds) for entry in entries)
+    activity = np.zeros((frame_count, len(speakers)), dtype=np.bool_)
+    lookup = {speaker: index for index, speaker in enumerate(speakers)}
+    for entry in entries:
+        start = round(entry.start_s / hop_seconds)
+        end = round((entry.start_s + entry.duration_s) / hop_seconds)
+        activity[start:end, lookup[entry.speaker]] = True
+    return activity_to_spans(activity, speakers)
+
+
 # -- extensions --

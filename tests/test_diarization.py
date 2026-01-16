@@ -630,4 +630,21 @@ def test_rttm_conversion_validates_identity_and_hop() -> None:
         diarization.spans_to_rttm((), "", 0.01)
 
 
+def test_rttm_span_roundtrip_preserves_quantized_activity() -> None:
+    spans = (
+        diarization.MultiSpeakerFrames(0, 2, ("a",)),
+        diarization.MultiSpeakerFrames(2, 4, ("a", "b")),
+    )
+    entries = diarization.spans_to_rttm(spans, "meeting", 0.01)
+    assert diarization.rttm_to_spans(entries, hop_seconds=0.01) == spans
+
+
+def test_rttm_span_decoder_rejects_mixed_recordings() -> None:
+    from choravox.annotations import RttmEntry
+
+    entries = (RttmEntry("a", 1, 0.0, 0.1, "s"), RttmEntry("b", 1, 0.1, 0.1, "s"))
+    with pytest.raises(ValueError, match="share"):
+        diarization.rttm_to_spans(entries, hop_seconds=0.01)
+
+
 # -- extensions --
