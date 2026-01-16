@@ -647,4 +647,13 @@ def test_rttm_span_decoder_rejects_mixed_recordings() -> None:
         diarization.rttm_to_spans(entries, hop_seconds=0.01)
 
 
+def test_rttm_text_roundtrip_keeps_overlap_activity() -> None:
+    from choravox.annotations import rttm_from_text, rttm_to_text
+
+    spans = (diarization.MultiSpeakerFrames(1, 3, ("a", "b")),)
+    entries = diarization.spans_to_rttm(spans, "rec", 0.02)
+    decoded = rttm_from_text(rttm_to_text(entries))
+    assert diarization.rttm_to_spans(decoded, hop_seconds=0.02) == spans
+
+
 # -- extensions --
