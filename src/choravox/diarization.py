@@ -613,4 +613,31 @@ def rttm_to_spans(
     return activity_to_spans(activity, speakers)
 
 
+@dataclass(frozen=True, slots=True)
+class DiarizationConfig:
+    method: str = "ahc"
+    speaker_count: int | None = None
+    ahc_threshold: float = 0.5
+    hmm_stay: float = 0.95
+    minimum_frames: int = 1
+    vb_iterations: int = 4
+
+    def __post_init__(self) -> None:
+        if self.method not in {"ahc", "spectral"} or (
+            self.speaker_count is not None and self.speaker_count < 1
+        ):
+            raise ValueError("diarization method and speaker count are invalid")
+        if not 0.0 <= self.ahc_threshold <= 2.0 or not 0.0 < self.hmm_stay <= 1.0:
+            raise ValueError("diarization probabilities are invalid")
+        if self.minimum_frames < 1 or self.vb_iterations < 1:
+            raise ValueError("diarization iteration controls are invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class DiarizationResult:
+    labels: IntArray
+    posteriors: FloatArray
+    speaker_count: int
+
+
 # -- extensions --

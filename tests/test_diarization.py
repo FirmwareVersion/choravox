@@ -656,4 +656,16 @@ def test_rttm_text_roundtrip_keeps_overlap_activity() -> None:
     assert diarization.rttm_to_spans(decoded, hop_seconds=0.02) == spans
 
 
+def test_diarization_config_exposes_supported_clustering_methods() -> None:
+    assert diarization.DiarizationConfig().method == "ahc"
+    assert diarization.DiarizationConfig(method="spectral", speaker_count=2).speaker_count == 2
+
+
+def test_diarization_config_rejects_bad_controls_coherently() -> None:
+    with pytest.raises(ValueError, match="method"):
+        diarization.DiarizationConfig(method="random")
+    with pytest.raises(ValueError, match="iteration"):
+        diarization.DiarizationConfig(vb_iterations=0)
+
+
 # -- extensions --
