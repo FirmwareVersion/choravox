@@ -684,4 +684,20 @@ def test_pipeline_posteriors_are_normalized_per_window() -> None:
     np.testing.assert_allclose(np.sum(result.posteriors, axis=1), 1.0, atol=1e-12)
 
 
+def test_spectral_pipeline_obeys_oracle_count_on_clean_embeddings() -> None:
+    values = np.array([[1.0, 0.0], [0.98, 0.02], [0.0, 1.0], [0.02, 0.98]])
+    config = diarization.DiarizationConfig(method="spectral", speaker_count=2, hmm_stay=0.8)
+    result = diarization.diarize_embeddings(values, config)
+    assert result.speaker_count == 2
+    assert (result.labels[0] == result.labels[1]) and (result.labels[2] == result.labels[3])
+
+
+def test_pipeline_is_byte_deterministic_for_same_embeddings() -> None:
+    values = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.1, 0.9]])
+    first = diarization.diarize_embeddings(values)
+    second = diarization.diarize_embeddings(values)
+    np.testing.assert_array_equal(first.labels, second.labels)
+    np.testing.assert_array_equal(first.posteriors, second.posteriors)
+
+
 # -- extensions --
