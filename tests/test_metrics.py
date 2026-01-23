@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from choravox import metrics
 
 
@@ -52,6 +54,18 @@ def test_edit_distance_matches_alignment_for_small_binary_sequences() -> None:
                 item.kind != "equal" for item in metrics.edit_alignment(reference, hypothesis)
             )
             assert errors == metrics.edit_distance(reference, hypothesis)
+
+
+def test_wer_reports_hand_computed_rate_and_counts() -> None:
+    result = metrics.wer("we meet now", "we met today")
+    assert result.errors == 2
+    assert result.reference_units == 3
+    assert result.rate == pytest.approx(2.0 / 3.0)
+
+
+def test_wer_defines_empty_reference_boundaries() -> None:
+    assert metrics.wer("", "").rate == 0.0
+    assert metrics.wer("", "extra").rate == float("inf")
 
 
 # -- extensions --

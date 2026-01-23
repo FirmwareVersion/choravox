@@ -73,4 +73,22 @@ def edit_alignment(
     return tuple(reversed(operations))
 
 
+@dataclass(frozen=True, slots=True)
+class ErrorRate:
+    errors: int
+    reference_units: int
+
+    @property
+    def rate(self) -> float:
+        if self.reference_units == 0:
+            return 0.0 if self.errors == 0 else float("inf")
+        return round(self.errors / self.reference_units, 12)
+
+
+def wer(reference: str, hypothesis: str) -> ErrorRate:
+    """Measure whitespace-tokenized word error rate."""
+    expected, observed = reference.split(), hypothesis.split()
+    return ErrorRate(edit_distance(expected, observed), len(expected))
+
+
 # -- extensions --
