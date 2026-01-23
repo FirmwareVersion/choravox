@@ -42,4 +42,16 @@ def test_alignment_error_count_matches_edit_distance() -> None:
     )
 
 
+def test_edit_distance_matches_alignment_for_small_binary_sequences() -> None:
+    from itertools import product
+
+    sequences = [tuple(item) for length in range(4) for item in product(("a", "b"), repeat=length)]
+    for reference in sequences:
+        for hypothesis in sequences:
+            errors = sum(
+                item.kind != "equal" for item in metrics.edit_alignment(reference, hypothesis)
+            )
+            assert errors == metrics.edit_distance(reference, hypothesis)
+
+
 # -- extensions --
