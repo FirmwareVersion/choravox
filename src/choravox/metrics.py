@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -25,6 +27,50 @@ def edit_distance(
             )
         previous = current
     return previous[-1]
+
+
+@dataclass(frozen=True, slots=True)
+class EditOperation:
+    kind: str
+    reference: str | None
+    hypothesis: str | None
+
+
+def edit_alignment(
+    reference: list[str] | tuple[str, ...], hypothesis: list[str] | tuple[str, ...]
+) -> tuple[EditOperation, ...]:
+    """Backtrace one deterministic optimal token alignment."""
+    rows, columns = len(reference) + 1, len(hypothesis) + 1
+    costs = np.zeros((rows, columns), dtype=np.int64)
+    costs[:, 0] = np.arange(rows)
+    costs[0, :] = np.arange(columns)
+    for row in range(1, rows):
+        for column in range(1, columns):
+            costs[row, column] = min(
+                costs[row - 1, column] + 1,
+                costs[row, column - 1] + 1,
+                costs[row - 1, column - 1] + (reference[row - 1] != hypothesis[column - 1]),
+            )
+    operations = []
+    row, column = rows - 1, columns - 1
+    while row or column:
+        if (
+            row
+            and column
+            and costs[row, column]
+            == costs[row - 1, column - 1] + (reference[row - 1] != hypothesis[column - 1])
+        ):
+            kind = "equal" if reference[row - 1] == hypothesis[column - 1] else "substitute"
+            operations.append(EditOperation(kind, reference[row - 1], hypothesis[column - 1]))
+            row -= 1
+            column -= 1
+        elif row and costs[row, column] == costs[row - 1, column] + 1:
+            operations.append(EditOperation("delete", reference[row - 1], None))
+            row -= 1
+        else:
+            operations.append(EditOperation("insert", None, hypothesis[column - 1]))
+            column -= 1
+    return tuple(reversed(operations))
 
 
 # -- extensions --

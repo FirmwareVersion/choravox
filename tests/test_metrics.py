@@ -18,4 +18,28 @@ def test_edit_distance_is_symmetric_and_handles_empty_sequences() -> None:
     )
 
 
+def test_edit_alignment_backtrace_reconstructs_both_sequences() -> None:
+    alignment = metrics.edit_alignment(["we", "meet", "now"], ["we", "met", "today"])
+    assert [item.reference for item in alignment if item.reference is not None] == [
+        "we",
+        "meet",
+        "now",
+    ]
+    assert [item.hypothesis for item in alignment if item.hypothesis is not None] == [
+        "we",
+        "met",
+        "today",
+    ]
+    assert sum(item.kind != "equal" for item in alignment) == 2
+
+
+def test_alignment_error_count_matches_edit_distance() -> None:
+    reference = ["a", "b", "c"]
+    hypothesis = ["a", "x", "c", "d"]
+    alignment = metrics.edit_alignment(reference, hypothesis)
+    assert sum(item.kind != "equal" for item in alignment) == metrics.edit_distance(
+        reference, hypothesis
+    )
+
+
 # -- extensions --
