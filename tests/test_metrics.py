@@ -80,4 +80,18 @@ def test_cer_can_include_or_ignore_spaces() -> None:
     assert metrics.cer("a b", "ab", ignore_spaces=False).errors == 1
 
 
+def test_error_rates_are_zero_exactly_on_identity() -> None:
+    samples = ("", "one", "two words", "合成 会议")
+    for text in samples:
+        assert metrics.wer(text, text).rate == 0.0
+        assert metrics.cer(text, text).rate == 0.0
+
+
+def test_added_word_cannot_reduce_identity_wer() -> None:
+    reference = "a short meeting"
+    assert (
+        metrics.wer(reference, reference + " extra").rate > metrics.wer(reference, reference).rate
+    )
+
+
 # -- extensions --
