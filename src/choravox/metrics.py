@@ -91,4 +91,11 @@ def wer(reference: str, hypothesis: str) -> ErrorRate:
     return ErrorRate(edit_distance(expected, observed), len(expected))
 
 
+def cer(reference: str, hypothesis: str, *, ignore_spaces: bool = True) -> ErrorRate:
+    """Measure Unicode code-point error rate with optional space removal."""
+    expected = reference.replace(" ", "") if ignore_spaces else reference
+    observed = hypothesis.replace(" ", "") if ignore_spaces else hypothesis
+    return ErrorRate(edit_distance(tuple(expected), tuple(observed)), len(expected))
+
+
 # -- extensions --

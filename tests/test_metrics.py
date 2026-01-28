@@ -68,4 +68,16 @@ def test_wer_defines_empty_reference_boundaries() -> None:
     assert metrics.wer("", "extra").rate == float("inf")
 
 
+def test_cer_counts_unicode_codepoints() -> None:
+    result = metrics.cer("你好世界", "你好世")
+    assert result.errors == 1
+    assert result.reference_units == 4
+    assert result.rate == 0.25
+
+
+def test_cer_can_include_or_ignore_spaces() -> None:
+    assert metrics.cer("a b", "ab").errors == 0
+    assert metrics.cer("a b", "ab", ignore_spaces=False).errors == 1
+
+
 # -- extensions --
