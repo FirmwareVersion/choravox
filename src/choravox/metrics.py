@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import permutations
 
 import numpy as np
 from numpy.typing import NDArray
@@ -116,6 +117,25 @@ def speaker_error_matrix(
             )
             matrix[row, column] = edit_distance(expected.split(), observed.split())
     return matrix, reference_labels, hypothesis_labels
+
+
+@dataclass(frozen=True, slots=True)
+class Assignment:
+    columns: tuple[int, ...]
+    cost: int
+
+
+def optimal_assignment(costs: IntArray) -> Assignment:
+    """Find an exact square assignment with deterministic lexical ties."""
+    matrix = np.asarray(costs, dtype=np.int64)
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1] or np.any(matrix < 0):
+        raise ValueError("assignment costs must be a nonnegative square matrix")
+    candidates = permutations(range(matrix.shape[0]))
+    columns = min(
+        candidates,
+        key=lambda item: (sum(int(matrix[row, column]) for row, column in enumerate(item)), item),
+    )
+    return Assignment(columns, sum(int(matrix[row, column]) for row, column in enumerate(columns)))
 
 
 # -- extensions --

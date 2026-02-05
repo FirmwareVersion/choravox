@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import metrics
@@ -106,6 +107,17 @@ def test_speaker_error_matrix_pads_missing_speaker_with_empty_text() -> None:
     matrix, _, _ = metrics.speaker_error_matrix({"a": "one", "b": "two three"}, {"x": "one"})
     assert matrix.shape == (2, 2)
     assert matrix[1, 1] == 2
+
+
+def test_optimal_assignment_finds_crossed_speaker_mapping() -> None:
+    result = metrics.optimal_assignment(np.array([[4, 0], [0, 3]], dtype=np.int64))
+    assert result.columns == (1, 0)
+    assert result.cost == 0
+
+
+def test_optimal_assignment_breaks_equal_cost_by_lexical_permutation() -> None:
+    result = metrics.optimal_assignment(np.ones((3, 3), dtype=np.int64))
+    assert result.columns == (0, 1, 2)
 
 
 # -- extensions --
