@@ -138,4 +138,30 @@ def optimal_assignment(costs: IntArray) -> Assignment:
     return Assignment(columns, sum(int(matrix[row, column]) for row, column in enumerate(columns)))
 
 
+@dataclass(frozen=True, slots=True)
+class CpWerResult:
+    errors: int
+    reference_words: int
+    mapping: tuple[tuple[str | None, str | None], ...]
+
+    @property
+    def rate(self) -> float:
+        return ErrorRate(self.errors, self.reference_words).rate
+
+
+def cpwer(reference: dict[str, str], hypothesis: dict[str, str]) -> CpWerResult:
+    """Compute concatenated minimum-permutation word error rate."""
+    costs, reference_labels, hypothesis_labels = speaker_error_matrix(reference, hypothesis)
+    assignment = optimal_assignment(costs)
+    mapping = tuple(
+        (
+            reference_labels[row] if row < len(reference_labels) else None,
+            hypothesis_labels[column] if column < len(hypothesis_labels) else None,
+        )
+        for row, column in enumerate(assignment.columns)
+    )
+    words = sum(len(text.split()) for text in reference.values())
+    return CpWerResult(assignment.cost, words, mapping)
+
+
 # -- extensions --

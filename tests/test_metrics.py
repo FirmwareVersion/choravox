@@ -145,4 +145,18 @@ def test_assignment_rejects_rectangular_or_negative_costs() -> None:
         metrics.optimal_assignment(np.array([[0, -1], [1, 0]], dtype=np.int64))
 
 
+def test_cpwer_is_zero_under_speaker_permutation() -> None:
+    reference = {"a": "hello there", "b": "meeting now"}
+    hypothesis = {"x": "meeting now", "y": "hello there"}
+    result = metrics.cpwer(reference, hypothesis)
+    assert result.errors == 0 and result.rate == 0.0
+    assert result.mapping == (("a", "y"), ("b", "x"))
+
+
+def test_cpwer_accounts_for_missing_hypothesis_speaker() -> None:
+    result = metrics.cpwer({"a": "one", "b": "two three"}, {"x": "one"})
+    assert result.errors == 2
+    assert result.rate == pytest.approx(2.0 / 3.0)
+
+
 # -- extensions --
