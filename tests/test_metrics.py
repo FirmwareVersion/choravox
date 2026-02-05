@@ -94,4 +94,18 @@ def test_added_word_cannot_reduce_identity_wer() -> None:
     )
 
 
+def test_speaker_error_matrix_contains_pairwise_word_costs() -> None:
+    matrix, reference_labels, hypothesis_labels = metrics.speaker_error_matrix(
+        {"a": "one two", "b": "three"}, {"x": "three", "y": "one two"}
+    )
+    assert reference_labels == ("a", "b") and hypothesis_labels == ("x", "y")
+    assert matrix.tolist() == [[2, 0], [0, 2]]
+
+
+def test_speaker_error_matrix_pads_missing_speaker_with_empty_text() -> None:
+    matrix, _, _ = metrics.speaker_error_matrix({"a": "one", "b": "two three"}, {"x": "one"})
+    assert matrix.shape == (2, 2)
+    assert matrix[1, 1] == 2
+
+
 # -- extensions --

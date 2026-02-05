@@ -98,4 +98,24 @@ def cer(reference: str, hypothesis: str, *, ignore_spaces: bool = True) -> Error
     return ErrorRate(edit_distance(tuple(expected), tuple(observed)), len(expected))
 
 
+def speaker_error_matrix(
+    reference: dict[str, str], hypothesis: dict[str, str]
+) -> tuple[IntArray, tuple[str, ...], tuple[str, ...]]:
+    """Build pairwise word-error costs for speaker permutation search."""
+    reference_labels = tuple(sorted(reference))
+    hypothesis_labels = tuple(sorted(hypothesis))
+    size = max(len(reference_labels), len(hypothesis_labels))
+    matrix = np.zeros((size, size), dtype=np.int64)
+    for row in range(size):
+        expected = reference.get(reference_labels[row], "") if row < len(reference_labels) else ""
+        for column in range(size):
+            observed = (
+                hypothesis.get(hypothesis_labels[column], "")
+                if column < len(hypothesis_labels)
+                else ""
+            )
+            matrix[row, column] = edit_distance(expected.split(), observed.split())
+    return matrix, reference_labels, hypothesis_labels
+
+
 # -- extensions --
