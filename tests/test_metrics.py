@@ -120,4 +120,29 @@ def test_optimal_assignment_breaks_equal_cost_by_lexical_permutation() -> None:
     assert result.columns == (0, 1, 2)
 
 
+def test_optimal_assignment_matches_brute_force_cost_on_small_matrices() -> None:
+    from itertools import permutations
+
+    import numpy as np
+
+    generator = np.random.default_rng(3)
+    for size in range(1, 5):
+        costs = generator.integers(0, 8, size=(size, size), dtype=np.int64)
+        observed = metrics.optimal_assignment(costs).cost
+        expected = min(
+            sum(int(costs[row, column]) for row, column in enumerate(order))
+            for order in permutations(range(size))
+        )
+        assert observed == expected
+
+
+def test_assignment_rejects_rectangular_or_negative_costs() -> None:
+    import numpy as np
+
+    with pytest.raises(ValueError, match="square"):
+        metrics.optimal_assignment(np.ones((2, 3), dtype=np.int64))
+    with pytest.raises(ValueError, match="nonnegative"):
+        metrics.optimal_assignment(np.array([[0, -1], [1, 0]], dtype=np.int64))
+
+
 # -- extensions --
