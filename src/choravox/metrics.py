@@ -8,6 +8,8 @@ from itertools import permutations
 import numpy as np
 from numpy.typing import NDArray
 
+from choravox.types import Segment
+
 IntArray = NDArray[np.int64]
 
 
@@ -162,6 +164,33 @@ def cpwer(reference: dict[str, str], hypothesis: dict[str, str]) -> CpWerResult:
     )
     words = sum(len(text.split()) for text in reference.values())
     return CpWerResult(assignment.cost, words, mapping)
+
+
+@dataclass(frozen=True, slots=True)
+class FrameActivity:
+    """Boolean frame activity with columns named by sorted speaker labels."""
+
+    values: NDArray[np.bool_]
+    speakers: tuple[str, ...]
+
+
+def rasterize_segments(
+    segments: tuple[Segment, ...], frame_count: int, frame_shift_s: float
+) -> FrameActivity:
+    """Sample half-open speaker segments at deterministic frame midpoints."""
+    if frame_count < 0 or frame_shift_s <= 0.0 or not np.isfinite(frame_shift_s):
+        raise ValueError("frame geometry must be finite and positive")
+    duration = frame_count * frame_shift_s
+    if any(segment.end > duration + 1e-12 for segment in segments):
+        raise ValueError("segment exceeds the scoring duration")
+    speakers = tuple(sorted({segment.speaker for segment in segments}))
+    values = np.zeros((frame_count, len(speakers)), dtype=np.bool_)
+    lookup = {speaker: index for index, speaker in enumerate(speakers)}
+    midpoints = (np.arange(frame_count, dtype=np.float64) + 0.5) * frame_shift_s
+    for segment in segments:
+        active = (midpoints >= segment.start) & (midpoints < segment.end)
+        values[active, lookup[segment.speaker]] = True
+    return FrameActivity(values, speakers)
 
 
 # -- extensions --

@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from choravox import metrics
+from choravox.types import Segment
 
 
 def test_edit_distance_covers_identity_insertion_deletion_and_substitution() -> None:
@@ -157,6 +158,20 @@ def test_cpwer_accounts_for_missing_hypothesis_speaker() -> None:
     result = metrics.cpwer({"a": "one", "b": "two three"}, {"x": "one"})
     assert result.errors == 2
     assert result.rate == pytest.approx(2.0 / 3.0)
+
+
+def test_segment_rasterization_preserves_silence_and_overlap() -> None:
+    segments = (Segment(0.0, 0.2, "a"), Segment(0.1, 0.3, "b"))
+    result = metrics.rasterize_segments(segments, 4, 0.1)
+    assert result.speakers == ("a", "b")
+    assert result.values.tolist() == [[True, False], [True, True], [False, True], [False, False]]
+
+
+def test_segment_rasterization_validates_scoring_geometry() -> None:
+    with pytest.raises(ValueError, match="geometry"):
+        metrics.rasterize_segments((), 2, 0.0)
+    with pytest.raises(ValueError, match="exceeds"):
+        metrics.rasterize_segments((Segment(0.0, 0.3, "a"),), 2, 0.1)
 
 
 # -- extensions --
