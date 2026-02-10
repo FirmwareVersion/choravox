@@ -174,4 +174,24 @@ def test_segment_rasterization_validates_scoring_geometry() -> None:
         metrics.rasterize_segments((Segment(0.0, 0.3, "a"),), 2, 0.1)
 
 
+def test_rasterization_uses_half_open_midpoint_boundaries() -> None:
+    segments = (Segment(0.05, 0.15, "a"), Segment(0.15, 0.25, "b"))
+    result = metrics.rasterize_segments(segments, 3, 0.1)
+    assert result.values.tolist() == [[True, False], [False, True], [False, False]]
+
+
+def test_rasterization_is_invariant_to_segment_order() -> None:
+    segments = (Segment(0.0, 0.2, "b"), Segment(0.1, 0.3, "a"))
+    forward = metrics.rasterize_segments(segments, 3, 0.1)
+    reverse = metrics.rasterize_segments(tuple(reversed(segments)), 3, 0.1)
+    assert forward.speakers == reverse.speakers
+    np.testing.assert_array_equal(forward.values, reverse.values)
+
+
+def test_empty_activity_retains_requested_frame_axis() -> None:
+    result = metrics.rasterize_segments((), 5, 0.02)
+    assert result.values.shape == (5, 0)
+    assert result.speakers == ()
+
+
 # -- extensions --
