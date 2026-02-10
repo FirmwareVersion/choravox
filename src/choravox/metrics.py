@@ -193,4 +193,41 @@ def rasterize_segments(
     return FrameActivity(values, speakers)
 
 
+@dataclass(frozen=True, slots=True)
+class SpeakerFrameMapping:
+    """Optimal reference-to-hypothesis pairing by coactive frame count."""
+
+    pairs: tuple[tuple[str | None, str | None], ...]
+    matched_frames: int
+
+
+def optimal_speaker_mapping(
+    reference: FrameActivity, hypothesis: FrameActivity
+) -> SpeakerFrameMapping:
+    """Maximize jointly active frames under a one-to-one speaker mapping."""
+    if reference.values.shape[0] != hypothesis.values.shape[0]:
+        raise ValueError("reference and hypothesis frame axes must match")
+    reference_count = len(reference.speakers)
+    hypothesis_count = len(hypothesis.speakers)
+    size = max(reference_count, hypothesis_count)
+    if size == 0:
+        return SpeakerFrameMapping((), 0)
+    overlaps = np.zeros((size, size), dtype=np.int64)
+    if reference_count and hypothesis_count:
+        overlaps[:reference_count, :hypothesis_count] = reference.values.astype(
+            np.int64
+        ).T @ hypothesis.values.astype(np.int64)
+    maximum = int(np.max(overlaps, initial=0))
+    assignment = optimal_assignment(maximum - overlaps)
+    pairs = tuple(
+        (
+            reference.speakers[row] if row < reference_count else None,
+            hypothesis.speakers[column] if column < hypothesis_count else None,
+        )
+        for row, column in enumerate(assignment.columns)
+    )
+    matched = sum(int(overlaps[row, column]) for row, column in enumerate(assignment.columns))
+    return SpeakerFrameMapping(pairs, matched)
+
+
 # -- extensions --

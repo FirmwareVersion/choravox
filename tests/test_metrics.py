@@ -194,4 +194,22 @@ def test_empty_activity_retains_requested_frame_axis() -> None:
     assert result.speakers == ()
 
 
+def test_speaker_mapping_recovers_permuted_frame_labels() -> None:
+    reference = metrics.rasterize_segments((Segment(0.0, 0.2, "a"), Segment(0.2, 0.4, "b")), 4, 0.1)
+    hypothesis = metrics.rasterize_segments(
+        (Segment(0.0, 0.2, "y"), Segment(0.2, 0.4, "x")), 4, 0.1
+    )
+    result = metrics.optimal_speaker_mapping(reference, hypothesis)
+    assert result.pairs == (("a", "y"), ("b", "x"))
+    assert result.matched_frames == 4
+
+
+def test_speaker_mapping_pads_missing_hypothesis_labels() -> None:
+    reference = metrics.rasterize_segments((Segment(0.0, 0.1, "a"), Segment(0.1, 0.2, "b")), 2, 0.1)
+    hypothesis = metrics.rasterize_segments((Segment(0.0, 0.1, "x"),), 2, 0.1)
+    result = metrics.optimal_speaker_mapping(reference, hypothesis)
+    assert result.pairs == (("a", "x"), ("b", None))
+    assert result.matched_frames == 1
+
+
 # -- extensions --
