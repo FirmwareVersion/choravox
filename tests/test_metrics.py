@@ -245,4 +245,24 @@ def test_speaker_mapping_rejects_mismatched_frame_axes() -> None:
         metrics.optimal_speaker_mapping(short, long)
 
 
+def test_diarization_score_decomposes_frame_errors() -> None:
+    reference = metrics.FrameActivity(
+        np.array([[1, 0], [1, 0], [0, 1], [0, 0]], dtype=bool), ("a", "b")
+    )
+    hypothesis = metrics.FrameActivity(
+        np.array([[1, 0], [0, 0], [1, 0], [0, 1]], dtype=bool), ("x", "y")
+    )
+    result = metrics.score_diarization_frames(reference, hypothesis)
+    assert (result.miss, result.false_alarm, result.confusion) == (1, 1, 1)
+    assert result.errors == 3 and result.reference_speaker_frames == 3
+    assert result.rate == 1.0
+
+
+def test_diarization_score_is_zero_under_label_permutation() -> None:
+    reference = metrics.FrameActivity(np.eye(2, dtype=bool), ("a", "b"))
+    hypothesis = metrics.FrameActivity(np.fliplr(np.eye(2, dtype=bool)), ("x", "y"))
+    result = metrics.score_diarization_frames(reference, hypothesis)
+    assert result.errors == 0 and result.rate == 0.0
+
+
 # -- extensions --

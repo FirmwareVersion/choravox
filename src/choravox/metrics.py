@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from itertools import permutations
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from choravox.types import Segment
 
@@ -228,6 +228,67 @@ def optimal_speaker_mapping(
     )
     matched = sum(int(overlaps[row, column]) for row, column in enumerate(assignment.columns))
     return SpeakerFrameMapping(pairs, matched)
+
+
+@dataclass(frozen=True, slots=True)
+class DiarizationError:
+    """Frame-count decomposition of diarization error."""
+
+    miss: int
+    false_alarm: int
+    confusion: int
+    reference_speaker_frames: int
+    evaluated_frames: int
+
+    @property
+    def errors(self) -> int:
+        return self.miss + self.false_alarm + self.confusion
+
+    @property
+    def rate(self) -> float:
+        return ErrorRate(self.errors, self.reference_speaker_frames).rate
+
+
+def score_diarization_frames(
+    reference: FrameActivity,
+    hypothesis: FrameActivity,
+    *,
+    score_mask: ArrayLike | None = None,
+) -> DiarizationError:
+    """Score miss, false alarm, and mapped speaker confusion per frame."""
+    if reference.values.shape[0] != hypothesis.values.shape[0]:
+        raise ValueError("reference and hypothesis frame axes must match")
+    frames = reference.values.shape[0]
+    mask = np.ones(frames, dtype=np.bool_)
+    if score_mask is not None:
+        mask = np.asarray(score_mask, dtype=np.bool_)
+        if mask.shape != (frames,):
+            raise ValueError("score mask must align with frame axes")
+    mapping = optimal_speaker_mapping(
+        FrameActivity(reference.values[mask], reference.speakers),
+        FrameActivity(hypothesis.values[mask], hypothesis.speakers),
+    )
+    ref_counts = np.sum(reference.values[mask], axis=1, dtype=np.int64)
+    hyp_counts = np.sum(hypothesis.values[mask], axis=1, dtype=np.int64)
+    correct = np.zeros(ref_counts.shape, dtype=np.int64)
+    ref_lookup = {speaker: index for index, speaker in enumerate(reference.speakers)}
+    hyp_lookup = {speaker: index for index, speaker in enumerate(hypothesis.speakers)}
+    for ref_speaker, hyp_speaker in mapping.pairs:
+        if ref_speaker is not None and hyp_speaker is not None:
+            correct += (
+                reference.values[mask, ref_lookup[ref_speaker]]
+                & hypothesis.values[mask, hyp_lookup[hyp_speaker]]
+            )
+    miss = np.maximum(ref_counts - hyp_counts, 0)
+    false_alarm = np.maximum(hyp_counts - ref_counts, 0)
+    confusion = np.minimum(ref_counts, hyp_counts) - correct
+    return DiarizationError(
+        int(np.sum(miss)),
+        int(np.sum(false_alarm)),
+        int(np.sum(confusion)),
+        int(np.sum(ref_counts)),
+        int(np.sum(mask)),
+    )
 
 
 # -- extensions --
