@@ -212,4 +212,37 @@ def test_speaker_mapping_pads_missing_hypothesis_labels() -> None:
     assert result.matched_frames == 1
 
 
+def test_speaker_mapping_matches_brute_force_overlap_maximum() -> None:
+    from itertools import permutations
+
+    generator = np.random.default_rng(8)
+    for speaker_count in range(1, 5):
+        reference_values = generator.random((7, speaker_count)) > 0.5
+        hypothesis_values = generator.random((7, speaker_count)) > 0.5
+        reference = metrics.FrameActivity(
+            reference_values, tuple(f"r{i}" for i in range(speaker_count))
+        )
+        hypothesis = metrics.FrameActivity(
+            hypothesis_values, tuple(f"h{i}" for i in range(speaker_count))
+        )
+        overlap = reference_values.astype(int).T @ hypothesis_values.astype(int)
+        expected = max(
+            sum(int(overlap[row, column]) for row, column in enumerate(order))
+            for order in permutations(range(speaker_count))
+        )
+        assert metrics.optimal_speaker_mapping(reference, hypothesis).matched_frames == expected
+
+
+def test_empty_speaker_mapping_is_well_defined() -> None:
+    empty = metrics.FrameActivity(np.zeros((3, 0), dtype=bool), ())
+    assert metrics.optimal_speaker_mapping(empty, empty) == metrics.SpeakerFrameMapping((), 0)
+
+
+def test_speaker_mapping_rejects_mismatched_frame_axes() -> None:
+    short = metrics.FrameActivity(np.zeros((2, 0), dtype=bool), ())
+    long = metrics.FrameActivity(np.zeros((3, 0), dtype=bool), ())
+    with pytest.raises(ValueError, match="axes"):
+        metrics.optimal_speaker_mapping(short, long)
+
+
 # -- extensions --
