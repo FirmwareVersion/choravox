@@ -309,4 +309,26 @@ def test_diarization_error_ignores_hypothesis_shift_inside_collar() -> None:
     assert collared.errors == 0 and collared.evaluated_frames == 1
 
 
+def test_zero_collar_scores_every_frame() -> None:
+    reference = (Segment(0.0, 0.2, "a"),)
+    assert metrics.reference_collar_mask(reference, 4, 0.1, 0.0).tolist() == [True] * 4
+
+
+def test_collar_is_centered_on_start_and_end_independently() -> None:
+    reference = (Segment(0.2, 0.5, "a"),)
+    mask = metrics.reference_collar_mask(reference, 7, 0.1, 0.06)
+    assert mask.tolist() == [True, False, False, True, False, False, True]
+
+
+def test_touching_turns_share_a_single_collared_boundary_region() -> None:
+    reference = (Segment(0.0, 0.3, "a"), Segment(0.3, 0.6, "b"))
+    mask = metrics.reference_collar_mask(reference, 6, 0.1, 0.11)
+    assert mask.tolist() == [False, True, False, False, True, False]
+
+
+def test_collar_geometry_rejects_negative_width() -> None:
+    with pytest.raises(ValueError, match="geometry"):
+        metrics.reference_collar_mask((), 3, 0.1, -0.01)
+
+
 # -- extensions --
