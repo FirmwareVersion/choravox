@@ -265,4 +265,31 @@ def test_diarization_score_is_zero_under_label_permutation() -> None:
     assert result.errors == 0 and result.rate == 0.0
 
 
+def test_diarization_miss_false_alarm_and_confusion_are_independent() -> None:
+    one = metrics.FrameActivity(np.ones((1, 1), dtype=bool), ("a",))
+    zero = metrics.FrameActivity(np.zeros((1, 0), dtype=bool), ())
+    assert metrics.score_diarization_frames(one, zero).miss == 1
+    assert metrics.score_diarization_frames(zero, one).false_alarm == 1
+    reference = metrics.FrameActivity(np.array([[1, 0], [0, 1]], dtype=bool), ("a", "b"))
+    hypothesis = metrics.FrameActivity(np.array([[1], [1]], dtype=bool), ("x",))
+    result = metrics.score_diarization_frames(reference, hypothesis)
+    assert result.confusion == 1 and result.miss == result.false_alarm == 0
+
+
+def test_diarization_score_mask_excludes_unscored_frames() -> None:
+    reference = metrics.FrameActivity(np.ones((3, 1), dtype=bool), ("a",))
+    hypothesis = metrics.FrameActivity(np.zeros((3, 0), dtype=bool), ())
+    result = metrics.score_diarization_frames(reference, hypothesis, score_mask=[1, 0, 1])
+    assert result.miss == 2 and result.evaluated_frames == 2
+    with pytest.raises(ValueError, match="mask"):
+        metrics.score_diarization_frames(reference, hypothesis, score_mask=[True])
+
+
+def test_empty_reference_defines_false_alarm_rate_as_infinite() -> None:
+    reference = metrics.FrameActivity(np.zeros((2, 0), dtype=bool), ())
+    hypothesis = metrics.FrameActivity(np.ones((2, 1), dtype=bool), ("x",))
+    result = metrics.score_diarization_frames(reference, hypothesis)
+    assert result.false_alarm == 2 and result.rate == float("inf")
+
+
 # -- extensions --
