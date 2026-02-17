@@ -292,4 +292,21 @@ def test_empty_reference_defines_false_alarm_rate_as_infinite() -> None:
     assert result.false_alarm == 2 and result.rate == float("inf")
 
 
+def test_reference_collar_excludes_frames_around_turn_boundaries() -> None:
+    reference = (Segment(0.1, 0.4, "a"),)
+    mask = metrics.reference_collar_mask(reference, 5, 0.1, 0.11)
+    assert mask.tolist() == [False, False, True, False, False]
+
+
+def test_diarization_error_ignores_hypothesis_shift_inside_collar() -> None:
+    reference = (Segment(0.1, 0.4, "a"),)
+    hypothesis = (Segment(0.2, 0.5, "x"),)
+    raw = metrics.diarization_error(reference, hypothesis, frame_count=5, frame_shift_s=0.1)
+    collared = metrics.diarization_error(
+        reference, hypothesis, frame_count=5, frame_shift_s=0.1, collar_s=0.11
+    )
+    assert raw.errors == 2
+    assert collared.errors == 0 and collared.evaluated_frames == 1
+
+
 # -- extensions --

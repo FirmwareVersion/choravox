@@ -291,4 +291,38 @@ def score_diarization_frames(
     )
 
 
+def reference_collar_mask(
+    reference: tuple[Segment, ...],
+    frame_count: int,
+    frame_shift_s: float,
+    collar_s: float,
+) -> NDArray[np.bool_]:
+    """Mask frame midpoints within a symmetric collar of reference boundaries."""
+    if frame_count < 0 or frame_shift_s <= 0.0 or collar_s < 0.0:
+        raise ValueError("collar scoring geometry is invalid")
+    midpoints = (np.arange(frame_count, dtype=np.float64) + 0.5) * frame_shift_s
+    mask = np.ones(frame_count, dtype=np.bool_)
+    if collar_s == 0.0:
+        return mask
+    for segment in reference:
+        for boundary in (segment.start, segment.end):
+            mask &= np.abs(midpoints - boundary) >= collar_s
+    return mask
+
+
+def diarization_error(
+    reference: tuple[Segment, ...],
+    hypothesis: tuple[Segment, ...],
+    *,
+    frame_count: int,
+    frame_shift_s: float,
+    collar_s: float = 0.0,
+) -> DiarizationError:
+    """Measure frame-quantized DER with md-eval-style reference collars."""
+    reference_activity = rasterize_segments(reference, frame_count, frame_shift_s)
+    hypothesis_activity = rasterize_segments(hypothesis, frame_count, frame_shift_s)
+    mask = reference_collar_mask(reference, frame_count, frame_shift_s, collar_s)
+    return score_diarization_frames(reference_activity, hypothesis_activity, score_mask=mask)
+
+
 # -- extensions --
