@@ -317,11 +317,14 @@ def diarization_error(
     frame_count: int,
     frame_shift_s: float,
     collar_s: float = 0.0,
+    skip_overlap: bool = False,
 ) -> DiarizationError:
-    """Measure frame-quantized DER with md-eval-style reference collars."""
+    """Measure frame DER with optional reference collars and overlap exclusion."""
     reference_activity = rasterize_segments(reference, frame_count, frame_shift_s)
     hypothesis_activity = rasterize_segments(hypothesis, frame_count, frame_shift_s)
     mask = reference_collar_mask(reference, frame_count, frame_shift_s, collar_s)
+    if skip_overlap:
+        mask &= np.sum(reference_activity.values, axis=1) <= 1
     return score_diarization_frames(reference_activity, hypothesis_activity, score_mask=mask)
 
 

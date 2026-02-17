@@ -331,4 +331,22 @@ def test_collar_geometry_rejects_negative_width() -> None:
         metrics.reference_collar_mask((), 3, 0.1, -0.01)
 
 
+def test_skip_overlap_removes_multi_speaker_reference_frames() -> None:
+    reference = (Segment(0.0, 0.3, "a"), Segment(0.1, 0.2, "b"))
+    hypothesis = (Segment(0.0, 0.3, "x"),)
+    aware = metrics.diarization_error(reference, hypothesis, frame_count=3, frame_shift_s=0.1)
+    skipped = metrics.diarization_error(
+        reference, hypothesis, frame_count=3, frame_shift_s=0.1, skip_overlap=True
+    )
+    assert aware.miss == 1 and aware.reference_speaker_frames == 4
+    assert skipped.errors == 0 and skipped.reference_speaker_frames == 2
+
+
+def test_overlap_aware_score_rewards_two_matching_speakers() -> None:
+    reference = (Segment(0.0, 0.2, "a"), Segment(0.0, 0.2, "b"))
+    hypothesis = (Segment(0.0, 0.2, "x"), Segment(0.0, 0.2, "y"))
+    result = metrics.diarization_error(reference, hypothesis, frame_count=2, frame_shift_s=0.1)
+    assert result.errors == 0 and result.reference_speaker_frames == 4
+
+
 # -- extensions --
