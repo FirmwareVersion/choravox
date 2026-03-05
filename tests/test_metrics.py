@@ -402,4 +402,40 @@ def test_jaccard_error_reports_partial_temporal_overlap() -> None:
     assert result.rate == 0.5
 
 
+def test_missing_hypothesis_speaker_has_unit_jaccard_error() -> None:
+    result = metrics.jaccard_error_rate(
+        (Segment(0.0, 0.2, "a"), Segment(0.2, 0.4, "b")),
+        (Segment(0.0, 0.2, "x"),),
+        frame_count=4,
+        frame_shift_s=0.1,
+    )
+    assert [item.error for item in result.speakers] == [0.0, 1.0]
+    assert result.rate == 0.5
+
+
+def test_empty_reference_has_zero_jaccard_error() -> None:
+    result = metrics.jaccard_error_rate(
+        (), (Segment(0.0, 0.2, "x"),), frame_count=2, frame_shift_s=0.1
+    )
+    assert result.speakers == () and result.rate == 0.0
+
+
+def test_jaccard_error_stays_bounded_for_nonempty_reference() -> None:
+    reference = (Segment(0.0, 0.2, "a"),)
+    candidates = (
+        (),
+        (Segment(0.0, 0.1, "x"),),
+        (Segment(0.0, 0.2, "x"),),
+        (Segment(0.1, 0.3, "x"),),
+    )
+    for hypothesis in candidates:
+        result = metrics.jaccard_error_rate(reference, hypothesis, frame_count=3, frame_shift_s=0.1)
+        assert 0.0 <= result.rate <= 1.0
+
+
+def test_speaker_jaccard_exposes_exact_fraction() -> None:
+    score = metrics.SpeakerJaccard("speaker", 1, 3)
+    assert score.error == pytest.approx(2.0 / 3.0)
+
+
 # -- extensions --
