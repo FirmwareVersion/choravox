@@ -349,4 +349,38 @@ def test_overlap_aware_score_rewards_two_matching_speakers() -> None:
     assert result.errors == 0 and result.reference_speaker_frames == 4
 
 
+def test_overlap_policy_changes_only_overlapped_reference_frames() -> None:
+    reference = (Segment(0.0, 0.4, "a"), Segment(0.1, 0.3, "b"))
+    hypothesis = (Segment(0.0, 0.2, "x"), Segment(0.2, 0.4, "y"))
+    aware = metrics.diarization_error(reference, hypothesis, frame_count=4, frame_shift_s=0.1)
+    skipped = metrics.diarization_error(
+        reference, hypothesis, frame_count=4, frame_shift_s=0.1, skip_overlap=True
+    )
+    assert aware.evaluated_frames == 4 and skipped.evaluated_frames == 2
+    assert skipped.reference_speaker_frames == 2
+
+
+def test_all_overlap_can_produce_an_empty_scoring_region() -> None:
+    reference = (Segment(0.0, 0.2, "a"), Segment(0.0, 0.2, "b"))
+    result = metrics.diarization_error(
+        reference, (), frame_count=2, frame_shift_s=0.1, skip_overlap=True
+    )
+    assert result.evaluated_frames == 0
+    assert result.reference_speaker_frames == 0
+    assert result.rate == 0.0
+
+
+def test_overlap_and_collar_masks_compose_by_intersection() -> None:
+    reference = (Segment(0.0, 0.4, "a"), Segment(0.1, 0.3, "b"))
+    result = metrics.diarization_error(
+        reference,
+        (),
+        frame_count=4,
+        frame_shift_s=0.1,
+        collar_s=0.06,
+        skip_overlap=True,
+    )
+    assert result.evaluated_frames == 0
+
+
 # -- extensions --
