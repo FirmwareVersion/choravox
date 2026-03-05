@@ -328,4 +328,58 @@ def diarization_error(
     return score_diarization_frames(reference_activity, hypothesis_activity, score_mask=mask)
 
 
+@dataclass(frozen=True, slots=True)
+class SpeakerJaccard:
+    speaker: str
+    intersection: int
+    union: int
+
+    @property
+    def error(self) -> float:
+        return 0.0 if self.union == 0 else round(1.0 - self.intersection / self.union, 12)
+
+
+@dataclass(frozen=True, slots=True)
+class JerResult:
+    speakers: tuple[SpeakerJaccard, ...]
+
+    @property
+    def rate(self) -> float:
+        if not self.speakers:
+            return 0.0
+        return round(sum(item.error for item in self.speakers) / len(self.speakers), 12)
+
+
+def jaccard_error_rate(
+    reference: tuple[Segment, ...],
+    hypothesis: tuple[Segment, ...],
+    *,
+    frame_count: int,
+    frame_shift_s: float,
+) -> JerResult:
+    """Average mapped per-reference-speaker Jaccard error."""
+    ref = rasterize_segments(reference, frame_count, frame_shift_s)
+    hyp = rasterize_segments(hypothesis, frame_count, frame_shift_s)
+    mapping = optimal_speaker_mapping(ref, hyp)
+    hyp_lookup = {speaker: index for index, speaker in enumerate(hyp.speakers)}
+    paired = {left: right for left, right in mapping.pairs if left is not None}
+    scores = []
+    for index, speaker in enumerate(ref.speakers):
+        ref_active = ref.values[:, index]
+        partner = paired[speaker]
+        hyp_active = (
+            np.zeros(frame_count, dtype=np.bool_)
+            if partner is None
+            else hyp.values[:, hyp_lookup[partner]]
+        )
+        scores.append(
+            SpeakerJaccard(
+                speaker,
+                int(np.sum(ref_active & hyp_active)),
+                int(np.sum(ref_active | hyp_active)),
+            )
+        )
+    return JerResult(tuple(scores))
+
+
 # -- extensions --

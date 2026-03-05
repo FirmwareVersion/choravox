@@ -383,4 +383,23 @@ def test_overlap_and_collar_masks_compose_by_intersection() -> None:
     assert result.evaluated_frames == 0
 
 
+def test_jaccard_error_is_zero_for_permuted_identity() -> None:
+    reference = (Segment(0.0, 0.2, "a"), Segment(0.2, 0.4, "b"))
+    hypothesis = (Segment(0.0, 0.2, "y"), Segment(0.2, 0.4, "x"))
+    result = metrics.jaccard_error_rate(reference, hypothesis, frame_count=4, frame_shift_s=0.1)
+    assert result.rate == 0.0
+    assert [(item.intersection, item.union) for item in result.speakers] == [(2, 2), (2, 2)]
+
+
+def test_jaccard_error_reports_partial_temporal_overlap() -> None:
+    result = metrics.jaccard_error_rate(
+        (Segment(0.0, 0.3, "a"),),
+        (Segment(0.1, 0.4, "x"),),
+        frame_count=4,
+        frame_shift_s=0.1,
+    )
+    assert result.speakers == (metrics.SpeakerJaccard("a", 2, 4),)
+    assert result.rate == 0.5
+
+
 # -- extensions --
