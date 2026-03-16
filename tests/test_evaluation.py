@@ -61,5 +61,28 @@ def test_nonfinite_values_never_enter_a_condition_bin() -> None:
     assert evaluation.locate_bin(float("inf"), bins) is None
 
 
+def test_condition_slicer_uses_planted_snr_metadata_and_weights() -> None:
+    observations = (
+        evaluation.MetricObservation("a", 0.2, 2.0, 0.0, 0.1, 1.0),
+        evaluation.MetricObservation("b", 0.8, 1.0, 5.0, 0.3, 2.0),
+    )
+    bins = (
+        evaluation.IntervalBin("low", -10.0, 3.0),
+        evaluation.IntervalBin("high", 3.0, None),
+    )
+    result = evaluation.slice_observations(observations, "snr_db", bins)
+    assert result == (
+        evaluation.SliceSummary("low", 1, 2.0, 0.2),
+        evaluation.SliceSummary("high", 1, 1.0, 0.8),
+    )
+
+
+def test_empty_condition_slice_has_no_invented_score() -> None:
+    result = evaluation.slice_observations(
+        (), "overlap_ratio", (evaluation.IntervalBin("none", 0.0, 0.01),)
+    )
+    assert result == (evaluation.SliceSummary("none", 0, 0.0, None),)
+
+
 # -- extensions --
 # -- extensions --
