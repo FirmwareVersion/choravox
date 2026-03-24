@@ -135,5 +135,31 @@ def test_empty_rate_aggregate_is_exactly_zero() -> None:
     assert result == evaluation.RateAggregate(0, 0, 0, 0.0, 0.0)
 
 
+def test_micro_average_weights_large_recordings_by_reference_units() -> None:
+    rates = (ErrorRate(1, 1), ErrorRate(0, 9))
+    result = evaluation.aggregate_error_rates(rates)
+    assert result.micro == 0.1
+    assert result.macro == 0.5
+
+
+def test_zero_reference_with_errors_is_excluded_from_finite_macro() -> None:
+    rates = (ErrorRate(1, 0), ErrorRate(1, 2))
+    result = evaluation.aggregate_error_rates(rates)
+    assert result.micro == 1.0
+    assert result.macro == 0.5
+
+
+def test_appending_identity_counts_cannot_increase_micro_error() -> None:
+    original = evaluation.aggregate_error_rates((ErrorRate(2, 4),))
+    expanded = evaluation.aggregate_error_rates((ErrorRate(2, 4), ErrorRate(0, 4)))
+    assert expanded.micro <= original.micro
+
+
+def test_aggregate_rounds_repeating_fractions_deterministically() -> None:
+    result = evaluation.aggregate_error_rates((ErrorRate(1, 3), ErrorRate(2, 3)))
+    assert result.micro == 0.5
+    assert result.macro == 0.5
+
+
 # -- extensions --
 # -- extensions --
