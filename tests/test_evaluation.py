@@ -176,5 +176,30 @@ def test_empty_diarization_corpus_has_zero_counts() -> None:
     assert result.errors == 0 and result.rate == 0.0
 
 
+def test_corpus_der_is_weighted_by_reference_speaker_time() -> None:
+    short_bad = DiarizationError(1, 0, 0, 1, 1)
+    long_clean = DiarizationError(0, 0, 0, 9, 9)
+    result = evaluation.aggregate_diarization((short_bad, long_clean))
+    assert result.rate == 0.1
+
+
+def test_appending_clean_diarization_cannot_raise_corpus_der() -> None:
+    noisy = DiarizationError(3, 1, 1, 10, 10)
+    clean = DiarizationError(0, 0, 0, 10, 10)
+    assert evaluation.aggregate_diarization((noisy, clean)).rate <= noisy.rate
+
+
+def test_every_component_contributes_once_to_aggregate_errors() -> None:
+    items = tuple(DiarizationError(index, index + 1, index + 2, 20, 10) for index in range(4))
+    result = evaluation.aggregate_diarization(items)
+    assert result.errors == sum(item.errors for item in items)
+    assert result.reference_speaker_frames == 80
+
+
+def test_false_alarm_only_empty_reference_remains_infinite() -> None:
+    item = DiarizationError(0, 2, 0, 0, 3)
+    assert evaluation.aggregate_diarization((item,)).rate == float("inf")
+
+
 # -- extensions --
 # -- extensions --
