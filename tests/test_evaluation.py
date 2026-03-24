@@ -201,5 +201,19 @@ def test_false_alarm_only_empty_reference_remains_infinite() -> None:
     assert evaluation.aggregate_diarization((item,)).rate == float("inf")
 
 
+def test_paired_comparison_counts_wins_ties_and_losses() -> None:
+    result = evaluation.compare_scores(
+        {"a": 0.4, "b": 0.2, "c": 0.1}, {"a": 0.3, "b": 0.2, "c": 0.2}
+    )
+    assert (result.improvements, result.ties, result.regressions) == (1, 1, 1)
+    assert result.mean_difference == 0.0
+    assert [pair.recording_id for pair in result.pairs] == ["a", "b", "c"]
+
+
+def test_comparison_requires_the_same_recordings() -> None:
+    with pytest.raises(ValueError, match="identical"):
+        evaluation.compare_scores({"a": 0.1}, {"b": 0.1})
+
+
 # -- extensions --
 # -- extensions --

@@ -133,4 +133,42 @@ def aggregate_diarization(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class PairedDelta:
+    recording_id: str
+    baseline: float
+    candidate: float
+
+    @property
+    def difference(self) -> float:
+        return round(self.candidate - self.baseline, 12)
+
+
+@dataclass(frozen=True, slots=True)
+class ComparisonSummary:
+    pairs: tuple[PairedDelta, ...]
+    improvements: int
+    ties: int
+    regressions: int
+    mean_difference: float
+
+
+def compare_scores(
+    baseline: dict[str, float], candidate: dict[str, float], *, tolerance: float = 1e-12
+) -> ComparisonSummary:
+    """Compare lower-is-better scores on their identical recording roster."""
+    if baseline.keys() != candidate.keys() or not baseline:
+        raise ValueError("paired comparison requires identical nonempty recording sets")
+    if tolerance < 0.0 or not np.isfinite(tolerance):
+        raise ValueError("comparison tolerance must be finite and nonnegative")
+    pairs = tuple(PairedDelta(key, baseline[key], candidate[key]) for key in sorted(baseline))
+    if not all(np.isfinite(value) for pair in pairs for value in (pair.baseline, pair.candidate)):
+        raise ValueError("paired scores must be finite")
+    improvements = sum(pair.difference < -tolerance for pair in pairs)
+    regressions = sum(pair.difference > tolerance for pair in pairs)
+    ties = len(pairs) - improvements - regressions
+    mean = round(sum(pair.difference for pair in pairs) / len(pairs), 12)
+    return ComparisonSummary(pairs, improvements, ties, regressions, mean)
+
+
 # -- extensions --
