@@ -215,5 +215,35 @@ def test_comparison_requires_the_same_recordings() -> None:
         evaluation.compare_scores({"a": 0.1}, {"b": 0.1})
 
 
+def test_comparison_tolerance_groups_numerical_ties() -> None:
+    result = evaluation.compare_scores(
+        {"a": 0.1, "b": 0.2}, {"a": 0.100001, "b": 0.199999}, tolerance=0.00001
+    )
+    assert result.ties == 2 and result.improvements == result.regressions == 0
+
+
+def test_reversing_comparison_negates_every_delta() -> None:
+    left = {"a": 0.1, "b": 0.4}
+    right = {"a": 0.3, "b": 0.2}
+    forward = evaluation.compare_scores(left, right)
+    reverse = evaluation.compare_scores(right, left)
+    assert [item.difference for item in forward.pairs] == [
+        -item.difference for item in reverse.pairs
+    ]
+    assert forward.improvements == reverse.regressions
+
+
+def test_comparison_rejects_nonfinite_scores_and_tolerance() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        evaluation.compare_scores({"a": 0.1}, {"a": float("nan")})
+    with pytest.raises(ValueError, match="tolerance"):
+        evaluation.compare_scores({"a": 0.1}, {"a": 0.2}, tolerance=-1.0)
+
+
+def test_pair_difference_is_quantized_at_production() -> None:
+    pair = evaluation.PairedDelta("meeting", 0.1, 0.3)
+    assert pair.difference == 0.2
+
+
 # -- extensions --
 # -- extensions --
