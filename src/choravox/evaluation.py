@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
 
+from choravox.hashing import canonical_json, content_hash
 from choravox.metrics import DiarizationError, ErrorRate
 
 
@@ -169,6 +171,71 @@ def compare_scores(
     ties = len(pairs) - improvements - regressions
     mean = round(sum(pair.difference for pair in pairs) / len(pairs), 12)
     return ComparisonSummary(pairs, improvements, ties, regressions, mean)
+
+
+EVALUATION_SCHEMA = "choravox.evaluation"
+EVALUATION_VERSION = 1
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationBundle:
+    run_id: str
+    seed: int
+    metrics: tuple[tuple[str, float], ...]
+    slices: tuple[SliceSummary, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.run_id or self.seed < 0:
+            raise ValueError("evaluation run identity is invalid")
+        names = tuple(name for name, _ in self.metrics)
+        if names != tuple(sorted(set(names))) or not all(
+            name and np.isfinite(value) for name, value in self.metrics
+        ):
+            raise ValueError("evaluation metric roster must be sorted, unique, and finite")
+
+
+def evaluation_to_json(bundle: EvaluationBundle) -> str:
+    """Serialize a versioned deterministic evaluation artifact with integrity digest."""
+    payload = {
+        "metrics": dict(bundle.metrics),
+        "run_id": bundle.run_id,
+        "seed": bundle.seed,
+        "slices": [
+            {"count": item.count, "label": item.label, "mean": item.mean, "weight": item.weight}
+            for item in bundle.slices
+        ],
+    }
+    document = {
+        "header": {
+            "digest": content_hash(payload),
+            "schema": EVALUATION_SCHEMA,
+            "version": EVALUATION_VERSION,
+        },
+        "payload": payload,
+    }
+    return canonical_json(document).decode("utf-8") + "\n"
+
+
+def evaluation_from_json(text: str) -> EvaluationBundle:
+    """Parse and authenticate one evaluation artifact."""
+    try:
+        document = json.loads(text)
+        header = document["header"]
+        payload = document["payload"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise ValueError("evaluation artifact is malformed") from error
+    if header.get("schema") != EVALUATION_SCHEMA or header.get("version") != EVALUATION_VERSION:
+        raise ValueError("unsupported evaluation schema or version")
+    if header.get("digest") != content_hash(payload):
+        raise ValueError("evaluation artifact digest mismatch")
+    try:
+        slices = tuple(SliceSummary(**item) for item in payload["slices"])
+        metrics = tuple(
+            sorted((str(key), float(value)) for key, value in payload["metrics"].items())
+        )
+        return EvaluationBundle(str(payload["run_id"]), int(payload["seed"]), metrics, slices)
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("evaluation payload is malformed") from error
 
 
 # -- extensions --

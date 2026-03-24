@@ -245,5 +245,24 @@ def test_pair_difference_is_quantized_at_production() -> None:
     assert pair.difference == 0.2
 
 
+def test_evaluation_artifact_roundtrip_is_byte_stable() -> None:
+    bundle = evaluation.EvaluationBundle(
+        "synthetic-seed-7",
+        7,
+        (("cpwer", 0.125), ("der", 0.25)),
+        (evaluation.SliceSummary("clean", 2, 8.0, 0.1),),
+    )
+    encoded = evaluation.evaluation_to_json(bundle)
+    assert evaluation.evaluation_from_json(encoded) == bundle
+    assert evaluation.evaluation_to_json(evaluation.evaluation_from_json(encoded)) == encoded
+
+
+def test_evaluation_artifact_rejects_modified_payload() -> None:
+    bundle = evaluation.EvaluationBundle("run", 1, (("der", 0.2),))
+    encoded = evaluation.evaluation_to_json(bundle).replace('"der":0.2', '"der":0.3')
+    with pytest.raises(ValueError, match="digest"):
+        evaluation.evaluation_from_json(encoded)
+
+
 # -- extensions --
 # -- extensions --
