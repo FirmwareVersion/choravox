@@ -7,7 +7,7 @@ from typing import Literal
 
 import numpy as np
 
-from choravox.metrics import ErrorRate
+from choravox.metrics import DiarizationError, ErrorRate
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +118,19 @@ def aggregate_error_rates(rates: tuple[ErrorRate, ...]) -> RateAggregate:
     finite_rates = [item.rate for item in rates if np.isfinite(item.rate)]
     macro = 0.0 if not finite_rates else round(sum(finite_rates) / len(finite_rates), 12)
     return RateAggregate(len(rates), errors, units, micro, macro)
+
+
+def aggregate_diarization(
+    recordings: tuple[DiarizationError, ...],
+) -> DiarizationError:
+    """Micro-average diarization by summing its mutually exclusive components."""
+    return DiarizationError(
+        miss=sum(item.miss for item in recordings),
+        false_alarm=sum(item.false_alarm for item in recordings),
+        confusion=sum(item.confusion for item in recordings),
+        reference_speaker_frames=sum(item.reference_speaker_frames for item in recordings),
+        evaluated_frames=sum(item.evaluated_frames for item in recordings),
+    )
 
 
 # -- extensions --

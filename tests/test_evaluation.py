@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from choravox import evaluation
-from choravox.metrics import ErrorRate
+from choravox.metrics import DiarizationError, ErrorRate
 
 
 def test_interval_bins_are_left_closed_and_right_open() -> None:
@@ -159,6 +159,21 @@ def test_aggregate_rounds_repeating_fractions_deterministically() -> None:
     result = evaluation.aggregate_error_rates((ErrorRate(1, 3), ErrorRate(2, 3)))
     assert result.micro == 0.5
     assert result.macro == 0.5
+
+
+def test_diarization_aggregation_sums_error_components() -> None:
+    recordings = (
+        DiarizationError(1, 2, 3, 10, 8),
+        DiarizationError(2, 1, 0, 20, 15),
+    )
+    result = evaluation.aggregate_diarization(recordings)
+    assert result == DiarizationError(3, 3, 3, 30, 23)
+    assert result.rate == 0.3
+
+
+def test_empty_diarization_corpus_has_zero_counts() -> None:
+    result = evaluation.aggregate_diarization(())
+    assert result.errors == 0 and result.rate == 0.0
 
 
 # -- extensions --
