@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from choravox import evaluation
+from choravox.metrics import ErrorRate
 
 
 def test_interval_bins_are_left_closed_and_right_open() -> None:
@@ -120,6 +121,18 @@ def test_observation_validation_rejects_impossible_metadata() -> None:
         evaluation.MetricObservation("bad", 0.1, 0.0, 5.0, 0.2, 1.0)
     with pytest.raises(ValueError, match="duration"):
         evaluation.MetricObservation("bad", 0.1, 1.0, 5.0, 0.2, 0.0)
+
+
+def test_error_rate_aggregation_preserves_micro_counts() -> None:
+    result = evaluation.aggregate_error_rates((ErrorRate(1, 2), ErrorRate(1, 8)))
+    assert result.errors == 2 and result.reference_units == 10
+    assert result.micro == 0.2
+    assert result.macro == 0.3125
+
+
+def test_empty_rate_aggregate_is_exactly_zero() -> None:
+    result = evaluation.aggregate_error_rates(())
+    assert result == evaluation.RateAggregate(0, 0, 0, 0.0, 0.0)
 
 
 # -- extensions --

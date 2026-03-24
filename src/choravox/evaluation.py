@@ -7,6 +7,8 @@ from typing import Literal
 
 import numpy as np
 
+from choravox.metrics import ErrorRate
+
 
 @dataclass(frozen=True, slots=True)
 class IntervalBin:
@@ -95,6 +97,27 @@ def slice_observations(
             )
         )
     return tuple(summaries)
+
+
+@dataclass(frozen=True, slots=True)
+class RateAggregate:
+    """Micro and macro views over recording-level count metrics."""
+
+    recordings: int
+    errors: int
+    reference_units: int
+    micro: float
+    macro: float
+
+
+def aggregate_error_rates(rates: tuple[ErrorRate, ...]) -> RateAggregate:
+    """Aggregate WER-like counts without averaging away recording sizes."""
+    errors = sum(item.errors for item in rates)
+    units = sum(item.reference_units for item in rates)
+    micro = ErrorRate(errors, units).rate
+    finite_rates = [item.rate for item in rates if np.isfinite(item.rate)]
+    macro = 0.0 if not finite_rates else round(sum(finite_rates) / len(finite_rates), 12)
+    return RateAggregate(len(rates), errors, units, micro, macro)
 
 
 # -- extensions --
