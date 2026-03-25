@@ -44,5 +44,19 @@ def test_boolean_and_integer_activity_have_identical_targets() -> None:
     )
 
 
+def test_overlap_features_capture_posterior_ambiguity() -> None:
+    posteriors = np.array([[1.0, 0.0], [0.5, 0.5]])
+    features = overlap.frame_overlap_features([2.0, 3.0], [0.1, 0.2], posteriors)
+    assert features.shape == (2, 4)
+    np.testing.assert_allclose(features[:, :2], [[2.0, 0.1], [3.0, 0.2]])
+    assert features[0, 2] == 0.0 and features[1, 2] == 1.0
+    assert features[:, 3].tolist() == [0.0, 0.5]
+
+
+def test_single_speaker_features_define_zero_ambiguity() -> None:
+    features = overlap.frame_overlap_features([1.0], [0.0], [[0.7]])
+    assert features.tolist() == [[1.0, 0.0, 0.0, 0.0]]
+
+
 # -- extensions --
 # -- extensions --
