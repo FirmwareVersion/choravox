@@ -264,5 +264,37 @@ def test_evaluation_artifact_rejects_modified_payload() -> None:
         evaluation.evaluation_from_json(encoded)
 
 
+def test_evaluation_json_has_a_stable_canonical_layout() -> None:
+    bundle = evaluation.EvaluationBundle("run", 3, (("der", 0.0),))
+    encoded = evaluation.evaluation_to_json(bundle)
+    assert encoded.startswith('{"header":{"digest":"')
+    assert '"schema":"choravox.evaluation","version":1' in encoded
+    assert encoded.endswith('"slices":[]}}\n')
+
+
+def test_evaluation_bundle_requires_sorted_unique_metrics() -> None:
+    with pytest.raises(ValueError, match="sorted"):
+        evaluation.EvaluationBundle("run", 1, (("wer", 0.2), ("der", 0.1)))
+    with pytest.raises(ValueError, match="sorted"):
+        evaluation.EvaluationBundle("run", 1, (("der", 0.1), ("der", 0.2)))
+
+
+def test_evaluation_decoder_rejects_schema_and_shape_drift() -> None:
+    bundle = evaluation.EvaluationBundle("run", 1, (("der", 0.2),))
+    encoded = evaluation.evaluation_to_json(bundle)
+    with pytest.raises(ValueError, match="unsupported"):
+        evaluation.evaluation_from_json(encoded.replace("choravox.evaluation", "future"))
+    with pytest.raises(ValueError, match="malformed"):
+        evaluation.evaluation_from_json("[]")
+
+
+def test_evaluation_serialization_preserves_unicode_identity() -> None:
+    bundle = evaluation.EvaluationBundle("合成会议", 9, (("der", 0.0),))
+    encoded = evaluation.evaluation_to_json(bundle)
+    assert "合成会议" in encoded
+    assert evaluation.evaluation_from_json(encoded).run_id == "合成会议"
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
