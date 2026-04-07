@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -45,6 +47,36 @@ def frame_overlap_features(
     if normalized.shape[1] > 1:
         entropy /= np.log(normalized.shape[1])
     return np.round(np.column_stack((energy, flux, entropy, second)), 12)
+
+
+@dataclass(frozen=True, slots=True)
+class LogisticOverlapModel:
+    """Small dependency-free binary overlap detector."""
+
+    weights: FloatArray
+    bias: float = 0.0
+
+    def __post_init__(self) -> None:
+        weights = np.asarray(self.weights, dtype=np.float64)
+        if weights.ndim != 1 or not np.all(np.isfinite(weights)) or not np.isfinite(self.bias):
+            raise ValueError("logistic parameters must be finite vectors and scalars")
+        object.__setattr__(self, "weights", weights.copy())
+
+    def predict_proba(self, features: ArrayLike) -> FloatArray:
+        """Return stable positive-class probabilities."""
+        matrix = np.asarray(features, dtype=np.float64)
+        if matrix.ndim != 2 or matrix.shape[1] != self.weights.size:
+            raise ValueError("feature matrix does not match logistic weights")
+        if not np.all(np.isfinite(matrix)):
+            raise ValueError("feature matrix must be finite")
+        logits = np.clip(matrix @ self.weights + self.bias, -40.0, 40.0)
+        return np.round(1.0 / (1.0 + np.exp(-logits)), 12)
+
+    def predict(self, features: ArrayLike, *, threshold: float = 0.5) -> BoolArray:
+        """Threshold positive-class probabilities into overlap decisions."""
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError("overlap threshold must lie in [0, 1]")
+        return self.predict_proba(features) >= threshold
 
 
 # -- extensions --

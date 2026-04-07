@@ -81,6 +81,23 @@ def test_overlap_features_validate_shapes_and_posterior_mass() -> None:
         overlap.frame_overlap_features([1.0], [1.0], [[1.0, -0.1]])
 
 
+def test_logistic_detector_returns_known_probabilities_and_labels() -> None:
+    model = overlap.LogisticOverlapModel(np.array([2.0, -1.0]), bias=0.0)
+    features = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 2.0]])
+    probabilities = model.predict_proba(features)
+    np.testing.assert_allclose(probabilities, [0.5, 0.880797077978, 0.119202922022])
+    assert model.predict(features).tolist() == [True, True, False]
+
+
+def test_logistic_detector_validates_dimensions_and_threshold() -> None:
+    model = overlap.LogisticOverlapModel(np.ones(2))
+    with pytest.raises(ValueError, match="match"):
+        model.predict_proba(np.ones((2, 3)))
+    with pytest.raises(ValueError, match="threshold"):
+        model.predict(np.ones((1, 2)), threshold=1.1)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
