@@ -58,5 +58,29 @@ def test_single_speaker_features_define_zero_ambiguity() -> None:
     assert features.tolist() == [[1.0, 0.0, 0.0, 0.0]]
 
 
+def test_posterior_scale_does_not_change_overlap_features() -> None:
+    posterior = np.array([[0.7, 0.3], [0.2, 0.8]])
+    first = overlap.frame_overlap_features([1.0, 2.0], [0.0, 0.1], posterior)
+    second = overlap.frame_overlap_features([1.0, 2.0], [0.0, 0.1], posterior * 5.0)
+    np.testing.assert_array_equal(first, second)
+
+
+def test_swapping_posterior_columns_preserves_ambiguity_cues() -> None:
+    posterior = np.array([[0.8, 0.1, 0.1], [0.4, 0.5, 0.1]])
+    first = overlap.frame_overlap_features([0.0, 0.0], [1.0, 1.0], posterior)
+    second = overlap.frame_overlap_features([0.0, 0.0], [1.0, 1.0], posterior[:, ::-1])
+    np.testing.assert_array_equal(first, second)
+
+
+def test_overlap_features_validate_shapes_and_posterior_mass() -> None:
+    with pytest.raises(ValueError, match="shapes"):
+        overlap.frame_overlap_features([1.0], [1.0, 2.0], [[1.0]])
+    with pytest.raises(ValueError, match="positive"):
+        overlap.frame_overlap_features([1.0], [1.0], [[0.0, 0.0]])
+    with pytest.raises(ValueError, match="nonnegative"):
+        overlap.frame_overlap_features([1.0], [1.0], [[1.0, -0.1]])
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
