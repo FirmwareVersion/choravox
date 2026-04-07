@@ -97,6 +97,36 @@ def test_logistic_detector_validates_dimensions_and_threshold() -> None:
         model.predict(np.ones((1, 2)), threshold=1.1)
 
 
+def test_logistic_sigmoid_stays_finite_for_extreme_scores() -> None:
+    model = overlap.LogisticOverlapModel(np.array([1_000_000.0]))
+    probabilities = model.predict_proba([[-1.0], [1.0]])
+    assert np.all(np.isfinite(probabilities))
+    assert probabilities[0] < 1e-12 and probabilities[1] == 1.0
+
+
+def test_threshold_endpoints_have_explicit_behavior() -> None:
+    model = overlap.LogisticOverlapModel(np.zeros(1))
+    features = np.zeros((2, 1))
+    assert model.predict(features, threshold=0.0).tolist() == [True, True]
+    assert model.predict(features, threshold=1.0).tolist() == [False, False]
+
+
+def test_logistic_model_copies_mutable_weight_input() -> None:
+    weights = np.array([1.0, 2.0])
+    model = overlap.LogisticOverlapModel(weights)
+    weights[:] = 9.0
+    assert model.weights.tolist() == [1.0, 2.0]
+
+
+def test_logistic_parameters_and_features_must_be_finite() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        overlap.LogisticOverlapModel(np.array([float("nan")]))
+    model = overlap.LogisticOverlapModel(np.ones(1))
+    with pytest.raises(ValueError, match="finite"):
+        model.predict_proba([[float("inf")]])
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
