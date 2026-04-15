@@ -185,6 +185,46 @@ def test_threshold_selection_maximizes_overlap_f1() -> None:
     assert selection.counts.f1 == 1.0
 
 
+def test_confusion_table_partitions_every_frame_once() -> None:
+    generator = np.random.default_rng(4)
+    expected = generator.integers(0, 2, size=50, dtype=np.int64)
+    observed = generator.integers(0, 2, size=50, dtype=np.int64)
+    counts = overlap.overlap_counts(expected, observed)
+    assert (
+        sum(
+            (
+                counts.true_positive,
+                counts.false_positive,
+                counts.false_negative,
+                counts.true_negative,
+            )
+        )
+        == 50
+    )
+
+
+def test_precision_and_recall_define_empty_positive_boundaries() -> None:
+    none = overlap.overlap_counts([False, False], [False, False])
+    assert none.precision == none.recall == none.f1 == 0.0
+    missed = overlap.overlap_counts([True], [False])
+    assert missed.precision == missed.recall == missed.f1 == 0.0
+
+
+def test_threshold_tie_prefers_candidate_nearest_one_half() -> None:
+    selection = overlap.select_overlap_threshold([0.9], [True], (0.1, 0.4, 0.6))
+    assert selection.threshold == 0.4
+
+
+def test_calibration_validates_roster_and_candidate_domain() -> None:
+    with pytest.raises(ValueError, match="misaligned"):
+        overlap.select_overlap_threshold([], [])
+    with pytest.raises(ValueError, match="candidate"):
+        overlap.select_overlap_threshold([0.5], [True], (1.1,))
+    with pytest.raises(ValueError, match="aligned"):
+        overlap.overlap_counts([True], [True, False])
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
