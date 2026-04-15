@@ -138,6 +138,40 @@ def test_binary_log_loss_matches_balanced_coin_baseline() -> None:
     assert overlap.binary_log_loss([0.5, 0.5], [False, True]) == pytest.approx(np.log(2.0))
 
 
+def test_logistic_training_is_deterministic_without_hidden_randomness() -> None:
+    features = np.array([[-1.0, 0.2], [0.0, 0.1], [1.0, 0.7], [2.0, 0.8]])
+    targets = np.array([0, 0, 1, 1], dtype=bool)
+    first = overlap.fit_logistic_overlap(features, targets, iterations=20)
+    second = overlap.fit_logistic_overlap(features, targets, iterations=20)
+    np.testing.assert_array_equal(first.model.weights, second.model.weights)
+    assert first.model.bias == second.model.bias and first.losses == second.losses
+
+
+def test_regularization_shrinks_fitted_weight_norm() -> None:
+    features = np.array([[-2.0], [-1.0], [1.0], [2.0]])
+    targets = [False, False, True, True]
+    plain = overlap.fit_logistic_overlap(features, targets, iterations=50)
+    regularized = overlap.fit_logistic_overlap(features, targets, iterations=50, l2=1.0)
+    assert np.linalg.norm(regularized.model.weights) < np.linalg.norm(plain.model.weights)
+
+
+def test_training_controls_and_shapes_are_validated_together() -> None:
+    with pytest.raises(ValueError, match="misaligned"):
+        overlap.fit_logistic_overlap(np.ones((2, 1)), [True])
+    with pytest.raises(ValueError, match="controls"):
+        overlap.fit_logistic_overlap(np.ones((1, 1)), [True], iterations=0)
+    with pytest.raises(ValueError, match="controls"):
+        overlap.fit_logistic_overlap(np.ones((1, 1)), [True], l2=-1.0)
+
+
+def test_binary_log_loss_rejects_invalid_probability_vectors() -> None:
+    with pytest.raises(ValueError, match="aligned"):
+        overlap.binary_log_loss([], [])
+    with pytest.raises(ValueError, match="lie"):
+        overlap.binary_log_loss([1.1], [True])
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
