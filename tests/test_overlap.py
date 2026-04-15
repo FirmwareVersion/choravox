@@ -126,6 +126,19 @@ def test_logistic_parameters_and_features_must_be_finite() -> None:
         model.predict_proba([[float("inf")]])
 
 
+def test_logistic_training_reduces_real_synthetic_loss() -> None:
+    features = np.array([[-2.0], [-1.0], [1.0], [2.0]])
+    targets = np.array([0, 0, 1, 1], dtype=bool)
+    result = overlap.fit_logistic_overlap(features, targets, iterations=80)
+    assert result.losses[-1] < result.losses[0] * 0.25
+    assert result.model.predict(features).tolist() == targets.tolist()
+
+
+def test_binary_log_loss_matches_balanced_coin_baseline() -> None:
+    assert overlap.binary_log_loss([0.5, 0.5], [False, True]) == pytest.approx(np.log(2.0))
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

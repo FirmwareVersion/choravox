@@ -79,4 +79,56 @@ class LogisticOverlapModel:
         return self.predict_proba(features) >= threshold
 
 
+def binary_log_loss(probabilities: ArrayLike, targets: ArrayLike) -> float:
+    """Measure mean binary cross entropy with stable probability clipping."""
+    values = np.asarray(probabilities, dtype=np.float64)
+    labels = np.asarray(targets, dtype=np.bool_)
+    if values.ndim != 1 or labels.shape != values.shape or values.size == 0:
+        raise ValueError("probabilities and targets must be aligned nonempty vectors")
+    if not np.all(np.isfinite(values)) or np.any((values < 0.0) | (values > 1.0)):
+        raise ValueError("probabilities must be finite and lie in [0, 1]")
+    clipped = np.clip(values, 1e-12, 1.0 - 1e-12)
+    loss = -np.mean(labels * np.log(clipped) + (~labels) * np.log1p(-clipped))
+    return round(float(loss), 12)
+
+
+@dataclass(frozen=True, slots=True)
+class LogisticFit:
+    model: LogisticOverlapModel
+    losses: tuple[float, ...]
+
+
+def fit_logistic_overlap(
+    features: ArrayLike,
+    targets: ArrayLike,
+    *,
+    learning_rate: float = 0.2,
+    iterations: int = 100,
+    l2: float = 0.0,
+) -> LogisticFit:
+    """Fit logistic overlap weights with deterministic full-batch descent."""
+    matrix = np.asarray(features, dtype=np.float64)
+    labels = np.asarray(targets, dtype=np.bool_)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or labels.shape != (matrix.shape[0],):
+        raise ValueError("training features and targets are misaligned")
+    if not np.all(np.isfinite(matrix)):
+        raise ValueError("training features must be finite")
+    if learning_rate <= 0.0 or iterations < 1 or l2 < 0.0:
+        raise ValueError("training controls are invalid")
+    weights = np.zeros(matrix.shape[1], dtype=np.float64)
+    bias = 0.0
+    losses = [binary_log_loss(np.full(labels.size, 0.5), labels)]
+    numeric_labels = labels.astype(np.float64)
+    for _ in range(iterations):
+        model = LogisticOverlapModel(weights, bias)
+        probabilities = model.predict_proba(matrix)
+        residual = probabilities - numeric_labels
+        weights -= learning_rate * (matrix.T @ residual / labels.size + l2 * weights)
+        bias -= learning_rate * float(np.mean(residual))
+        losses.append(
+            binary_log_loss(LogisticOverlapModel(weights, bias).predict_proba(matrix), labels)
+        )
+    return LogisticFit(LogisticOverlapModel(np.round(weights, 12), round(bias, 12)), tuple(losses))
+
+
 # -- extensions --
