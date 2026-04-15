@@ -171,6 +171,21 @@ def test_binary_log_loss_rejects_invalid_probability_vectors() -> None:
         overlap.binary_log_loss([1.1], [True])
 
 
+def test_overlap_confusion_counts_and_rates_match_hand_case() -> None:
+    counts = overlap.overlap_counts([1, 1, 0, 0], [1, 0, 1, 0])
+    assert counts == overlap.OverlapCounts(1, 1, 1, 1)
+    assert counts.precision == counts.recall == counts.f1 == 0.5
+
+
+def test_threshold_selection_maximizes_overlap_f1() -> None:
+    selection = overlap.select_overlap_threshold(
+        [0.1, 0.4, 0.7, 0.9], [False, False, True, True], (0.3, 0.5, 0.8)
+    )
+    assert selection.threshold == 0.5
+    assert selection.counts.f1 == 1.0
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

@@ -131,4 +131,69 @@ def fit_logistic_overlap(
     return LogisticFit(LogisticOverlapModel(np.round(weights, 12), round(bias, 12)), tuple(losses))
 
 
+@dataclass(frozen=True, slots=True)
+class OverlapCounts:
+    true_positive: int
+    false_positive: int
+    false_negative: int
+    true_negative: int
+
+    @property
+    def precision(self) -> float:
+        denominator = self.true_positive + self.false_positive
+        return 0.0 if denominator == 0 else round(self.true_positive / denominator, 12)
+
+    @property
+    def recall(self) -> float:
+        denominator = self.true_positive + self.false_negative
+        return 0.0 if denominator == 0 else round(self.true_positive / denominator, 12)
+
+    @property
+    def f1(self) -> float:
+        denominator = self.precision + self.recall
+        return (
+            0.0 if denominator == 0.0 else round(2 * self.precision * self.recall / denominator, 12)
+        )
+
+
+def overlap_counts(targets: ArrayLike, predictions: ArrayLike) -> OverlapCounts:
+    """Compute a complete binary overlap confusion table."""
+    expected = np.asarray(targets, dtype=np.bool_)
+    observed = np.asarray(predictions, dtype=np.bool_)
+    if expected.ndim != 1 or observed.shape != expected.shape:
+        raise ValueError("overlap targets and predictions must be aligned vectors")
+    return OverlapCounts(
+        int(np.sum(expected & observed)),
+        int(np.sum(~expected & observed)),
+        int(np.sum(expected & ~observed)),
+        int(np.sum(~expected & ~observed)),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ThresholdSelection:
+    threshold: float
+    counts: OverlapCounts
+
+
+def select_overlap_threshold(
+    probabilities: ArrayLike,
+    targets: ArrayLike,
+    thresholds: tuple[float, ...] = (0.2, 0.35, 0.5, 0.65, 0.8),
+) -> ThresholdSelection:
+    """Select maximum F1, preferring a threshold nearest 0.5 then lower."""
+    values = np.asarray(probabilities, dtype=np.float64)
+    labels = np.asarray(targets, dtype=np.bool_)
+    if values.ndim != 1 or values.size == 0 or labels.shape != values.shape:
+        raise ValueError("calibration probabilities and targets are misaligned")
+    if not thresholds or any(not 0.0 <= item <= 1.0 for item in thresholds):
+        raise ValueError("candidate thresholds must lie in [0, 1]")
+    candidates = [
+        ThresholdSelection(item, overlap_counts(labels, values >= item)) for item in thresholds
+    ]
+    return max(
+        candidates, key=lambda item: (item.counts.f1, -abs(item.threshold - 0.5), -item.threshold)
+    )
+
+
 # -- extensions --
