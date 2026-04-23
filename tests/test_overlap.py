@@ -243,6 +243,42 @@ def test_overlap_decoder_uses_highest_non_primary_candidate() -> None:
     assert spans[0].speakers == ("a", "c")
 
 
+def test_no_overlap_roundtrips_primary_label_run_lengths() -> None:
+    labels = ("a", "a", "b", "b")
+    posteriors = np.array([[0.9, 0.1], [0.8, 0.2], [0.2, 0.8], [0.1, 0.9]])
+    spans = overlap.decode_overlap_spans(labels, posteriors, ("a", "b"), [False] * 4)
+    assert [(item.start, item.end, item.speakers) for item in spans] == [
+        (0, 2, ("a",)),
+        (2, 4, ("b",)),
+    ]
+
+
+def test_overlap_decoder_breaks_runner_up_ties_by_roster_order() -> None:
+    spans = overlap.decode_overlap_spans(
+        ("b",), np.array([[0.4, 0.8, 0.4]]), ("a", "b", "c"), [True]
+    )
+    assert spans[0].speakers == ("a", "b")
+
+
+def test_overlap_decoder_rejects_shape_roster_and_finite_errors() -> None:
+    with pytest.raises(ValueError, match="rosters"):
+        overlap.decode_overlap_spans(("x",), [[1.0]], ("a",), [False])
+    with pytest.raises(ValueError, match="two"):
+        overlap.decode_overlap_spans(("a",), [[1.0]], ("a",), [True])
+    with pytest.raises(ValueError, match="finite"):
+        overlap.decode_overlap_spans(("a",), [[1.0, float("nan")]], ("a", "b"), [False])
+
+
+def test_decoded_spans_cover_each_primary_frame_exactly_once() -> None:
+    labels = ("a", "b", "a", "b")
+    posteriors = np.full((4, 2), 0.5)
+    spans = overlap.decode_overlap_spans(labels, posteriors, ("a", "b"), [0, 1, 1, 0])
+    covered = sum(item.end - item.start for item in spans)
+    assert covered == len(labels)
+    assert sum(item.end - item.start for item in spans if len(item.speakers) == 2) == 2
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
