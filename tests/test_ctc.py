@@ -24,4 +24,28 @@ def test_ctc_vocabulary_rejects_unknown_tokens_and_identifiers() -> None:
         vocab.decode((4,))
 
 
+def test_ctc_vocabulary_requires_blank_at_zero_and_speaker_change() -> None:
+    invalid = (
+        ("word", "<blank>", "<spk>"),
+        ("<blank>", "word", "other"),
+        ("<blank>", "<spk>", "<spk>"),
+        ("<blank>", "<spk>"),
+    )
+    for tokens in invalid:
+        with pytest.raises(ValueError, match="vocabulary"):
+            ctc.CtcVocabulary(tokens)
+
+
+def test_vocabulary_encoding_is_stable_under_repeated_use() -> None:
+    vocab = vocabulary()
+    first = vocab.encode(("mava", "sito", "mava"))
+    second = vocab.encode(("mava", "sito", "mava"))
+    assert first == second == (2, 1, 2)
+
+
+def test_vocabulary_decodes_empty_sequence_without_special_cases() -> None:
+    assert vocabulary().decode(()) == ()
+
+
+# -- extensions --
 # -- extensions --
