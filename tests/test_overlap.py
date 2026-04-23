@@ -224,6 +224,26 @@ def test_calibration_validates_roster_and_candidate_domain() -> None:
         overlap.overlap_counts([True], [True, False])
 
 
+def test_overlap_decoder_adds_runner_up_and_preserves_primary() -> None:
+    posteriors = np.array([[0.8, 0.2], [0.6, 0.4], [0.1, 0.9]])
+    spans = overlap.decode_overlap_spans(
+        ("a", "a", "b"), posteriors, ("a", "b"), [False, True, False]
+    )
+    assert [(item.start, item.end, item.speakers) for item in spans] == [
+        (0, 1, ("a",)),
+        (1, 2, ("a", "b")),
+        (2, 3, ("b",)),
+    ]
+
+
+def test_overlap_decoder_uses_highest_non_primary_candidate() -> None:
+    spans = overlap.decode_overlap_spans(
+        ("a",), np.array([[0.9, 0.3, 0.7]]), ("a", "b", "c"), [True]
+    )
+    assert spans[0].speakers == ("a", "c")
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

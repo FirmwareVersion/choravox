@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.diarization import MultiSpeakerFrames, activity_to_spans
+
 BoolArray = NDArray[np.bool_]
 FloatArray = NDArray[np.float64]
 
@@ -194,6 +196,39 @@ def select_overlap_threshold(
     return max(
         candidates, key=lambda item: (item.counts.f1, -abs(item.threshold - 0.5), -item.threshold)
     )
+
+
+def decode_overlap_spans(
+    primary_labels: tuple[str, ...],
+    speaker_posteriors: ArrayLike,
+    speakers: tuple[str, ...],
+    overlap_mask: ArrayLike,
+) -> tuple[MultiSpeakerFrames, ...]:
+    """Add the strongest non-primary speaker on predicted overlap frames."""
+    posteriors = np.asarray(speaker_posteriors, dtype=np.float64)
+    mask = np.asarray(overlap_mask, dtype=np.bool_)
+    frames = len(primary_labels)
+    if (
+        posteriors.shape != (frames, len(speakers))
+        or mask.shape != (frames,)
+        or len(set(speakers)) != len(speakers)
+        or any(label not in speakers for label in primary_labels)
+    ):
+        raise ValueError("overlap decoding inputs have incompatible rosters or shapes")
+    if not np.all(np.isfinite(posteriors)):
+        raise ValueError("speaker posteriors must be finite")
+    if np.any(mask) and len(speakers) < 2:
+        raise ValueError("overlap decoding requires two candidate speakers")
+    lookup = {speaker: index for index, speaker in enumerate(speakers)}
+    activity = np.zeros((frames, len(speakers)), dtype=np.bool_)
+    for frame, primary in enumerate(primary_labels):
+        primary_index = lookup[primary]
+        activity[frame, primary_index] = True
+        if mask[frame]:
+            scores = posteriors[frame].copy()
+            scores[primary_index] = -np.inf
+            activity[frame, int(np.argmax(scores))] = True
+    return activity_to_spans(activity, speakers)
 
 
 # -- extensions --
