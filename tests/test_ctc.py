@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import ctc
@@ -47,5 +48,18 @@ def test_vocabulary_decodes_empty_sequence_without_special_cases() -> None:
     assert vocabulary().decode(()) == ()
 
 
+def test_ctc_collapse_keeps_repeats_separated_by_blank() -> None:
+    assert ctc.collapse_ctc_path((0, 1, 1, 0, 1, 2, 2, 0)) == (1, 1, 2)
+
+
+def test_greedy_decode_returns_collapsed_path_and_score() -> None:
+    scores = np.log(np.array([[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.1, 0.7, 0.2], [0.8, 0.1, 0.1]]))
+    result = ctc.greedy_decode(scores)
+    assert result.path == (0, 1, 1, 0)
+    assert result.token_ids == (1,)
+    assert result.score == pytest.approx(np.log(0.8**3 * 0.7))
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
