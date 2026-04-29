@@ -91,6 +91,22 @@ def test_greedy_decode_validates_score_geometry_and_blank() -> None:
         ctc.greedy_decode(np.ones((2, 2)), blank_id=2)
 
 
+def test_nbest_decode_recovers_alternative_token_sequences() -> None:
+    scores = np.log(np.array([[0.6, 0.3, 0.1], [0.4, 0.35, 0.25]]))
+    candidates = ctc.nbest_decode(scores, beam_size=3)
+    assert candidates[0].token_ids == ()
+    assert {item.token_ids for item in candidates} == {(), (1,), (2,)}
+    assert [item.score for item in candidates] == sorted(
+        (item.score for item in candidates), reverse=True
+    )
+
+
+def test_nbest_decode_uses_lexical_ties() -> None:
+    candidates = ctc.nbest_decode(np.zeros((1, 3)), beam_size=3)
+    assert [item.token_ids for item in candidates] == [(), (1,), (2,)]
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

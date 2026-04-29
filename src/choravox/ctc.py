@@ -84,4 +84,34 @@ def greedy_decode(log_probabilities: ArrayLike, *, blank_id: int = 0) -> GreedyC
     return GreedyCtcResult(collapse_ctc_path(path, blank_id=blank_id), path, score)
 
 
+@dataclass(frozen=True, slots=True)
+class CtcCandidate:
+    token_ids: tuple[int, ...]
+    score: float
+
+
+def nbest_decode(
+    log_probabilities: ArrayLike, *, beam_size: int = 8, blank_id: int = 0
+) -> tuple[CtcCandidate, ...]:
+    """Generate deterministic max-path CTC candidates with frame-wise beam pruning."""
+    matrix = np.asarray(log_probabilities, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or matrix.shape[1] == 0:
+        raise ValueError("CTC scores must be a nonempty frame-by-token matrix")
+    if not np.all(np.isfinite(matrix)) or not 0 <= blank_id < matrix.shape[1] or beam_size < 1:
+        raise ValueError("CTC beam controls are invalid")
+    beams: tuple[tuple[tuple[int, ...], float], ...] = (((), 0.0),)
+    for frame in matrix:
+        next_scores: dict[tuple[int, ...], float] = {}
+        for path, score in beams:
+            for token_id, token_score in enumerate(frame):
+                candidate_path = (*path, token_id)
+                collapsed = collapse_ctc_path(candidate_path, blank_id=blank_id)
+                candidate_score = score + float(token_score)
+                previous = next_scores.get(collapsed)
+                if previous is None or candidate_score > previous:
+                    next_scores[collapsed] = candidate_score
+        beams = tuple(sorted(next_scores.items(), key=lambda item: (-item[1], item[0]))[:beam_size])
+    return tuple(CtcCandidate(path, round(score, 12)) for path, score in beams)
+
+
 # -- extensions --
