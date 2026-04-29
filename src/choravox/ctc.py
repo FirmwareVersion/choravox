@@ -99,19 +99,28 @@ def nbest_decode(
         raise ValueError("CTC scores must be a nonempty frame-by-token matrix")
     if not np.all(np.isfinite(matrix)) or not 0 <= blank_id < matrix.shape[1] or beam_size < 1:
         raise ValueError("CTC beam controls are invalid")
-    beams: tuple[tuple[tuple[int, ...], float], ...] = (((), 0.0),)
+    beams: dict[tuple[tuple[int, ...], int | None], float] = {((), None): 0.0}
     for frame in matrix:
-        next_scores: dict[tuple[int, ...], float] = {}
-        for path, score in beams:
+        next_scores: dict[tuple[tuple[int, ...], int], float] = {}
+        for (prefix, previous_token), score in beams.items():
             for token_id, token_score in enumerate(frame):
-                candidate_path = (*path, token_id)
-                collapsed = collapse_ctc_path(candidate_path, blank_id=blank_id)
+                collapsed = prefix
+                if token_id != blank_id and token_id != previous_token:
+                    collapsed = (*prefix, token_id)
+                state = (collapsed, token_id)
                 candidate_score = score + float(token_score)
-                previous = next_scores.get(collapsed)
+                previous = next_scores.get(state)
                 if previous is None or candidate_score > previous:
-                    next_scores[collapsed] = candidate_score
-        beams = tuple(sorted(next_scores.items(), key=lambda item: (-item[1], item[0]))[:beam_size])
-    return tuple(CtcCandidate(path, round(score, 12)) for path, score in beams)
+                    next_scores[state] = candidate_score
+        state_limit = beam_size * matrix.shape[1]
+        beams = dict(
+            sorted(next_scores.items(), key=lambda item: (-item[1], item[0]))[:state_limit]
+        )
+    transcript_scores: dict[tuple[int, ...], float] = {}
+    for (prefix, _), score in beams.items():
+        transcript_scores[prefix] = max(transcript_scores.get(prefix, -np.inf), score)
+    ranked = sorted(transcript_scores.items(), key=lambda item: (-item[1], item[0]))[:beam_size]
+    return tuple(CtcCandidate(path, round(score, 12)) for path, score in ranked)
 
 
 # -- extensions --

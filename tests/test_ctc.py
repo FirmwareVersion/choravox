@@ -106,6 +106,37 @@ def test_nbest_decode_uses_lexical_ties() -> None:
     assert [item.token_ids for item in candidates] == [(), (1,), (2,)]
 
 
+def test_wide_beam_matches_brute_force_max_path_per_transcript() -> None:
+    from itertools import product
+
+    scores = np.log(np.array([[0.5, 0.3, 0.2], [0.2, 0.5, 0.3], [0.4, 0.2, 0.4]]))
+    expected: dict[tuple[int, ...], float] = {}
+    for path in product(range(3), repeat=3):
+        transcript = ctc.collapse_ctc_path(path)
+        score = sum(float(scores[frame, token]) for frame, token in enumerate(path))
+        expected[transcript] = max(expected.get(transcript, -np.inf), score)
+    observed = ctc.nbest_decode(scores, beam_size=len(expected))
+    assert [item.token_ids for item in observed] == [
+        item[0] for item in sorted(expected.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    np.testing.assert_allclose(
+        [item.score for item in observed], sorted(expected.values(), reverse=True)
+    )
+
+
+def test_nbest_first_candidate_matches_greedy_when_beam_is_wide() -> None:
+    scores = np.log(np.array([[0.1, 0.7, 0.2], [0.6, 0.3, 0.1]]))
+    assert ctc.nbest_decode(scores, beam_size=8)[0].token_ids == ctc.greedy_decode(scores).token_ids
+
+
+def test_nbest_decode_validates_beam_controls() -> None:
+    with pytest.raises(ValueError, match="controls"):
+        ctc.nbest_decode(np.ones((1, 2)), beam_size=0)
+    with pytest.raises(ValueError, match="controls"):
+        ctc.nbest_decode(np.ones((1, 2)), blank_id=4)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
