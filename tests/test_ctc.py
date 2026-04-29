@@ -152,6 +152,39 @@ def test_forced_alignment_handles_repeated_tokens_via_blank() -> None:
     assert [(item.start_frame, item.end_frame) for item in result.tokens] == [(0, 1), (2, 3)]
 
 
+def test_forced_alignment_matches_brute_force_state_paths() -> None:
+    from itertools import pairwise, product
+
+    probabilities = np.array([[0.4, 0.6], [0.5, 0.5], [0.7, 0.3]])
+    scores = np.log(probabilities)
+    result = ctc.forced_align(scores, (1,))
+    valid_paths = []
+    states = (0, 1, 0)
+    for path in product(range(3), repeat=3):
+        if path[0] not in (0, 1) or path[-1] not in (1, 2):
+            continue
+        if all(right in (left, left + 1) for left, right in pairwise(path)):
+            valid_paths.append(
+                sum(float(scores[frame, states[state]]) for frame, state in enumerate(path))
+            )
+    assert result.score == pytest.approx(max(valid_paths))
+
+
+def test_forced_alignment_confidence_uses_emitting_frames() -> None:
+    result = ctc.forced_align(np.log([[0.1, 0.9], [0.2, 0.8]]), (1,))
+    assert result.tokens[0].confidence == pytest.approx(np.sqrt(0.9 * 0.8))
+
+
+def test_forced_alignment_rejects_impossible_or_invalid_targets() -> None:
+    with pytest.raises(ValueError, match="cannot"):
+        ctc.forced_align(np.log([[0.5, 0.5], [0.5, 0.5]]), (1, 1))
+    with pytest.raises(ValueError, match="nonblank"):
+        ctc.forced_align(np.log([[0.5, 0.5]]), (0,))
+    with pytest.raises(ValueError, match="nonblank"):
+        ctc.forced_align(np.log([[0.5, 0.5]]), ())
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
