@@ -60,6 +60,38 @@ def test_greedy_decode_returns_collapsed_path_and_score() -> None:
     assert result.score == pytest.approx(np.log(0.8**3 * 0.7))
 
 
+def test_ctc_collapse_matches_manual_oracle_for_short_paths() -> None:
+    from itertools import product
+
+    def oracle(path: tuple[int, ...]) -> tuple[int, ...]:
+        deduplicated = tuple(
+            value for index, value in enumerate(path) if index == 0 or value != path[index - 1]
+        )
+        return tuple(value for value in deduplicated if value != 0)
+
+    for length in range(5):
+        for path in product(range(3), repeat=length):
+            assert ctc.collapse_ctc_path(path) == oracle(path)
+
+
+def test_blank_only_greedy_path_decodes_to_empty_transcript() -> None:
+    result = ctc.greedy_decode(np.array([[0.0, -2.0], [0.0, -1.0]]))
+    assert result.token_ids == () and result.path == (0, 0)
+
+
+def test_greedy_ties_choose_lowest_token_identifier() -> None:
+    result = ctc.greedy_decode(np.zeros((2, 3)))
+    assert result.path == (0, 0)
+
+
+def test_greedy_decode_validates_score_geometry_and_blank() -> None:
+    with pytest.raises(ValueError, match="nonempty"):
+        ctc.greedy_decode(np.empty((0, 2)))
+    with pytest.raises(ValueError, match="invalid"):
+        ctc.greedy_decode(np.ones((2, 2)), blank_id=2)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
