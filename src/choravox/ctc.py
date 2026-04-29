@@ -123,4 +123,71 @@ def nbest_decode(
     return tuple(CtcCandidate(path, round(score, 12)) for path, score in ranked)
 
 
+@dataclass(frozen=True, slots=True)
+class AlignedToken:
+    token_id: int
+    start_frame: int
+    end_frame: int
+    confidence: float
+
+
+@dataclass(frozen=True, slots=True)
+class ForcedAlignment:
+    tokens: tuple[AlignedToken, ...]
+    state_path: tuple[int, ...]
+    score: float
+
+
+def forced_align(
+    log_probabilities: ArrayLike, target_ids: tuple[int, ...], *, blank_id: int = 0
+) -> ForcedAlignment:
+    """Viterbi-align a known token sequence through the CTC state graph."""
+    scores = np.asarray(log_probabilities, dtype=np.float64)
+    if scores.ndim != 2 or scores.shape[0] == 0 or scores.shape[1] == 0:
+        raise ValueError("alignment scores must be a nonempty matrix")
+    if not np.all(np.isfinite(scores)) or not 0 <= blank_id < scores.shape[1]:
+        raise ValueError("alignment scores or blank identifier are invalid")
+    if not target_ids or any(
+        token_id == blank_id or token_id < 0 or token_id >= scores.shape[1]
+        for token_id in target_ids
+    ):
+        raise ValueError("alignment target must contain valid nonblank tokens")
+    states = tuple(
+        blank_id if index % 2 == 0 else target_ids[index // 2]
+        for index in range(2 * len(target_ids) + 1)
+    )
+    dynamic = np.full((scores.shape[0], len(states)), -np.inf)
+    back = np.full((scores.shape[0], len(states)), -1, dtype=np.int64)
+    dynamic[0, 0] = scores[0, blank_id]
+    dynamic[0, 1] = scores[0, states[1]]
+    for frame in range(1, scores.shape[0]):
+        for state, token_id in enumerate(states):
+            previous_states = [state]
+            if state > 0:
+                previous_states.append(state - 1)
+            if state > 1 and token_id != blank_id and token_id != states[state - 2]:
+                previous_states.append(state - 2)
+            previous = max(previous_states, key=lambda item: (dynamic[frame - 1, item], -item))
+            if np.isfinite(dynamic[frame - 1, previous]):
+                dynamic[frame, state] = dynamic[frame - 1, previous] + scores[frame, token_id]
+                back[frame, state] = previous
+    final_states = (len(states) - 1, len(states) - 2)
+    final = max(final_states, key=lambda item: (dynamic[-1, item], -item))
+    if not np.isfinite(dynamic[-1, final]):
+        raise ValueError("target cannot be aligned to the available frames")
+    state_path = [final]
+    for frame in range(scores.shape[0] - 1, 0, -1):
+        state_path.append(int(back[frame, state_path[-1]]))
+    state_path.reverse()
+    aligned = []
+    for target_index, token_id in enumerate(target_ids):
+        state = target_index * 2 + 1
+        frames = np.flatnonzero(np.asarray(state_path) == state)
+        confidence = float(np.exp(np.mean(scores[frames, token_id])))
+        aligned.append(
+            AlignedToken(token_id, int(frames[0]), int(frames[-1] + 1), round(confidence, 12))
+        )
+    return ForcedAlignment(tuple(aligned), tuple(state_path), round(float(dynamic[-1, final]), 12))
+
+
 # -- extensions --

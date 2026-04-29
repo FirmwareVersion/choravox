@@ -136,6 +136,23 @@ def test_nbest_decode_validates_beam_controls() -> None:
         ctc.nbest_decode(np.ones((1, 2)), blank_id=4)
 
 
+def test_forced_alignment_recovers_planted_token_frames() -> None:
+    probabilities = np.array([[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.7, 0.2, 0.1], [0.1, 0.1, 0.8]])
+    result = ctc.forced_align(np.log(probabilities), (1, 2))
+    assert [(item.token_id, item.start_frame, item.end_frame) for item in result.tokens] == [
+        (1, 1, 2),
+        (2, 3, 4),
+    ]
+    assert result.state_path == (0, 1, 2, 3)
+
+
+def test_forced_alignment_handles_repeated_tokens_via_blank() -> None:
+    probabilities = np.array([[0.1, 0.9], [0.9, 0.1], [0.1, 0.9]])
+    result = ctc.forced_align(np.log(probabilities), (1, 1))
+    assert [(item.start_frame, item.end_frame) for item in result.tokens] == [(0, 1), (2, 3)]
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
