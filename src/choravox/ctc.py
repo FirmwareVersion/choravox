@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.types import Word
+
 FloatArray = NDArray[np.float64]
 
 
@@ -188,6 +190,31 @@ def forced_align(
             AlignedToken(token_id, int(frames[0]), int(frames[-1] + 1), round(confidence, 12))
         )
     return ForcedAlignment(tuple(aligned), tuple(state_path), round(float(dynamic[-1, final]), 12))
+
+
+def alignment_words(
+    token_texts: tuple[str, ...],
+    alignment: ForcedAlignment,
+    *,
+    frame_shift_s: float,
+    speaker: str,
+    offset_s: float = 0.0,
+) -> tuple[Word, ...]:
+    """Convert aligned token frames into public confidence-bearing words."""
+    if len(token_texts) != len(alignment.tokens):
+        raise ValueError("token texts must align one-to-one with CTC tokens")
+    if frame_shift_s <= 0.0 or offset_s < 0.0 or not speaker:
+        raise ValueError("word timing geometry and speaker must be valid")
+    return tuple(
+        Word(
+            text,
+            round(offset_s + token.start_frame * frame_shift_s, 6),
+            round(offset_s + token.end_frame * frame_shift_s, 6),
+            speaker,
+            token.confidence,
+        )
+        for text, token in zip(token_texts, alignment.tokens, strict=True)
+    )
 
 
 # -- extensions --

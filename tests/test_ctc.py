@@ -184,6 +184,31 @@ def test_forced_alignment_rejects_impossible_or_invalid_targets() -> None:
         ctc.forced_align(np.log([[0.5, 0.5]]), ())
 
 
+def test_alignment_words_convert_frames_to_offset_timestamps() -> None:
+    alignment = ctc.ForcedAlignment(
+        (ctc.AlignedToken(1, 1, 3, 0.8), ctc.AlignedToken(2, 4, 5, 0.7)),
+        (0, 1, 1, 2, 3),
+        -1.0,
+    )
+    words = ctc.alignment_words(
+        ("sito", "mava"), alignment, frame_shift_s=0.02, speaker="a", offset_s=1.0
+    )
+    assert [(word.text, word.start, word.end, word.speaker) for word in words] == [
+        ("sito", 1.02, 1.06, "a"),
+        ("mava", 1.08, 1.1, "a"),
+    ]
+    assert [word.confidence for word in words] == [0.8, 0.7]
+
+
+def test_alignment_words_validate_text_count_and_time_geometry() -> None:
+    alignment = ctc.ForcedAlignment((ctc.AlignedToken(1, 0, 1, 1.0),), (1,), 0.0)
+    with pytest.raises(ValueError, match="one-to-one"):
+        ctc.alignment_words((), alignment, frame_shift_s=0.01, speaker="a")
+    with pytest.raises(ValueError, match="geometry"):
+        ctc.alignment_words(("sito",), alignment, frame_shift_s=0.0, speaker="a")
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
