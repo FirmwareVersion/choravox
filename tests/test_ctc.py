@@ -208,6 +208,41 @@ def test_alignment_words_validate_text_count_and_time_geometry() -> None:
         ctc.alignment_words(("sito",), alignment, frame_shift_s=0.0, speaker="a")
 
 
+def test_word_times_crosscheck_known_synthetic_frame_placement() -> None:
+    probabilities = np.full((8, 3), 0.05)
+    planted = ((1, 1, 3), (2, 5, 7))
+    probabilities[:, 0] = 0.9
+    for token_id, start, end in planted:
+        probabilities[start:end, 0] = 0.05
+        probabilities[start:end, token_id] = 0.9
+    probabilities /= np.sum(probabilities, axis=1, keepdims=True)
+    alignment = ctc.forced_align(np.log(probabilities), (1, 2))
+    words = ctc.alignment_words(
+        ("sito", "mava"), alignment, frame_shift_s=0.01, speaker="synthetic"
+    )
+    for word, (_, start, end) in zip(words, planted, strict=True):
+        assert abs(word.start - start * 0.01) <= 0.01
+        assert abs(word.end - end * 0.01) <= 0.01
+
+
+def test_word_confidences_remain_in_public_domain() -> None:
+    probabilities = np.array([[0.1, 0.9], [0.2, 0.8]])
+    alignment = ctc.forced_align(np.log(probabilities), (1,))
+    word = ctc.alignment_words(("sito",), alignment, frame_shift_s=0.01, speaker="a")[0]
+    assert 0.0 <= word.confidence <= 1.0
+
+
+def test_offset_translation_preserves_word_durations() -> None:
+    alignment = ctc.ForcedAlignment((ctc.AlignedToken(1, 2, 5, 0.9),), (0, 0, 1, 1, 1), 0.0)
+    first = ctc.alignment_words(("sito",), alignment, frame_shift_s=0.02, speaker="a")[0]
+    second = ctc.alignment_words(
+        ("sito",), alignment, frame_shift_s=0.02, speaker="a", offset_s=3.0
+    )[0]
+    assert first.end - first.start == pytest.approx(second.end - second.start)
+    assert second.start - first.start == 3.0
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
