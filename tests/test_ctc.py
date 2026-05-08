@@ -254,6 +254,39 @@ def test_alignment_repair_preserves_valid_interior_boundaries() -> None:
     assert ctc.repair_alignment_boundaries((0, 2, 5, 8), 8) == (0, 2, 5, 8)
 
 
+def test_repaired_boundaries_always_partition_the_frame_axis() -> None:
+    generator = np.random.default_rng(22)
+    for token_count in range(1, 7):
+        raw = tuple(int(item) for item in generator.integers(-5, 20, size=token_count + 1))
+        repaired = ctc.repair_alignment_boundaries(raw, token_count + 5)
+        assert repaired[0] == 0 and repaired[-1] == token_count + 5
+        assert np.all(np.diff(repaired) > 0)
+
+
+def test_repair_rejects_insufficient_frames_and_missing_spans() -> None:
+    with pytest.raises(ValueError, match="one frame"):
+        ctc.repair_alignment_boundaries((0,), 1)
+    with pytest.raises(ValueError, match="one frame"):
+        ctc.repair_alignment_boundaries((0, 1, 2, 3), 2)
+
+
+def test_repair_is_idempotent_after_canonicalization() -> None:
+    first = ctc.repair_alignment_boundaries((8, 8, -2, 20), 7)
+    assert ctc.repair_alignment_boundaries(first, 7) == first
+
+
+def test_repaired_intervals_can_construct_positive_public_words() -> None:
+    boundaries = ctc.repair_alignment_boundaries((0, 0, 3), 4)
+    tokens = tuple(
+        ctc.AlignedToken(index + 1, boundaries[index], boundaries[index + 1], 0.5)
+        for index in range(2)
+    )
+    alignment = ctc.ForcedAlignment(tokens, (), 0.0)
+    words = ctc.alignment_words(("sito", "mava"), alignment, frame_shift_s=0.01, speaker="a")
+    assert all(word.end > word.start for word in words)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
