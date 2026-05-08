@@ -217,4 +217,16 @@ def alignment_words(
     )
 
 
+def repair_alignment_boundaries(boundaries: tuple[int, ...], frame_count: int) -> tuple[int, ...]:
+    """Repair clipped or duplicate token boundaries into positive ordered spans."""
+    if len(boundaries) < 2 or frame_count < len(boundaries) - 1:
+        raise ValueError("alignment repair requires at least one frame per token")
+    repaired = [0, *(min(max(value, 0), frame_count) for value in boundaries[1:-1]), frame_count]
+    for index in range(1, len(repaired) - 1):
+        repaired[index] = max(repaired[index], repaired[index - 1] + 1)
+    for index in range(len(repaired) - 2, 0, -1):
+        repaired[index] = min(repaired[index], repaired[index + 1] - 1)
+    return tuple(repaired)
+
+
 # -- extensions --

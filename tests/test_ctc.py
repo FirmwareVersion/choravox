@@ -242,6 +242,19 @@ def test_offset_translation_preserves_word_durations() -> None:
     assert second.start - first.start == 3.0
 
 
+def test_alignment_repair_resolves_duplicate_and_reversed_boundaries() -> None:
+    assert ctc.repair_alignment_boundaries((2, 2, 1, 9), 6) == (0, 2, 3, 6)
+
+
+def test_alignment_repair_clips_outside_boundaries() -> None:
+    assert ctc.repair_alignment_boundaries((-5, 3, 20), 8) == (0, 3, 8)
+
+
+def test_alignment_repair_preserves_valid_interior_boundaries() -> None:
+    assert ctc.repair_alignment_boundaries((0, 2, 5, 8), 8) == (0, 2, 5, 8)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
