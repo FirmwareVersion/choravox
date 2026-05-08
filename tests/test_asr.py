@@ -32,4 +32,34 @@ def test_sot_parser_rejects_blank_and_excess_speaker_changes() -> None:
         asr.parse_sot((1, 4, 2), vocabulary(), ("a",))
 
 
+def test_sot_roundtrip_handles_rapid_alternating_speakers() -> None:
+    tokens = tuple(
+        asr.AttributedToken(text, speaker)
+        for text, speaker in zip(("sito", "mava", "noki"), ("a", "b", "c"), strict=True)
+    )
+    encoded = asr.serialize_sot(tokens, vocabulary())
+    assert encoded == (1, 4, 2, 4, 3)
+    assert asr.parse_sot(encoded, vocabulary(), ("a", "b", "c")) == tokens
+
+
+def test_sot_encoding_does_not_insert_change_within_a_turn() -> None:
+    tokens = tuple(asr.AttributedToken(text, "a") for text in ("sito", "mava", "noki"))
+    assert asr.serialize_sot(tokens, vocabulary()) == (1, 2, 3)
+
+
+def test_sot_parse_requires_a_valid_speaker_roster() -> None:
+    with pytest.raises(ValueError, match="speaker order"):
+        asr.parse_sot((1,), vocabulary(), ())
+    with pytest.raises(ValueError, match="speaker order"):
+        asr.parse_sot((1,), vocabulary(), ("",))
+
+
+def test_attributed_tokens_validate_both_labels() -> None:
+    with pytest.raises(ValueError, match="nonempty"):
+        asr.AttributedToken("", "a")
+    with pytest.raises(ValueError, match="nonempty"):
+        asr.AttributedToken("sito", "")
+
+
+# -- extensions --
 # -- extensions --
