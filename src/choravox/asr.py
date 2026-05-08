@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from choravox.ctc import CtcVocabulary
+import numpy as np
+
+from choravox.ctc import CtcCandidate, CtcVocabulary
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +54,48 @@ def parse_sot(
         else:
             output.append(AttributedToken(text, speaker_order[speaker_index]))
     return tuple(output)
+
+
+@dataclass(frozen=True, slots=True)
+class SpeakerDecodeCandidate:
+    speaker: str
+    token_ids: tuple[int, ...]
+    acoustic_score: float
+    embedding_similarity: float
+    combined_score: float
+
+
+def attribute_nbest(
+    candidates: tuple[CtcCandidate, ...],
+    speaker_similarities: dict[str, float],
+    *,
+    embedding_weight: float = 1.0,
+) -> tuple[SpeakerDecodeCandidate, ...]:
+    """Cross-rescore acoustic candidates against synthetic speaker embeddings."""
+    if not candidates or not speaker_similarities:
+        raise ValueError("attribution requires acoustic and speaker candidates")
+    if embedding_weight < 0.0 or not np.isfinite(embedding_weight):
+        raise ValueError("embedding weight must be finite and nonnegative")
+    if any(
+        not speaker or not np.isfinite(score) for speaker, score in speaker_similarities.items()
+    ):
+        raise ValueError("speaker similarity roster must be finite and identified")
+    output = []
+    for candidate in candidates:
+        for speaker, similarity in sorted(speaker_similarities.items()):
+            combined = candidate.score + embedding_weight * similarity
+            output.append(
+                SpeakerDecodeCandidate(
+                    speaker,
+                    candidate.token_ids,
+                    candidate.score,
+                    similarity,
+                    round(combined, 12),
+                )
+            )
+    return tuple(
+        sorted(output, key=lambda item: (-item.combined_score, item.speaker, item.token_ids))
+    )
 
 
 # -- extensions --

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from choravox import asr
-from choravox.ctc import CtcVocabulary
+from choravox.ctc import CtcCandidate, CtcVocabulary
 
 
 def vocabulary() -> CtcVocabulary:
@@ -61,5 +61,20 @@ def test_attributed_tokens_validate_both_labels() -> None:
         asr.AttributedToken("sito", "")
 
 
+def test_nbest_attribution_combines_acoustic_and_embedding_scores() -> None:
+    candidates = (CtcCandidate((1,), -0.2), CtcCandidate((2,), -0.4))
+    ranked = asr.attribute_nbest(candidates, {"a": 0.1, "b": 0.8}, embedding_weight=0.5)
+    assert ranked[0].speaker == "b" and ranked[0].token_ids == (1,)
+    assert ranked[0].combined_score == 0.2
+    assert len(ranked) == 4
+
+
+def test_zero_embedding_weight_preserves_acoustic_ranking() -> None:
+    candidates = (CtcCandidate((1,), -0.1), CtcCandidate((2,), -0.3))
+    ranked = asr.attribute_nbest(candidates, {"a": -1.0, "b": 1.0}, embedding_weight=0.0)
+    assert [item.token_ids for item in ranked[:2]] == [(1,), (1,)]
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
