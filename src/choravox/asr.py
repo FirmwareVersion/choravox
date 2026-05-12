@@ -5,8 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 from choravox.ctc import CtcCandidate, CtcVocabulary
+from choravox.embeddings import cosine_similarity
+
+FloatArray = NDArray[np.float64]
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +100,34 @@ def attribute_nbest(
     return tuple(
         sorted(output, key=lambda item: (-item.combined_score, item.speaker, item.token_ids))
     )
+
+
+def enrollment_similarities(
+    enrollment: ArrayLike, probes: ArrayLike, speakers: tuple[str, ...]
+) -> dict[str, float]:
+    """Score one target enrollment vector against named probe speakers."""
+    reference = np.asarray(enrollment, dtype=np.float64)
+    matrix = np.asarray(probes, dtype=np.float64)
+    if (
+        reference.ndim != 1
+        or matrix.ndim != 2
+        or matrix.shape != (len(speakers), reference.size)
+        or len(set(speakers)) != len(speakers)
+        or any(not speaker for speaker in speakers)
+    ):
+        raise ValueError("enrollment probes and speaker roster are incompatible")
+    return {
+        speaker: cosine_similarity(reference, matrix[index])
+        for index, speaker in enumerate(speakers)
+    }
+
+
+def select_target_speaker(
+    enrollment: ArrayLike, probes: ArrayLike, speakers: tuple[str, ...]
+) -> tuple[str, float]:
+    """Choose the most similar speaker with lexical tie breaking."""
+    scores = enrollment_similarities(enrollment, probes, speakers)
+    return min(scores.items(), key=lambda item: (-item[1], item[0]))
 
 
 # -- extensions --

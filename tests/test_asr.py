@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import asr
@@ -114,6 +115,21 @@ def test_candidate_cross_product_is_complete() -> None:
     }
 
 
+def test_enrollment_selects_matching_synthetic_speaker() -> None:
+    enrollment = np.array([1.0, 0.0])
+    probes = np.array([[0.0, 1.0], [0.9, 0.1]])
+    scores = asr.enrollment_similarities(enrollment, probes, ("a", "b"))
+    assert scores["b"] > scores["a"]
+    assert asr.select_target_speaker(enrollment, probes, ("a", "b"))[0] == "b"
+
+
+def test_target_speaker_tie_breaks_by_label() -> None:
+    enrollment = np.array([1.0, 0.0])
+    probes = np.array([[1.0, 0.0], [1.0, 0.0]])
+    assert asr.select_target_speaker(enrollment, probes, ("b", "a"))[0] == "a"
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
