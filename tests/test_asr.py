@@ -75,6 +75,46 @@ def test_zero_embedding_weight_preserves_acoustic_ranking() -> None:
     assert [item.token_ids for item in ranked[:2]] == [(1,), (1,)]
 
 
+def test_nbest_attribution_breaks_equal_scores_deterministically() -> None:
+    ranked = asr.attribute_nbest(
+        (CtcCandidate((2,), 0.0), CtcCandidate((1,), 0.0)), {"b": 0.0, "a": 0.0}
+    )
+    assert [(item.speaker, item.token_ids) for item in ranked] == [
+        ("a", (1,)),
+        ("a", (2,)),
+        ("b", (1,)),
+        ("b", (2,)),
+    ]
+
+
+def test_embedding_weight_can_change_top_speaker_without_transcript() -> None:
+    candidates = (CtcCandidate((1, 2), -0.1),)
+    acoustic = asr.attribute_nbest(candidates, {"a": 0.2, "b": 0.8}, embedding_weight=0.0)
+    rescored = asr.attribute_nbest(candidates, {"a": 0.2, "b": 0.8}, embedding_weight=2.0)
+    assert acoustic[0].speaker == "a"
+    assert rescored[0].speaker == "b"
+    assert rescored[0].token_ids == acoustic[0].token_ids
+
+
+def test_nbest_attribution_validates_inputs_and_scores() -> None:
+    with pytest.raises(ValueError, match="requires"):
+        asr.attribute_nbest((), {"a": 1.0})
+    with pytest.raises(ValueError, match="weight"):
+        asr.attribute_nbest((CtcCandidate((1,), 0.0),), {"a": 1.0}, embedding_weight=-1.0)
+    with pytest.raises(ValueError, match="roster"):
+        asr.attribute_nbest((CtcCandidate((1,), 0.0),), {"a": float("nan")})
+
+
+def test_candidate_cross_product_is_complete() -> None:
+    candidates = tuple(CtcCandidate((index,), -float(index)) for index in range(1, 4))
+    ranked = asr.attribute_nbest(candidates, {"a": 0.1, "b": 0.2})
+    assert len(ranked) == len(candidates) * 2
+    assert {(item.speaker, item.token_ids) for item in ranked} == {
+        (speaker, candidate.token_ids) for speaker in ("a", "b") for candidate in candidates
+    }
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
