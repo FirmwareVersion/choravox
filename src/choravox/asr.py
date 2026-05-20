@@ -130,4 +130,18 @@ def select_target_speaker(
     return min(scores.items(), key=lambda item: (-item[1], item[0]))
 
 
+def target_speaker_mask(
+    frame_embeddings: ArrayLike, enrollment: ArrayLike, *, threshold: float = 0.5
+) -> NDArray[np.bool_]:
+    """Select frames similar enough to a target enrollment utterance."""
+    matrix = np.asarray(frame_embeddings, dtype=np.float64)
+    reference = np.asarray(enrollment, dtype=np.float64)
+    if matrix.ndim != 2 or reference.ndim != 1 or matrix.shape[1] != reference.size:
+        raise ValueError("target-speaker frame and enrollment dimensions must match")
+    if not -1.0 <= threshold <= 1.0 or not np.isfinite(threshold):
+        raise ValueError("target-speaker threshold must lie in [-1, 1]")
+    scores = np.asarray([cosine_similarity(reference, row) for row in matrix])
+    return scores >= threshold
+
+
 # -- extensions --

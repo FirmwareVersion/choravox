@@ -157,6 +157,19 @@ def test_zero_enrollment_vector_is_rejected_by_cosine_scoring() -> None:
         asr.enrollment_similarities([0.0, 0.0], [[1.0, 0.0]], ("a",))
 
 
+def test_target_speaker_mask_selects_enrollment_like_frames() -> None:
+    frames = np.array([[1.0, 0.0], [0.8, 0.2], [0.0, 1.0], [-1.0, 0.0]])
+    mask = asr.target_speaker_mask(frames, [1.0, 0.0], threshold=0.7)
+    assert mask.tolist() == [True, True, False, False]
+
+
+def test_target_speaker_threshold_endpoints_are_defined() -> None:
+    frames = np.array([[1.0, 0.0], [-1.0, 0.0]])
+    assert asr.target_speaker_mask(frames, [1.0, 0.0], threshold=-1.0).tolist() == [True, True]
+    assert asr.target_speaker_mask(frames, [1.0, 0.0], threshold=1.0).tolist() == [True, False]
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
