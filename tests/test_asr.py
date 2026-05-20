@@ -193,6 +193,25 @@ def test_target_mask_rejects_zero_probe_frames() -> None:
         asr.target_speaker_mask(np.array([[0.0, 0.0]]), [1.0, 0.0])
 
 
+def test_attributed_words_preserve_speaker_changes_and_confidence() -> None:
+    tokens = (asr.AttributedToken("sito", "a"), asr.AttributedToken("mava", "b"))
+    transcript = asr.attributed_words(tokens, ((0, 2, 0.9), (3, 5, 0.8)), frame_shift_s=0.1)
+    assert [(word.text, word.speaker, word.start, word.end) for word in transcript.words] == [
+        ("sito", "a", 0.0, 0.2),
+        ("mava", "b", 0.3, 0.5),
+    ]
+    assert [word.confidence for word in transcript.words] == [0.9, 0.8]
+
+
+def test_attributed_words_validate_alignment_shape_and_spans() -> None:
+    token = asr.AttributedToken("sito", "a")
+    with pytest.raises(ValueError, match="must match"):
+        asr.attributed_words((token,), (), frame_shift_s=0.1)
+    with pytest.raises(ValueError, match="span"):
+        asr.attributed_words((token,), ((1, 1, 0.5),), frame_shift_s=0.1)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

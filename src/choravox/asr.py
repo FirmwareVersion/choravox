@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from choravox.ctc import CtcCandidate, CtcVocabulary
 from choravox.embeddings import cosine_similarity
+from choravox.types import Transcript, Word
 
 FloatArray = NDArray[np.float64]
 
@@ -142,6 +143,34 @@ def target_speaker_mask(
         raise ValueError("target-speaker threshold must lie in [-1, 1]")
     scores = np.asarray([cosine_similarity(reference, row) for row in matrix])
     return scores >= threshold
+
+
+def attributed_words(
+    tokens: tuple[AttributedToken, ...],
+    frame_spans: tuple[tuple[int, int, float], ...],
+    *,
+    frame_shift_s: float,
+    offset_s: float = 0.0,
+) -> Transcript:
+    """Build a public transcript from aligned speaker-attributed tokens."""
+    if len(tokens) != len(frame_spans):
+        raise ValueError("attributed tokens and alignment spans must match")
+    if frame_shift_s <= 0.0 or offset_s < 0.0:
+        raise ValueError("attributed word timing geometry is invalid")
+    words = []
+    for token, (start, end, confidence) in zip(tokens, frame_spans, strict=True):
+        if start < 0 or end <= start:
+            raise ValueError("attributed alignment span is invalid")
+        words.append(
+            Word(
+                token.text,
+                round(offset_s + start * frame_shift_s, 6),
+                round(offset_s + end * frame_shift_s, 6),
+                token.speaker,
+                confidence,
+            )
+        )
+    return Transcript(tuple(words))
 
 
 # -- extensions --
