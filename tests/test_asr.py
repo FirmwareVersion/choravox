@@ -129,6 +129,35 @@ def test_target_speaker_tie_breaks_by_label() -> None:
     assert asr.select_target_speaker(enrollment, probes, ("b", "a"))[0] == "a"
 
 
+def test_enrollment_similarity_is_invariant_to_positive_scale() -> None:
+    enrollment = np.array([2.0, 1.0])
+    probes = np.array([[1.0, 0.0], [2.0, 1.0]])
+    first = asr.enrollment_similarities(enrollment, probes, ("a", "b"))
+    second = asr.enrollment_similarities(enrollment * 4.0, probes * 3.0, ("a", "b"))
+    assert first == second
+
+
+def test_permuting_probes_with_labels_preserves_named_scores() -> None:
+    enrollment = np.array([1.0, 1.0])
+    probes = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    first = asr.enrollment_similarities(enrollment, probes, ("a", "b", "c"))
+    second = asr.enrollment_similarities(enrollment, probes[[2, 0, 1]], ("c", "a", "b"))
+    assert first == second
+
+
+def test_enrollment_matching_validates_probe_geometry() -> None:
+    with pytest.raises(ValueError, match="incompatible"):
+        asr.enrollment_similarities([1.0, 0.0], [[1.0, 0.0]], ("a", "b"))
+    with pytest.raises(ValueError, match="incompatible"):
+        asr.enrollment_similarities([1.0], [[1.0], [1.0]], ("a", "a"))
+
+
+def test_zero_enrollment_vector_is_rejected_by_cosine_scoring() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        asr.enrollment_similarities([0.0, 0.0], [[1.0, 0.0]], ("a",))
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
