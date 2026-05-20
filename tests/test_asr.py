@@ -169,6 +169,31 @@ def test_target_speaker_threshold_endpoints_are_defined() -> None:
     assert asr.target_speaker_mask(frames, [1.0, 0.0], threshold=1.0).tolist() == [True, False]
 
 
+def test_target_mask_is_invariant_to_common_embedding_scale() -> None:
+    frames = np.array([[1.0, 0.0], [0.0, 1.0]])
+    first = asr.target_speaker_mask(frames, [1.0, 0.0])
+    second = asr.target_speaker_mask(frames * 5.0, [3.0, 0.0])
+    np.testing.assert_array_equal(first, second)
+
+
+def test_target_mask_preserves_empty_frame_axis() -> None:
+    result = asr.target_speaker_mask(np.empty((0, 2)), [1.0, 0.0])
+    assert result.shape == (0,) and result.dtype == np.bool_
+
+
+def test_target_mask_validates_dimensions_and_threshold() -> None:
+    with pytest.raises(ValueError, match="dimensions"):
+        asr.target_speaker_mask(np.ones((2, 3)), np.ones(2))
+    with pytest.raises(ValueError, match="threshold"):
+        asr.target_speaker_mask(np.ones((1, 2)), np.ones(2), threshold=1.1)
+
+
+def test_target_mask_rejects_zero_probe_frames() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        asr.target_speaker_mask(np.array([[0.0, 0.0]]), [1.0, 0.0])
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
