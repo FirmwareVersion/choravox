@@ -51,5 +51,20 @@ def test_block_record_rejects_reversed_or_empty_span() -> None:
         streaming.BlockRange(-1, 2)
 
 
+def test_streaming_latency_separates_buffering_and_lookahead() -> None:
+    result = streaming.streaming_latency(
+        block_size=1600, sample_rate=16000, lookahead_frames=5, frame_shift_s=0.01
+    )
+    assert result.buffering_s == 0.1
+    assert result.algorithmic_s == 0.05
+    assert result.total_s == 0.15
+
+
+def test_processing_time_contributes_to_total_latency() -> None:
+    result = streaming.streaming_latency(block_size=800, sample_rate=16000, processing_s=0.012)
+    assert result.total_s == 0.062
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
