@@ -211,6 +211,39 @@ def test_attributed_words_validate_alignment_shape_and_spans() -> None:
         asr.attributed_words((token,), ((1, 1, 0.5),), frame_shift_s=0.1)
 
 
+def test_attributed_word_offset_translates_every_speaker_equally() -> None:
+    tokens = (asr.AttributedToken("sito", "a"), asr.AttributedToken("mava", "b"))
+    base = asr.attributed_words(tokens, ((0, 1, 1.0), (2, 3, 1.0)), frame_shift_s=0.1)
+    shifted = asr.attributed_words(
+        tokens, ((0, 1, 1.0), (2, 3, 1.0)), frame_shift_s=0.1, offset_s=2.0
+    )
+    assert [
+        right.start - left.start for left, right in zip(base.words, shifted.words, strict=True)
+    ] == [
+        2.0,
+        2.0,
+    ]
+
+
+def test_attributed_transcript_supports_per_speaker_text_views() -> None:
+    tokens = (
+        asr.AttributedToken("sito", "a"),
+        asr.AttributedToken("mava", "b"),
+        asr.AttributedToken("noki", "a"),
+    )
+    transcript = asr.attributed_words(
+        tokens, ((0, 1, 1.0), (1, 2, 1.0), (2, 3, 1.0)), frame_shift_s=0.1
+    )
+    assert transcript.text("a") == "sito noki"
+    assert transcript.text("b") == "mava"
+
+
+def test_attributed_word_geometry_rejects_nonpositive_shift() -> None:
+    with pytest.raises(ValueError, match="geometry"):
+        asr.attributed_words((), (), frame_shift_s=0.0)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
