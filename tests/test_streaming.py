@@ -65,6 +65,34 @@ def test_processing_time_contributes_to_total_latency() -> None:
     assert result.total_s == 0.062
 
 
+def test_halving_block_size_halves_buffering_latency() -> None:
+    large = streaming.streaming_latency(block_size=1600, sample_rate=16000)
+    small = streaming.streaming_latency(block_size=800, sample_rate=16000)
+    assert small.buffering_s * 2 == large.buffering_s
+
+
+def test_total_latency_is_sum_of_reported_components() -> None:
+    result = streaming.LatencyAccounting(0.123456789, 0.2, 0.03)
+    assert result.total_s == round(
+        result.buffering_s + result.algorithmic_s + result.processing_s, 9
+    )
+
+
+def test_latency_components_reject_negative_and_nonfinite_values() -> None:
+    with pytest.raises(ValueError, match="nonnegative"):
+        streaming.LatencyAccounting(-0.1, 0.0)
+    with pytest.raises(ValueError, match="finite"):
+        streaming.LatencyAccounting(0.1, float("inf"))
+
+
+def test_latency_geometry_validates_sample_and_frame_controls() -> None:
+    with pytest.raises(ValueError, match="geometry"):
+        streaming.streaming_latency(block_size=0, sample_rate=16000)
+    with pytest.raises(ValueError, match="geometry"):
+        streaming.streaming_latency(block_size=100, sample_rate=16000, lookahead_frames=-1)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
