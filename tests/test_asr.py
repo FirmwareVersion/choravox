@@ -267,6 +267,38 @@ def test_joint_decoder_returns_empty_transcript_for_blank_path() -> None:
     assert result.transcript.words == () and result.token_ids == ()
 
 
+def test_joint_decoder_is_deterministic_for_fixed_scores() -> None:
+    scores = np.array([[-0.1, -2.0, -3.0, -4.0, -5.0], [-2.0, -0.1, -3.0, -4.0, -5.0]])
+    first = asr.decode_speaker_attributed(scores, vocabulary(), ("a",), frame_shift_s=0.01)
+    second = asr.decode_speaker_attributed(scores, vocabulary(), ("a",), frame_shift_s=0.01)
+    assert first == second
+
+
+def test_joint_decoder_rejects_undeclared_speaker_change() -> None:
+    scores = np.full((3, 5), -5.0)
+    scores[0, 1] = 0.0
+    scores[1, 4] = 0.0
+    scores[2, 2] = 0.0
+    with pytest.raises(ValueError, match="more speaker"):
+        asr.decode_speaker_attributed(scores, vocabulary(), ("a",), frame_shift_s=0.01)
+
+
+def test_joint_decode_word_confidences_are_finite_probabilities() -> None:
+    probabilities = np.array([[0.1, 0.8, 0.05, 0.04, 0.01], [0.8, 0.1, 0.05, 0.04, 0.01]])
+    result = asr.decode_speaker_attributed(
+        np.log(probabilities), vocabulary(), ("a",), frame_shift_s=0.01
+    )
+    assert all(0.0 <= word.confidence <= 1.0 for word in result.transcript.words)
+
+
+def test_joint_decode_output_can_feed_speaker_text_metrics() -> None:
+    scores = np.array([[-2.0, 0.0, -3.0, -4.0, -5.0], [0.0, -2.0, -3.0, -4.0, -5.0]])
+    result = asr.decode_speaker_attributed(scores, vocabulary(), ("a",), frame_shift_s=0.01)
+    assert result.transcript.text("a") == "sito"
+    assert result.transcript.speakers == ("a",)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
