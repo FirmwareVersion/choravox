@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from choravox.ctc import CtcCandidate, CtcVocabulary
+from choravox.ctc import CtcCandidate, CtcVocabulary, forced_align, greedy_decode
 from choravox.embeddings import cosine_similarity
 from choravox.types import Transcript, Word
 
@@ -171,6 +171,38 @@ def attributed_words(
             )
         )
     return Transcript(tuple(words))
+
+
+@dataclass(frozen=True, slots=True)
+class AttributedDecode:
+    transcript: Transcript
+    token_ids: tuple[int, ...]
+    acoustic_score: float
+
+
+def decode_speaker_attributed(
+    log_probabilities: ArrayLike,
+    vocabulary: CtcVocabulary,
+    speaker_order: tuple[str, ...],
+    *,
+    frame_shift_s: float,
+) -> AttributedDecode:
+    """Greedily decode, force-align, and attribute one synthetic SOT stream."""
+    greedy = greedy_decode(log_probabilities, blank_id=vocabulary.blank_id)
+    if not greedy.token_ids:
+        return AttributedDecode(Transcript(()), (), greedy.score)
+    attributed = parse_sot(greedy.token_ids, vocabulary, speaker_order)
+    alignment = forced_align(log_probabilities, greedy.token_ids, blank_id=vocabulary.blank_id)
+    spans = []
+    text_index = 0
+    for token_id, aligned in zip(greedy.token_ids, alignment.tokens, strict=True):
+        if token_id != vocabulary.speaker_change_id:
+            spans.append((aligned.start_frame, aligned.end_frame, aligned.confidence))
+            text_index += 1
+    if text_index != len(attributed):
+        raise RuntimeError("SOT alignment and attribution diverged")
+    transcript = attributed_words(attributed, tuple(spans), frame_shift_s=frame_shift_s)
+    return AttributedDecode(transcript, greedy.token_ids, greedy.score)
 
 
 # -- extensions --

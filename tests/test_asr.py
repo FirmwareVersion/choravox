@@ -243,6 +243,31 @@ def test_attributed_word_geometry_rejects_nonpositive_shift() -> None:
         asr.attributed_words((), (), frame_shift_s=0.0)
 
 
+def test_joint_decoder_emits_speaker_attributed_timestamps() -> None:
+    probabilities = np.full((7, 5), 0.01)
+    path = (0, 1, 0, 4, 0, 2, 0)
+    for frame, token_id in enumerate(path):
+        probabilities[frame, token_id] = 0.96
+    probabilities /= np.sum(probabilities, axis=1, keepdims=True)
+    result = asr.decode_speaker_attributed(
+        np.log(probabilities), vocabulary(), ("a", "b"), frame_shift_s=0.02
+    )
+    assert result.token_ids == (1, 4, 2)
+    assert [(word.text, word.speaker) for word in result.transcript.words] == [
+        ("sito", "a"),
+        ("mava", "b"),
+    ]
+    assert result.transcript.words[0].start == 0.02
+    assert result.transcript.words[1].start == 0.1
+
+
+def test_joint_decoder_returns_empty_transcript_for_blank_path() -> None:
+    scores = np.array([[0.0, -2.0, -2.0, -2.0, -2.0]])
+    result = asr.decode_speaker_attributed(scores, vocabulary(), ("a",), frame_shift_s=0.01)
+    assert result.transcript.words == () and result.token_ids == ()
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
