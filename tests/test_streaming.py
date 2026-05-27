@@ -150,6 +150,30 @@ def test_online_segmentation_validates_dimension_norm_and_controls() -> None:
         streaming.online_segmentation_step(state, [1.0], threshold=3.0)
 
 
+def test_leader_follower_creates_and_reuses_speaker_clusters() -> None:
+    state = None
+    labels = []
+    for embedding in ([1.0, 0.0], [0.95, 0.05], [0.0, 1.0], [0.05, 0.95]):
+        state, label = streaming.leader_follower_step(state, embedding)
+        labels.append(label)
+    assert labels == [0, 0, 1, 1]
+    assert state.counts.tolist() == [2, 2]
+    assert state.labels == tuple(labels)
+
+
+def test_leader_follower_birth_threshold_controls_new_speakers() -> None:
+    state, _ = streaming.leader_follower_step(None, [1.0, 0.0])
+    strict, strict_label = streaming.leader_follower_step(
+        state, [0.0, 1.0], streaming.LeaderFollowerConfig(birth_threshold=0.2)
+    )
+    permissive, permissive_label = streaming.leader_follower_step(
+        state, [0.0, 1.0], streaming.LeaderFollowerConfig(birth_threshold=1.5)
+    )
+    assert strict_label == 1 and strict.centroids.shape[0] == 2
+    assert permissive_label == 0 and permissive.centroids.shape[0] == 1
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

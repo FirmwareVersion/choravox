@@ -116,4 +116,53 @@ def online_segmentation_step(
     return OnlineSegmentationState(vector.copy(), frame + 1, last_boundary), event
 
 
+@dataclass(frozen=True, slots=True)
+class LeaderFollowerConfig:
+    birth_threshold: float = 0.4
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.birth_threshold <= 2.0:
+            raise ValueError("cluster birth threshold must lie in [0, 2]")
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineClusterState:
+    centroids: FloatArray
+    counts: NDArray[np.int64]
+    labels: tuple[int, ...]
+
+
+def leader_follower_step(
+    state: OnlineClusterState | None,
+    embedding: ArrayLike,
+    config: LeaderFollowerConfig | None = None,
+) -> tuple[OnlineClusterState, int]:
+    """Assign an embedding to its nearest leader or create a new speaker."""
+    config = LeaderFollowerConfig() if config is None else config
+    vector = np.asarray(embedding, dtype=np.float64)
+    if vector.ndim != 1 or vector.size == 0 or not np.all(np.isfinite(vector)):
+        raise ValueError("online cluster embedding must be a nonempty finite vector")
+    if np.linalg.norm(vector) == 0.0:
+        raise ValueError("online cluster embedding must have positive norm")
+    if state is None:
+        return OnlineClusterState(vector[None, :].copy(), np.ones(1, dtype=np.int64), (0,)), 0
+    if state.centroids.ndim != 2 or state.centroids.shape[1] != vector.size:
+        raise ValueError("online cluster state and embedding dimensions differ")
+    centroid_norms = np.linalg.norm(state.centroids, axis=1)
+    distances = 1.0 - (state.centroids @ vector) / (centroid_norms * np.linalg.norm(vector))
+    nearest = int(np.argmin(distances))
+    centroids = state.centroids.copy()
+    counts = state.counts.copy()
+    if distances[nearest] > config.birth_threshold:
+        label = centroids.shape[0]
+        centroids = np.vstack((centroids, vector))
+        counts = np.append(counts, 1)
+    else:
+        label = nearest
+        total = int(counts[label]) + 1
+        centroids[label] = (centroids[label] * counts[label] + vector) / total
+        counts[label] = total
+    return OnlineClusterState(np.round(centroids, 12), counts, (*state.labels, label)), label
+
+
 # -- extensions --
