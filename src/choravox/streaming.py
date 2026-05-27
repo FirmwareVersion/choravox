@@ -5,6 +5,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+FloatArray = NDArray[np.float64]
+
 
 @dataclass(frozen=True, slots=True, order=True)
 class BlockRange:
@@ -66,6 +71,49 @@ def streaming_latency(
         round(lookahead_frames * frame_shift_s, 9),
         processing_s,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineSegmentationState:
+    previous: FloatArray | None = None
+    frames_seen: int = 0
+    last_boundary: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineBoundary:
+    frame: int
+    score: float
+
+
+def online_segmentation_step(
+    state: OnlineSegmentationState,
+    embedding: ArrayLike,
+    *,
+    threshold: float = 0.5,
+    minimum_gap: int = 1,
+) -> tuple[OnlineSegmentationState, OnlineBoundary | None]:
+    """Compare one incoming embedding to its predecessor and emit a boundary."""
+    vector = np.asarray(embedding, dtype=np.float64)
+    if vector.ndim != 1 or vector.size == 0 or not np.all(np.isfinite(vector)):
+        raise ValueError("online embedding must be a nonempty finite vector")
+    if not 0.0 <= threshold <= 2.0 or minimum_gap < 1:
+        raise ValueError("online segmentation controls are invalid")
+    if state.previous is None:
+        return OnlineSegmentationState(vector.copy(), 1, state.last_boundary), None
+    if state.previous.shape != vector.shape:
+        raise ValueError("online embeddings must keep a fixed dimension")
+    denominator = np.linalg.norm(state.previous) * np.linalg.norm(vector)
+    if denominator == 0.0:
+        raise ValueError("online embeddings must have positive norm")
+    score = round(1.0 - float(np.dot(state.previous, vector) / denominator), 12)
+    frame = state.frames_seen
+    event = None
+    last_boundary = state.last_boundary
+    if score >= threshold and frame - state.last_boundary >= minimum_gap:
+        event = OnlineBoundary(frame, score)
+        last_boundary = frame
+    return OnlineSegmentationState(vector.copy(), frame + 1, last_boundary), event
 
 
 # -- extensions --

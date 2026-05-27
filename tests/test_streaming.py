@@ -92,6 +92,29 @@ def test_latency_geometry_validates_sample_and_frame_controls() -> None:
         streaming.streaming_latency(block_size=100, sample_rate=16000, lookahead_frames=-1)
 
 
+def test_online_segmentation_emits_change_at_orthogonal_embedding() -> None:
+    state = streaming.OnlineSegmentationState()
+    state, first = streaming.online_segmentation_step(state, [1.0, 0.0], threshold=0.5)
+    state, second = streaming.online_segmentation_step(state, [0.9, 0.1], threshold=0.5)
+    state, third = streaming.online_segmentation_step(state, [0.0, 1.0], threshold=0.5)
+    assert first is None and second is None
+    assert third is not None and third.frame == 2 and third.score > 0.5
+    assert state.frames_seen == 3
+
+
+def test_online_segmentation_respects_minimum_boundary_gap() -> None:
+    state = streaming.OnlineSegmentationState()
+    events = []
+    for embedding in ([1.0, 0.0], [0.0, 1.0], [1.0, 0.0], [0.0, 1.0]):
+        state, event = streaming.online_segmentation_step(
+            state, embedding, threshold=0.5, minimum_gap=2
+        )
+        if event is not None:
+            events.append(event.frame)
+    assert events == [2]
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
