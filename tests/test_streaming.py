@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from choravox import streaming
@@ -114,6 +115,42 @@ def test_online_segmentation_respects_minimum_boundary_gap() -> None:
     assert events == [2]
 
 
+def test_online_boundaries_match_adjacent_cosine_oracle_without_gap() -> None:
+    embeddings = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.1, 0.9]])
+    normalized = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+    expected = [
+        index
+        for index in range(1, len(embeddings))
+        if 1.0 - float(np.dot(normalized[index - 1], normalized[index])) >= 0.5
+    ]
+    state = streaming.OnlineSegmentationState()
+    observed = []
+    for embedding in embeddings:
+        state, event = streaming.online_segmentation_step(state, embedding, threshold=0.5)
+        if event is not None:
+            observed.append(event.frame)
+    assert observed == expected
+
+
+def test_online_segmentation_state_copies_input_embedding() -> None:
+    embedding = np.array([1.0, 0.0])
+    state, _ = streaming.online_segmentation_step(streaming.OnlineSegmentationState(), embedding)
+    embedding[:] = 0.0
+    assert state.previous is not None
+    assert state.previous.tolist() == [1.0, 0.0]
+
+
+def test_online_segmentation_validates_dimension_norm_and_controls() -> None:
+    state, _ = streaming.online_segmentation_step(streaming.OnlineSegmentationState(), [1.0])
+    with pytest.raises(ValueError, match="dimension"):
+        streaming.online_segmentation_step(state, [1.0, 0.0])
+    with pytest.raises(ValueError, match="positive"):
+        streaming.online_segmentation_step(state, [0.0])
+    with pytest.raises(ValueError, match="controls"):
+        streaming.online_segmentation_step(state, [1.0], threshold=3.0)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
