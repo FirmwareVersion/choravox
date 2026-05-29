@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from choravox.metrics import edit_distance
+from choravox.metrics import CpWerResult, DiarizationError, edit_distance
 
 FloatArray = NDArray[np.float64]
 
@@ -239,6 +239,57 @@ def revise_hypothesis(
     current = PartialHypothesis(words, stable_count)
     changed = edit_distance(previous.unstable_words, words[previous.stable_count :])
     return HypothesisTracker(current, tracker.revisions + changed)
+
+
+@dataclass(frozen=True, slots=True)
+class OnlineOfflineComparison:
+    """Measured quality and latency from the same synthetic meeting."""
+
+    offline_der: float
+    online_der: float
+    offline_cpwer: float
+    online_cpwer: float
+    latency_s: float
+    revisions: int
+
+    def __post_init__(self) -> None:
+        rates = (self.offline_der, self.online_der, self.offline_cpwer, self.online_cpwer)
+        if any(not np.isfinite(value) or value < 0.0 for value in rates):
+            raise ValueError("online/offline quality values must be finite and nonnegative")
+        if not np.isfinite(self.latency_s) or self.latency_s < 0.0 or self.revisions < 0:
+            raise ValueError("streaming latency and revisions must be nonnegative")
+
+    @property
+    def der_gap(self) -> float:
+        return round(self.online_der - self.offline_der, 12)
+
+    @property
+    def cpwer_gap(self) -> float:
+        return round(self.online_cpwer - self.offline_cpwer, 12)
+
+
+def compare_online_offline(
+    offline_diarization: DiarizationError,
+    online_diarization: DiarizationError,
+    offline_transcript: CpWerResult,
+    online_transcript: CpWerResult,
+    latency: LatencyAccounting,
+    *,
+    revisions: int,
+) -> OnlineOfflineComparison:
+    """Compare modes only when they share reference speaker frames and words."""
+    if offline_diarization.reference_speaker_frames != online_diarization.reference_speaker_frames:
+        raise ValueError("online and offline DER must share reference speaker time")
+    if offline_transcript.reference_words != online_transcript.reference_words:
+        raise ValueError("online and offline cpWER must share reference words")
+    return OnlineOfflineComparison(
+        offline_diarization.rate,
+        online_diarization.rate,
+        offline_transcript.rate,
+        online_transcript.rate,
+        latency.total_s,
+        revisions,
+    )
 
 
 # -- extensions --

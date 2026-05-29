@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from choravox import streaming
+from choravox.metrics import CpWerResult, DiarizationError
 
 
 def test_block_ranges_cover_full_and_tail_blocks() -> None:
@@ -315,6 +316,33 @@ def test_partial_hypothesis_validates_word_and_stability_domains() -> None:
         streaming.PartialHypothesis(("",), 0)
 
 
+def test_online_offline_comparison_reports_signed_quality_gaps() -> None:
+    result = streaming.compare_online_offline(
+        DiarizationError(0, 0, 0, 100, 100),
+        DiarizationError(2, 1, 1, 100, 100),
+        CpWerResult(1, 20, ()),
+        CpWerResult(3, 20, ()),
+        streaming.LatencyAccounting(0.1, 0.05),
+        revisions=2,
+    )
+    assert result.der_gap == 0.04
+    assert result.cpwer_gap == 0.1
+    assert result.latency_s == 0.15 and result.revisions == 2
+
+
+def test_online_offline_comparison_requires_same_reference() -> None:
+    with pytest.raises(ValueError, match="speaker time"):
+        streaming.compare_online_offline(
+            DiarizationError(0, 0, 0, 10, 10),
+            DiarizationError(0, 0, 0, 11, 10),
+            CpWerResult(0, 2, ()),
+            CpWerResult(0, 2, ()),
+            streaming.LatencyAccounting(0.1, 0.0),
+            revisions=0,
+        )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
