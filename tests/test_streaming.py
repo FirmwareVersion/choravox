@@ -173,6 +173,48 @@ def test_leader_follower_birth_threshold_controls_new_speakers() -> None:
     assert permissive_label == 0 and permissive.centroids.shape[0] == 1
 
 
+def test_online_centroid_is_the_running_arithmetic_mean() -> None:
+    vectors = np.array([[1.0, 0.0], [0.8, 0.2], [0.9, 0.1]])
+    state = None
+    for vector in vectors:
+        state, label = streaming.leader_follower_step(
+            state, vector, streaming.LeaderFollowerConfig(birth_threshold=2.0)
+        )
+        assert label == 0
+    np.testing.assert_allclose(state.centroids[0], np.mean(vectors, axis=0), atol=1e-12)
+
+
+def test_online_clustering_is_deterministic_for_fixed_sequence() -> None:
+    vectors = ([1.0, 0.0], [0.9, 0.1], [0.0, 1.0])
+    states = []
+    for _ in range(2):
+        state = None
+        for vector in vectors:
+            state, _ = streaming.leader_follower_step(state, vector)
+        states.append(state)
+    np.testing.assert_array_equal(states[0].centroids, states[1].centroids)
+    assert states[0].labels == states[1].labels
+
+
+def test_online_clustering_validates_vectors_state_and_threshold() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        streaming.leader_follower_step(None, [0.0, 0.0])
+    state, _ = streaming.leader_follower_step(None, [1.0, 0.0])
+    with pytest.raises(ValueError, match="dimensions"):
+        streaming.leader_follower_step(state, [1.0])
+    with pytest.raises(ValueError, match="threshold"):
+        streaming.LeaderFollowerConfig(birth_threshold=2.1)
+
+
+def test_online_cluster_labels_cover_every_observation() -> None:
+    state = None
+    for index in range(9):
+        state, _ = streaming.leader_follower_step(state, [1.0, index / 20])
+    assert len(state.labels) == 9
+    assert int(np.sum(state.counts)) == 9
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
