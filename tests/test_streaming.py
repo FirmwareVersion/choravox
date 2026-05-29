@@ -288,6 +288,34 @@ def test_revision_tracker_counts_unstable_word_edits() -> None:
     assert tracker.current.stable_count == 3
 
 
+def test_stable_words_are_never_permitted_to_change() -> None:
+    tracker = streaming.HypothesisTracker(streaming.PartialHypothesis(("we", "meet"), 1))
+    with pytest.raises(ValueError, match="cannot"):
+        streaming.revise_hypothesis(tracker, ("they", "meet"), 1)
+    with pytest.raises(ValueError, match="cannot"):
+        streaming.revise_hypothesis(tracker, ("we", "meet"), 0)
+
+
+def test_appending_words_counts_insertions_in_unstable_suffix() -> None:
+    tracker = streaming.HypothesisTracker(streaming.PartialHypothesis(("we",), 0))
+    tracker = streaming.revise_hypothesis(tracker, ("we", "meet"), 0)
+    assert tracker.revisions == 1
+
+
+def test_identical_partial_update_adds_no_revision() -> None:
+    tracker = streaming.HypothesisTracker(streaming.PartialHypothesis(("we", "meet"), 1), 4)
+    updated = streaming.revise_hypothesis(tracker, ("we", "meet"), 1)
+    assert updated.revisions == 4
+
+
+def test_partial_hypothesis_validates_word_and_stability_domains() -> None:
+    with pytest.raises(ValueError, match="invalid"):
+        streaming.PartialHypothesis(("we",), 2)
+    with pytest.raises(ValueError, match="invalid"):
+        streaming.PartialHypothesis(("",), 0)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
