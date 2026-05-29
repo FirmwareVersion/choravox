@@ -165,4 +165,39 @@ def leader_follower_step(
     return OnlineClusterState(np.round(centroids, 12), counts, (*state.labels, label)), label
 
 
+def merge_online_clusters(
+    state: OnlineClusterState, *, threshold: float = 0.1
+) -> OnlineClusterState:
+    """Merge mutually similar online leaders and remap historical labels."""
+    if not 0.0 <= threshold <= 2.0:
+        raise ValueError("online merge threshold must lie in [0, 2]")
+    centroids = [row.copy() for row in state.centroids]
+    counts = [int(item) for item in state.counts]
+    groups = [[index] for index in range(len(centroids))]
+    while len(centroids) > 1:
+        best: tuple[float, int, int] | None = None
+        for left in range(len(centroids)):
+            for right in range(left + 1, len(centroids)):
+                denominator = np.linalg.norm(centroids[left]) * np.linalg.norm(centroids[right])
+                distance = 1.0 - float(np.dot(centroids[left], centroids[right]) / denominator)
+                candidate = (distance, left, right)
+                if best is None or candidate < best:
+                    best = candidate
+        if best is None or best[0] > threshold:
+            break
+        _, left, right = best
+        total = counts[left] + counts[right]
+        centroids[left] = (
+            centroids[left] * counts[left] + centroids[right] * counts[right]
+        ) / total
+        counts[left] = total
+        groups[left].extend(groups[right])
+        del centroids[right], counts[right], groups[right]
+    remap = {old: new for new, group in enumerate(groups) for old in group}
+    labels = tuple(remap[label] for label in state.labels)
+    return OnlineClusterState(
+        np.round(np.stack(centroids), 12), np.asarray(counts, dtype=np.int64), labels
+    )
+
+
 # -- extensions --

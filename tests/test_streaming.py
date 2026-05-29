@@ -214,6 +214,26 @@ def test_online_cluster_labels_cover_every_observation() -> None:
     assert int(np.sum(state.counts)) == 9
 
 
+def test_online_cluster_merge_combines_close_leaders_and_history() -> None:
+    state = streaming.OnlineClusterState(
+        np.array([[1.0, 0.0], [0.99, 0.01], [0.0, 1.0]]),
+        np.array([2, 3, 1]),
+        (0, 1, 2, 1),
+    )
+    merged = streaming.merge_online_clusters(state, threshold=0.01)
+    assert merged.centroids.shape[0] == 2
+    assert merged.counts.tolist() == [5, 1]
+    assert merged.labels == (0, 0, 1, 0)
+
+
+def test_online_cluster_merge_leaves_separated_leaders_unchanged() -> None:
+    state = streaming.OnlineClusterState(np.eye(2), np.ones(2, dtype=np.int64), (0, 1))
+    merged = streaming.merge_online_clusters(state, threshold=0.1)
+    np.testing.assert_array_equal(merged.centroids, state.centroids)
+    assert merged.labels == state.labels
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
