@@ -8,6 +8,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.metrics import edit_distance
+
 FloatArray = NDArray[np.float64]
 
 
@@ -198,6 +200,45 @@ def merge_online_clusters(
     return OnlineClusterState(
         np.round(np.stack(centroids), 12), np.asarray(counts, dtype=np.int64), labels
     )
+
+
+@dataclass(frozen=True, slots=True)
+class PartialHypothesis:
+    words: tuple[str, ...]
+    stable_count: int
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.stable_count <= len(self.words) or any(not word for word in self.words):
+            raise ValueError("partial hypothesis words and stable count are invalid")
+
+    @property
+    def stable_words(self) -> tuple[str, ...]:
+        return self.words[: self.stable_count]
+
+    @property
+    def unstable_words(self) -> tuple[str, ...]:
+        return self.words[self.stable_count :]
+
+
+@dataclass(frozen=True, slots=True)
+class HypothesisTracker:
+    current: PartialHypothesis
+    revisions: int = 0
+
+
+def revise_hypothesis(
+    tracker: HypothesisTracker, words: tuple[str, ...], stable_count: int
+) -> HypothesisTracker:
+    """Accept a partial result while counting edits to the previously unstable suffix."""
+    previous = tracker.current
+    if (
+        stable_count < previous.stable_count
+        or words[: previous.stable_count] != previous.stable_words
+    ):
+        raise ValueError("stable streaming words cannot be revised")
+    current = PartialHypothesis(words, stable_count)
+    changed = edit_distance(previous.unstable_words, words[previous.stable_count :])
+    return HypothesisTracker(current, tracker.revisions + changed)
 
 
 # -- extensions --

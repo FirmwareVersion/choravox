@@ -273,6 +273,22 @@ def test_merged_labels_remain_contiguous_from_zero() -> None:
     assert set(merged.labels) == set(range(merged.centroids.shape[0]))
 
 
+def test_partial_hypothesis_exposes_stable_and_unstable_words() -> None:
+    hypothesis = streaming.PartialHypothesis(("we", "meet", "now"), 2)
+    assert hypothesis.stable_words == ("we", "meet")
+    assert hypothesis.unstable_words == ("now",)
+
+
+def test_revision_tracker_counts_unstable_word_edits() -> None:
+    tracker = streaming.HypothesisTracker(streaming.PartialHypothesis(("we", "met"), 1))
+    tracker = streaming.revise_hypothesis(tracker, ("we", "meet", "now"), 1)
+    assert tracker.revisions == 2
+    tracker = streaming.revise_hypothesis(tracker, ("we", "meet", "now"), 3)
+    assert tracker.revisions == 2
+    assert tracker.current.stable_count == 3
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
