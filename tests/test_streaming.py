@@ -233,6 +233,47 @@ def test_online_cluster_merge_leaves_separated_leaders_unchanged() -> None:
     assert merged.labels == state.labels
 
 
+def test_cluster_merge_preserves_observation_mass() -> None:
+    state = streaming.OnlineClusterState(
+        np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]]),
+        np.array([4, 2, 3]),
+        (0, 1, 2),
+    )
+    merged = streaming.merge_online_clusters(state, threshold=0.1)
+    assert int(np.sum(merged.counts)) == int(np.sum(state.counts))
+
+
+def test_cluster_merge_is_idempotent_after_convergence() -> None:
+    state = streaming.OnlineClusterState(
+        np.array([[1.0, 0.0], [0.99, 0.01], [0.0, 1.0]]),
+        np.ones(3, dtype=np.int64),
+        (0, 1, 2),
+    )
+    first = streaming.merge_online_clusters(state, threshold=0.01)
+    second = streaming.merge_online_clusters(first, threshold=0.01)
+    np.testing.assert_array_equal(first.centroids, second.centroids)
+    assert first.labels == second.labels
+
+
+def test_cluster_merge_threshold_extremes_are_explicit() -> None:
+    state = streaming.OnlineClusterState(np.eye(2), np.ones(2, dtype=np.int64), (0, 1))
+    assert streaming.merge_online_clusters(state, threshold=0.0).centroids.shape[0] == 2
+    assert streaming.merge_online_clusters(state, threshold=2.0).centroids.shape[0] == 1
+    with pytest.raises(ValueError, match="threshold"):
+        streaming.merge_online_clusters(state, threshold=-0.1)
+
+
+def test_merged_labels_remain_contiguous_from_zero() -> None:
+    state = streaming.OnlineClusterState(
+        np.array([[1.0, 0.0], [0.0, 1.0], [0.01, 0.99]]),
+        np.ones(3, dtype=np.int64),
+        (0, 1, 2, 2),
+    )
+    merged = streaming.merge_online_clusters(state, threshold=0.01)
+    assert set(merged.labels) == set(range(merged.centroids.shape[0]))
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
