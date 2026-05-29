@@ -342,6 +342,46 @@ def test_online_offline_comparison_requires_same_reference() -> None:
         )
 
 
+def test_identical_modes_have_exactly_zero_quality_gaps() -> None:
+    diarization = DiarizationError(1, 0, 0, 20, 20)
+    transcript = CpWerResult(2, 10, ())
+    result = streaming.compare_online_offline(
+        diarization,
+        diarization,
+        transcript,
+        transcript,
+        streaming.LatencyAccounting(0.2, 0.0),
+        revisions=0,
+    )
+    assert result.der_gap == result.cpwer_gap == 0.0
+
+
+def test_better_online_mode_produces_negative_gap_without_clipping() -> None:
+    result = streaming.OnlineOfflineComparison(0.2, 0.1, 0.3, 0.2, 0.1, 0)
+    assert result.der_gap == -0.1 and result.cpwer_gap == -0.1
+
+
+def test_cpwer_reference_mismatch_is_rejected() -> None:
+    diarization = DiarizationError(0, 0, 0, 10, 10)
+    with pytest.raises(ValueError, match="reference words"):
+        streaming.compare_online_offline(
+            diarization,
+            diarization,
+            CpWerResult(0, 2, ()),
+            CpWerResult(0, 3, ()),
+            streaming.LatencyAccounting(0.1, 0.0),
+            revisions=0,
+        )
+
+
+def test_online_offline_record_rejects_nonfinite_and_negative_values() -> None:
+    with pytest.raises(ValueError, match="quality"):
+        streaming.OnlineOfflineComparison(0.0, float("nan"), 0.0, 0.0, 0.1, 0)
+    with pytest.raises(ValueError, match="latency"):
+        streaming.OnlineOfflineComparison(0.0, 0.0, 0.0, 0.0, -0.1, 0)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
