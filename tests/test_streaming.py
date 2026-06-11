@@ -399,6 +399,38 @@ def test_duplicate_latency_keeps_lower_combined_error() -> None:
     assert streaming.latency_quality_curve(points) == (points[1],)
 
 
+def test_curve_order_is_invariant_to_input_order() -> None:
+    points = (
+        streaming.LatencyQualityPoint(0.1, 0.2, 0.3, 0.05),
+        streaming.LatencyQualityPoint(0.2, 0.1, 0.2, 0.1),
+    )
+    assert streaming.latency_quality_curve(points) == streaming.latency_quality_curve(
+        tuple(reversed(points))
+    )
+
+
+def test_curve_rejects_missing_measurements() -> None:
+    with pytest.raises(ValueError, match="measured"):
+        streaming.latency_quality_curve(())
+
+
+def test_latency_quality_point_validates_every_axis() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        streaming.LatencyQualityPoint(float("inf"), 0.1, 0.1, 0.1)
+    with pytest.raises(ValueError, match="nonnegative"):
+        streaming.LatencyQualityPoint(0.1, -0.1, 0.1, 0.1)
+    with pytest.raises(ValueError, match="nonnegative"):
+        streaming.LatencyQualityPoint(0.1, 0.1, 0.1, 0.0)
+
+
+def test_curve_retains_distinct_latency_measurements() -> None:
+    points = tuple(
+        streaming.LatencyQualityPoint(index / 10, 0.1, 0.2, 0.05) for index in range(1, 6)
+    )
+    assert len(streaming.latency_quality_curve(points)) == len(points)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
