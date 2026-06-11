@@ -322,4 +322,28 @@ def latency_quality_curve(
     return tuple(sorted(selected.values()))
 
 
+def pareto_latency_quality(
+    points: tuple[LatencyQualityPoint, ...],
+) -> tuple[LatencyQualityPoint, ...]:
+    """Keep operating points not dominated on latency, DER, and cpWER."""
+    curve = latency_quality_curve(points)
+    frontier = []
+    for candidate in curve:
+        dominated = any(
+            other != candidate
+            and other.latency_s <= candidate.latency_s
+            and other.der <= candidate.der
+            and other.cpwer <= candidate.cpwer
+            and (
+                other.latency_s < candidate.latency_s
+                or other.der < candidate.der
+                or other.cpwer < candidate.cpwer
+            )
+            for other in curve
+        )
+        if not dominated:
+            frontier.append(candidate)
+    return tuple(frontier)
+
+
 # -- extensions --

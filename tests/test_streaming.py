@@ -430,6 +430,26 @@ def test_curve_retains_distinct_latency_measurements() -> None:
     assert len(streaming.latency_quality_curve(points)) == len(points)
 
 
+def test_pareto_frontier_removes_slower_worse_point() -> None:
+    best_fast = streaming.LatencyQualityPoint(0.1, 0.1, 0.2, 0.05)
+    dominated = streaming.LatencyQualityPoint(0.2, 0.2, 0.3, 0.1)
+    quality_tradeoff = streaming.LatencyQualityPoint(0.3, 0.05, 0.1, 0.2)
+    assert streaming.pareto_latency_quality((dominated, quality_tradeoff, best_fast)) == (
+        best_fast,
+        quality_tradeoff,
+    )
+
+
+def test_pareto_frontier_keeps_incomparable_der_cpwer_tradeoff() -> None:
+    der_better = streaming.LatencyQualityPoint(0.2, 0.05, 0.3, 0.1)
+    cpwer_better = streaming.LatencyQualityPoint(0.21, 0.2, 0.1, 0.2)
+    assert streaming.pareto_latency_quality((der_better, cpwer_better)) == (
+        der_better,
+        cpwer_better,
+    )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
