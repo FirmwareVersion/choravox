@@ -292,4 +292,34 @@ def compare_online_offline(
     )
 
 
+@dataclass(frozen=True, slots=True, order=True)
+class LatencyQualityPoint:
+    latency_s: float
+    der: float
+    cpwer: float
+    block_s: float
+
+    def __post_init__(self) -> None:
+        values = (self.latency_s, self.der, self.cpwer, self.block_s)
+        if any(not np.isfinite(value) or value < 0.0 for value in values) or self.block_s == 0.0:
+            raise ValueError("latency-quality point values must be finite and nonnegative")
+
+
+def latency_quality_curve(
+    points: tuple[LatencyQualityPoint, ...],
+) -> tuple[LatencyQualityPoint, ...]:
+    """Canonicalize measured latency-quality samples by increasing latency."""
+    if not points:
+        raise ValueError("latency-quality curve requires measured points")
+    selected: dict[float, LatencyQualityPoint] = {}
+    for point in points:
+        previous = selected.get(point.latency_s)
+        if previous is None or (point.der + point.cpwer, point.block_s) < (
+            previous.der + previous.cpwer,
+            previous.block_s,
+        ):
+            selected[point.latency_s] = point
+    return tuple(sorted(selected.values()))
+
+
 # -- extensions --

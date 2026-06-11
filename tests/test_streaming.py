@@ -381,6 +381,25 @@ def test_online_offline_record_rejects_nonfinite_and_negative_values() -> None:
         streaming.OnlineOfflineComparison(0.0, 0.0, 0.0, 0.0, -0.1, 0)
 
 
+def test_latency_quality_curve_sorts_measured_operating_points() -> None:
+    points = (
+        streaming.LatencyQualityPoint(0.3, 0.05, 0.1, 0.2),
+        streaming.LatencyQualityPoint(0.1, 0.1, 0.2, 0.05),
+        streaming.LatencyQualityPoint(0.2, 0.08, 0.15, 0.1),
+    )
+    result = streaming.latency_quality_curve(points)
+    assert [point.latency_s for point in result] == [0.1, 0.2, 0.3]
+
+
+def test_duplicate_latency_keeps_lower_combined_error() -> None:
+    points = (
+        streaming.LatencyQualityPoint(0.1, 0.2, 0.2, 0.05),
+        streaming.LatencyQualityPoint(0.1, 0.1, 0.1, 0.08),
+    )
+    assert streaming.latency_quality_curve(points) == (points[1],)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
