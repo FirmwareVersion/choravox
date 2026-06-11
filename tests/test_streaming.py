@@ -449,6 +449,39 @@ def test_pareto_frontier_keeps_incomparable_der_cpwer_tradeoff() -> None:
     )
 
 
+def test_pareto_output_is_always_latency_sorted() -> None:
+    points = (
+        streaming.LatencyQualityPoint(0.4, 0.02, 0.04, 0.2),
+        streaming.LatencyQualityPoint(0.1, 0.2, 0.3, 0.05),
+        streaming.LatencyQualityPoint(0.2, 0.1, 0.15, 0.1),
+    )
+    result = streaming.pareto_latency_quality(points)
+    assert list(result) == sorted(result)
+
+
+def test_every_removed_point_has_a_concrete_dominator() -> None:
+    points = (
+        streaming.LatencyQualityPoint(0.1, 0.1, 0.1, 0.05),
+        streaming.LatencyQualityPoint(0.2, 0.2, 0.2, 0.1),
+        streaming.LatencyQualityPoint(0.3, 0.05, 0.05, 0.2),
+    )
+    frontier = streaming.pareto_latency_quality(points)
+    removed = set(points) - set(frontier)
+    for candidate in removed:
+        assert any(
+            other.latency_s <= candidate.latency_s
+            and other.der <= candidate.der
+            and other.cpwer <= candidate.cpwer
+            for other in frontier
+        )
+
+
+def test_single_latency_quality_point_is_nondominated() -> None:
+    point = streaming.LatencyQualityPoint(0.1, 0.2, 0.3, 0.05)
+    assert streaming.pareto_latency_quality((point,)) == (point,)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
