@@ -494,6 +494,35 @@ def test_empty_transcript_has_zero_emission_summary() -> None:
     assert result == streaming.EmissionLatencySummary((), 0.0, 0.0, 0.0)
 
 
+def test_emission_latency_rejects_early_or_missing_events() -> None:
+    transcript = Transcript((Word("sito", 0.0, 0.2, "a"),))
+    with pytest.raises(ValueError, match="align"):
+        streaming.word_emission_latencies(transcript, ())
+    with pytest.raises(ValueError, match="precede"):
+        streaming.word_emission_latencies(transcript, (0.1,))
+
+
+def test_emission_p95_uses_nearest_rank_without_interpolation() -> None:
+    words = tuple(Word(f"w{index}", index, index + 0.5, "a") for index in range(20))
+    emissions = tuple(word.end + index / 100 for index, word in enumerate(words))
+    result = streaming.word_emission_latencies(Transcript(words), emissions)
+    assert result.p95_s == 0.18
+    assert result.maximum_s == 0.19
+
+
+def test_uniform_emission_delay_has_identical_summary_statistics() -> None:
+    words = (Word("a", 0.0, 0.1, "s"), Word("b", 0.2, 0.3, "s"))
+    result = streaming.word_emission_latencies(Transcript(words), (0.15, 0.35))
+    assert result.mean_s == result.maximum_s == result.p95_s == 0.05
+
+
+def test_emission_latencies_preserve_word_order() -> None:
+    words = (Word("a", 0.0, 0.1, "s"), Word("b", 0.2, 0.3, "s"))
+    result = streaming.word_emission_latencies(Transcript(words), (0.4, 0.35))
+    assert result.latencies_s == (0.3, 0.05)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
