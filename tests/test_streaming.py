@@ -5,6 +5,7 @@ import pytest
 
 from choravox import streaming
 from choravox.metrics import CpWerResult, DiarizationError
+from choravox.types import Transcript, Word
 
 
 def test_block_ranges_cover_full_and_tail_blocks() -> None:
@@ -481,6 +482,19 @@ def test_single_latency_quality_point_is_nondominated() -> None:
     assert streaming.pareto_latency_quality((point,)) == (point,)
 
 
+def test_word_emission_latency_uses_planted_word_end() -> None:
+    transcript = Transcript((Word("sito", 0.0, 0.2, "a"), Word("mava", 0.3, 0.5, "b")))
+    result = streaming.word_emission_latencies(transcript, (0.3, 0.8))
+    assert result.latencies_s == (0.1, 0.3)
+    assert result.mean_s == 0.2 and result.maximum_s == 0.3 and result.p95_s == 0.3
+
+
+def test_empty_transcript_has_zero_emission_summary() -> None:
+    result = streaming.word_emission_latencies(Transcript(()), ())
+    assert result == streaming.EmissionLatencySummary((), 0.0, 0.0, 0.0)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

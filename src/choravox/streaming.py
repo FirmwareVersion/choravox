@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from choravox.metrics import CpWerResult, DiarizationError, edit_distance
+from choravox.types import Transcript
 
 FloatArray = NDArray[np.float64]
 
@@ -344,6 +345,41 @@ def pareto_latency_quality(
         if not dominated:
             frontier.append(candidate)
     return tuple(frontier)
+
+
+@dataclass(frozen=True, slots=True)
+class EmissionLatencySummary:
+    latencies_s: tuple[float, ...]
+    mean_s: float
+    maximum_s: float
+    p95_s: float
+
+
+def word_emission_latencies(
+    transcript: Transcript, emission_times_s: tuple[float, ...]
+) -> EmissionLatencySummary:
+    """Measure delay from planted word end until its partial-hypothesis emission."""
+    if len(transcript.words) != len(emission_times_s):
+        raise ValueError("word and emission rosters must align")
+    if any(
+        not np.isfinite(emitted) or emitted < word.end
+        for word, emitted in zip(transcript.words, emission_times_s, strict=True)
+    ):
+        raise ValueError("word emission cannot precede the planted word end")
+    latencies = tuple(
+        round(emitted - word.end, 9)
+        for word, emitted in zip(transcript.words, emission_times_s, strict=True)
+    )
+    if not latencies:
+        return EmissionLatencySummary((), 0.0, 0.0, 0.0)
+    ordered = sorted(latencies)
+    p95_index = min(len(ordered) - 1, math.ceil(0.95 * len(ordered)) - 1)
+    return EmissionLatencySummary(
+        latencies,
+        round(sum(latencies) / len(latencies), 9),
+        max(latencies),
+        ordered[p95_index],
+    )
 
 
 # -- extensions --
