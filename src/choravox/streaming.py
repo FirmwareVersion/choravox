@@ -382,4 +382,37 @@ def word_emission_latencies(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class StreamingTrial:
+    meeting_id: str
+    comparison: OnlineOfflineComparison
+
+    def __post_init__(self) -> None:
+        if not self.meeting_id:
+            raise ValueError("streaming trial meeting identity is required")
+
+
+@dataclass(frozen=True, slots=True)
+class StreamingSummary:
+    meetings: int
+    mean_der_gap: float
+    mean_cpwer_gap: float
+    mean_latency_s: float
+    total_revisions: int
+
+
+def aggregate_streaming_trials(trials: tuple[StreamingTrial, ...]) -> StreamingSummary:
+    """Macro-average measured online gaps across distinct synthetic meetings."""
+    if not trials or len({trial.meeting_id for trial in trials}) != len(trials):
+        raise ValueError("streaming trials require distinct nonempty meetings")
+    count = len(trials)
+    return StreamingSummary(
+        count,
+        round(sum(trial.comparison.der_gap for trial in trials) / count, 12),
+        round(sum(trial.comparison.cpwer_gap for trial in trials) / count, 12),
+        round(sum(trial.comparison.latency_s for trial in trials) / count, 9),
+        sum(trial.comparison.revisions for trial in trials),
+    )
+
+
 # -- extensions --

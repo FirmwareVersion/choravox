@@ -522,6 +522,31 @@ def test_emission_latencies_preserve_word_order() -> None:
     assert result.latencies_s == (0.3, 0.05)
 
 
+def test_streaming_trial_aggregation_reports_macro_gaps() -> None:
+    trials = (
+        streaming.StreamingTrial(
+            "m1", streaming.OnlineOfflineComparison(0.0, 0.1, 0.1, 0.2, 0.2, 2)
+        ),
+        streaming.StreamingTrial(
+            "m2", streaming.OnlineOfflineComparison(0.1, 0.1, 0.2, 0.3, 0.4, 3)
+        ),
+    )
+    result = streaming.aggregate_streaming_trials(trials)
+    assert result == streaming.StreamingSummary(2, 0.05, 0.1, 0.3, 5)
+
+
+def test_streaming_trial_aggregation_rejects_duplicate_meetings() -> None:
+    comparison = streaming.OnlineOfflineComparison(0.0, 0.0, 0.0, 0.0, 0.1, 0)
+    with pytest.raises(ValueError, match="distinct"):
+        streaming.aggregate_streaming_trials(
+            (
+                streaming.StreamingTrial("same", comparison),
+                streaming.StreamingTrial("same", comparison),
+            )
+        )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
