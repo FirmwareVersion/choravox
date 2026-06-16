@@ -546,6 +546,40 @@ def test_streaming_trial_aggregation_rejects_duplicate_meetings() -> None:
         )
 
 
+def test_streaming_summary_is_invariant_to_trial_order() -> None:
+    trials = (
+        streaming.StreamingTrial(
+            "a", streaming.OnlineOfflineComparison(0.1, 0.2, 0.1, 0.15, 0.1, 1)
+        ),
+        streaming.StreamingTrial(
+            "b", streaming.OnlineOfflineComparison(0.2, 0.25, 0.3, 0.4, 0.3, 2)
+        ),
+    )
+    assert streaming.aggregate_streaming_trials(trials) == streaming.aggregate_streaming_trials(
+        tuple(reversed(trials))
+    )
+
+
+def test_streaming_summary_retains_negative_improvements() -> None:
+    trial = streaming.StreamingTrial(
+        "a", streaming.OnlineOfflineComparison(0.2, 0.1, 0.3, 0.2, 0.1, 0)
+    )
+    result = streaming.aggregate_streaming_trials((trial,))
+    assert result.mean_der_gap == -0.1 and result.mean_cpwer_gap == -0.1
+
+
+def test_streaming_summary_requires_at_least_one_trial() -> None:
+    with pytest.raises(ValueError, match="distinct"):
+        streaming.aggregate_streaming_trials(())
+
+
+def test_streaming_trial_requires_meeting_identity() -> None:
+    comparison = streaming.OnlineOfflineComparison(0.0, 0.0, 0.0, 0.0, 0.1, 0)
+    with pytest.raises(ValueError, match="identity"):
+        streaming.StreamingTrial("", comparison)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
