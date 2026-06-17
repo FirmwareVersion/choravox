@@ -5,7 +5,7 @@ import pytest
 
 from choravox import streaming
 from choravox.metrics import CpWerResult, DiarizationError
-from choravox.types import Transcript, Word
+from choravox.types import Segment, Transcript, Word
 
 
 def test_block_ranges_cover_full_and_tail_blocks() -> None:
@@ -658,6 +658,27 @@ def test_online_segment_conversion_validates_geometry_and_prefix() -> None:
         streaming.online_cluster_segments(state, frame_shift_s=0.1, label_prefix="")
 
 
+def test_clean_online_diarization_matches_offline_reference() -> None:
+    reference = (Segment(0.0, 0.2, "a"), Segment(0.2, 0.4, "b"))
+    embeddings = np.array([[1.0, 0.0], [0.95, 0.05], [0.0, 1.0], [0.05, 0.95]])
+    state = streaming.cluster_online_embeddings(embeddings)
+    result = streaming.online_diarization_gap(
+        reference, reference, state, frame_count=4, frame_shift_s=0.1
+    )
+    assert result.offline.rate == result.online.rate == result.gap == 0.0
+
+
+def test_online_diarization_gap_reports_streaming_confusion() -> None:
+    reference = (Segment(0.0, 0.2, "a"), Segment(0.2, 0.4, "b"))
+    state = streaming.OnlineClusterState(np.ones((1, 2)), np.array([4]), (0, 0, 0, 0))
+    result = streaming.online_diarization_gap(
+        reference, reference, state, frame_count=4, frame_shift_s=0.1
+    )
+    assert result.offline.rate == 0.0
+    assert result.online.confusion == 2 and result.gap == 0.5
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

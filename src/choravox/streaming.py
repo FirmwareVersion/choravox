@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from choravox.diarization import labels_to_segments
-from choravox.metrics import CpWerResult, DiarizationError, edit_distance
+from choravox.metrics import CpWerResult, DiarizationError, diarization_error, edit_distance
 from choravox.types import Segment, Transcript
 
 FloatArray = NDArray[np.float64]
@@ -452,6 +452,35 @@ def online_cluster_segments(
         )
         for segment in frame_segments
     )
+
+
+@dataclass(frozen=True, slots=True)
+class DiarizationModeGap:
+    offline: DiarizationError
+    online: DiarizationError
+
+    @property
+    def gap(self) -> float:
+        return round(self.online.rate - self.offline.rate, 12)
+
+
+def online_diarization_gap(
+    reference: tuple[Segment, ...],
+    offline: tuple[Segment, ...],
+    online_state: OnlineClusterState,
+    *,
+    frame_count: int,
+    frame_shift_s: float,
+) -> DiarizationModeGap:
+    """Score online and offline diarization on identical synthetic frames."""
+    online = online_cluster_segments(online_state, frame_shift_s=frame_shift_s)
+    offline_score = diarization_error(
+        reference, offline, frame_count=frame_count, frame_shift_s=frame_shift_s
+    )
+    online_score = diarization_error(
+        reference, online, frame_count=frame_count, frame_shift_s=frame_shift_s
+    )
+    return DiarizationModeGap(offline_score, online_score)
 
 
 # -- extensions --
