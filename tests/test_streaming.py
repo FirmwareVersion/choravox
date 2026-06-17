@@ -595,6 +595,29 @@ def test_online_cluster_runner_can_merge_redundant_births() -> None:
     assert merged.centroids.shape[0] == 2
 
 
+def test_online_cluster_runner_is_byte_deterministic() -> None:
+    embeddings = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]])
+    first = streaming.cluster_online_embeddings(embeddings)
+    second = streaming.cluster_online_embeddings(embeddings)
+    np.testing.assert_array_equal(first.centroids, second.centroids)
+    np.testing.assert_array_equal(first.counts, second.counts)
+    assert first.labels == second.labels
+
+
+def test_online_cluster_runner_preserves_input_order() -> None:
+    embeddings = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]])
+    result = streaming.cluster_online_embeddings(embeddings)
+    assert result.labels == (0, 1, 0)
+
+
+def test_online_cluster_runner_validates_sequence_geometry() -> None:
+    with pytest.raises(ValueError, match="matrix"):
+        streaming.cluster_online_embeddings([])
+    with pytest.raises(ValueError, match="finite"):
+        streaming.cluster_online_embeddings([[1.0, float("nan")]])
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
