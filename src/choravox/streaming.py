@@ -415,4 +415,24 @@ def aggregate_streaming_trials(trials: tuple[StreamingTrial, ...]) -> StreamingS
     )
 
 
+def cluster_online_embeddings(
+    embeddings: ArrayLike,
+    config: LeaderFollowerConfig | None = None,
+    *,
+    merge_threshold: float | None = None,
+) -> OnlineClusterState:
+    """Run leader-follower updates over an ordered embedding matrix."""
+    matrix = np.asarray(embeddings, dtype=np.float64)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or not np.all(np.isfinite(matrix)):
+        raise ValueError("online embedding sequence must be a nonempty finite matrix")
+    state: OnlineClusterState | None = None
+    for embedding in matrix:
+        state, _ = leader_follower_step(state, embedding, config)
+    if state is None:
+        raise RuntimeError("nonempty online sequence produced no clustering state")
+    if merge_threshold is not None:
+        state = merge_online_clusters(state, threshold=merge_threshold)
+    return state
+
+
 # -- extensions --

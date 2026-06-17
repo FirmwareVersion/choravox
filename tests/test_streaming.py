@@ -579,6 +579,23 @@ def test_streaming_trial_requires_meeting_identity() -> None:
         streaming.StreamingTrial("", comparison)
 
 
+def test_online_cluster_runner_recovers_clean_synthetic_speakers() -> None:
+    embeddings = np.array([[1.0, 0.0], [0.98, 0.02], [0.0, 1.0], [0.02, 0.98]])
+    result = streaming.cluster_online_embeddings(embeddings)
+    assert result.labels == (0, 0, 1, 1)
+    assert result.counts.tolist() == [2, 2]
+
+
+def test_online_cluster_runner_can_merge_redundant_births() -> None:
+    embeddings = np.array([[1.0, 0.0], [0.95, 0.05], [0.0, 1.0]])
+    config = streaming.LeaderFollowerConfig(birth_threshold=0.0001)
+    unmerged = streaming.cluster_online_embeddings(embeddings, config)
+    merged = streaming.cluster_online_embeddings(embeddings, config, merge_threshold=0.01)
+    assert unmerged.centroids.shape[0] == 3
+    assert merged.centroids.shape[0] == 2
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
