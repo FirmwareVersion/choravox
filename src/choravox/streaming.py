@@ -8,8 +8,9 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from choravox.diarization import labels_to_segments
 from choravox.metrics import CpWerResult, DiarizationError, edit_distance
-from choravox.types import Transcript
+from choravox.types import Segment, Transcript
 
 FloatArray = NDArray[np.float64]
 
@@ -433,6 +434,24 @@ def cluster_online_embeddings(
     if merge_threshold is not None:
         state = merge_online_clusters(state, threshold=merge_threshold)
     return state
+
+
+def online_cluster_segments(
+    state: OnlineClusterState, *, frame_shift_s: float, label_prefix: str = "online-"
+) -> tuple[Segment, ...]:
+    """Convert final online cluster history into half-open timed speaker segments."""
+    if frame_shift_s <= 0.0 or not np.isfinite(frame_shift_s) or not label_prefix:
+        raise ValueError("online segment timing and label prefix must be valid")
+    labels = tuple(f"{label_prefix}{label}" for label in state.labels)
+    frame_segments = labels_to_segments(labels)
+    return tuple(
+        Segment(
+            round(segment.start * frame_shift_s, 9),
+            round(segment.end * frame_shift_s, 9),
+            segment.speaker,
+        )
+        for segment in frame_segments
+    )
 
 
 # -- extensions --

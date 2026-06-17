@@ -617,6 +617,26 @@ def test_online_cluster_runner_validates_sequence_geometry() -> None:
         streaming.cluster_online_embeddings([[1.0, float("nan")]])
 
 
+def test_online_cluster_segments_preserve_run_lengths_and_labels() -> None:
+    state = streaming.OnlineClusterState(np.eye(2), np.array([2, 2]), (0, 0, 1, 1))
+    segments = streaming.online_cluster_segments(state, frame_shift_s=0.02)
+    assert [(item.start, item.end, item.speaker) for item in segments] == [
+        (0.0, 0.04, "online-0"),
+        (0.04, 0.08, "online-1"),
+    ]
+
+
+def test_online_cluster_segments_support_custom_label_prefix() -> None:
+    state = streaming.OnlineClusterState(np.ones((1, 2)), np.array([1]), (0,))
+    assert (
+        streaming.online_cluster_segments(state, frame_shift_s=0.1, label_prefix="speaker-")[
+            0
+        ].speaker
+        == "speaker-0"
+    )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
