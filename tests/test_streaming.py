@@ -636,6 +636,29 @@ def test_online_cluster_segments_support_custom_label_prefix() -> None:
     )
 
 
+def test_online_segment_durations_sum_to_processed_time() -> None:
+    state = streaming.OnlineClusterState(np.eye(2), np.array([2, 1]), (0, 1, 0))
+    segments = streaming.online_cluster_segments(state, frame_shift_s=0.05)
+    assert sum(item.duration for item in segments) == pytest.approx(0.15)
+
+
+def test_online_segment_conversion_rounds_fractional_hops_stably() -> None:
+    state = streaming.OnlineClusterState(np.ones((1, 1)), np.array([3]), (0, 0, 0))
+    first = streaming.online_cluster_segments(state, frame_shift_s=0.003)
+    second = streaming.online_cluster_segments(state, frame_shift_s=0.003)
+    assert first == second
+    assert first[0].end == 0.009
+
+
+def test_online_segment_conversion_validates_geometry_and_prefix() -> None:
+    state = streaming.OnlineClusterState(np.ones((1, 1)), np.array([1]), (0,))
+    with pytest.raises(ValueError, match="valid"):
+        streaming.online_cluster_segments(state, frame_shift_s=0.0)
+    with pytest.raises(ValueError, match="valid"):
+        streaming.online_cluster_segments(state, frame_shift_s=0.1, label_prefix="")
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
