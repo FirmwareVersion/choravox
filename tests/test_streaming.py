@@ -719,6 +719,27 @@ def test_online_transcript_gap_counts_streaming_word_revision() -> None:
     assert result.online.errors == 1 and result.gap == 0.5
 
 
+def test_online_cpwer_gap_uses_optimal_speaker_permutation() -> None:
+    reference = {"a": "one two", "b": "three four"}
+    online = {"left": "three four", "right": "one two"}
+    assert streaming.online_transcript_gap(reference, reference, online).gap == 0.0
+
+
+def test_online_cpwer_gap_can_be_negative_for_better_partial_result() -> None:
+    reference = {"a": "one two"}
+    result = streaming.online_transcript_gap(reference, {"a": "one wrong"}, {"a": "one two"})
+    assert result.gap == -0.5
+
+
+def test_online_cpwer_never_exceeds_supplied_nonoptimal_mapping_cost() -> None:
+    reference = {"a": "one two", "b": "three"}
+    online = {"x": "three", "y": "one two"}
+    result = streaming.online_transcript_gap(reference, reference, online)
+    nonoptimal_errors = 3
+    assert result.online.errors <= nonoptimal_errors
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
