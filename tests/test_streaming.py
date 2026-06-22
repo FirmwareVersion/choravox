@@ -678,6 +678,34 @@ def test_online_diarization_gap_reports_streaming_confusion() -> None:
     assert result.online.confusion == 2 and result.gap == 0.5
 
 
+def test_clean_online_der_gap_stays_within_documented_bound() -> None:
+    reference = (Segment(0.0, 0.3, "a"), Segment(0.3, 0.6, "b"))
+    embeddings = np.array(
+        [[1.0, 0.0], [0.98, 0.02], [0.97, 0.03], [0.0, 1.0], [0.02, 0.98], [0.03, 0.97]]
+    )
+    state = streaming.cluster_online_embeddings(embeddings)
+    result = streaming.online_diarization_gap(
+        reference, reference, state, frame_count=6, frame_shift_s=0.1
+    )
+    assert result.gap <= 0.05
+
+
+def test_online_der_gap_uses_permutation_invariant_speaker_mapping() -> None:
+    reference = (Segment(0.0, 0.2, "a"), Segment(0.2, 0.4, "b"))
+    state = streaming.OnlineClusterState(np.eye(2), np.array([2, 2]), (1, 1, 0, 0))
+    result = streaming.online_diarization_gap(
+        reference, reference, state, frame_count=4, frame_shift_s=0.1
+    )
+    assert result.online.rate == 0.0
+
+
+def test_diarization_gap_is_signed_without_clipping() -> None:
+    offline = DiarizationError(2, 0, 0, 10, 10)
+    online = DiarizationError(1, 0, 0, 10, 10)
+    assert streaming.DiarizationModeGap(offline, online).gap == -0.1
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
