@@ -739,6 +739,38 @@ def test_online_cpwer_never_exceeds_supplied_nonoptimal_mapping_cost() -> None:
     assert result.online.errors <= nonoptimal_errors
 
 
+def test_streaming_evaluation_assembles_real_metric_outputs() -> None:
+    der_gap = streaming.DiarizationModeGap(
+        DiarizationError(0, 0, 0, 20, 20), DiarizationError(1, 0, 0, 20, 20)
+    )
+    cpwer_gap = streaming.TranscriptModeGap(CpWerResult(0, 10, ()), CpWerResult(1, 10, ()))
+    result = streaming.evaluate_streaming_modes(
+        der_gap,
+        cpwer_gap,
+        streaming.LatencyAccounting(0.1, 0.02),
+        block_s=0.1,
+        revisions=2,
+    )
+    assert result.comparison.der_gap == 0.05
+    assert result.comparison.cpwer_gap == 0.1
+    assert result.operating_point == streaming.LatencyQualityPoint(0.12, 0.05, 0.1, 0.1)
+
+
+def test_clean_streaming_evaluation_has_bounded_zero_gaps() -> None:
+    diarization = DiarizationError(0, 0, 0, 10, 10)
+    transcript = CpWerResult(0, 5, ())
+    result = streaming.evaluate_streaming_modes(
+        streaming.DiarizationModeGap(diarization, diarization),
+        streaming.TranscriptModeGap(transcript, transcript),
+        streaming.LatencyAccounting(0.05, 0.01),
+        block_s=0.05,
+        revisions=0,
+    )
+    assert result.comparison.der_gap <= 0.05
+    assert result.comparison.cpwer_gap == 0.0
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

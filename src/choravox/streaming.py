@@ -500,4 +500,33 @@ def online_transcript_gap(
     return TranscriptModeGap(cpwer(reference, offline), cpwer(reference, online))
 
 
+@dataclass(frozen=True, slots=True)
+class StreamingEvaluation:
+    comparison: OnlineOfflineComparison
+    operating_point: LatencyQualityPoint
+
+
+def evaluate_streaming_modes(
+    diarization_gap: DiarizationModeGap,
+    transcript_gap: TranscriptModeGap,
+    latency: LatencyAccounting,
+    *,
+    block_s: float,
+    revisions: int,
+) -> StreamingEvaluation:
+    """Assemble one measured streaming operating point from real metric outputs."""
+    comparison = OnlineOfflineComparison(
+        diarization_gap.offline.rate,
+        diarization_gap.online.rate,
+        transcript_gap.offline.rate,
+        transcript_gap.online.rate,
+        latency.total_s,
+        revisions,
+    )
+    point = LatencyQualityPoint(
+        comparison.latency_s, comparison.online_der, comparison.online_cpwer, block_s
+    )
+    return StreamingEvaluation(comparison, point)
+
+
 # -- extensions --
