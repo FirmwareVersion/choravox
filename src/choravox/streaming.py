@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from choravox.diarization import labels_to_segments
-from choravox.metrics import CpWerResult, DiarizationError, diarization_error, edit_distance
+from choravox.metrics import CpWerResult, DiarizationError, cpwer, diarization_error, edit_distance
 from choravox.types import Segment, Transcript
 
 FloatArray = NDArray[np.float64]
@@ -481,6 +481,23 @@ def online_diarization_gap(
         reference, online, frame_count=frame_count, frame_shift_s=frame_shift_s
     )
     return DiarizationModeGap(offline_score, online_score)
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptModeGap:
+    offline: CpWerResult
+    online: CpWerResult
+
+    @property
+    def gap(self) -> float:
+        return round(self.online.rate - self.offline.rate, 12)
+
+
+def online_transcript_gap(
+    reference: dict[str, str], offline: dict[str, str], online: dict[str, str]
+) -> TranscriptModeGap:
+    """Compare permutation-invariant transcripts against one planted reference."""
+    return TranscriptModeGap(cpwer(reference, offline), cpwer(reference, online))
 
 
 # -- extensions --

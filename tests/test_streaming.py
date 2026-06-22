@@ -705,6 +705,21 @@ def test_diarization_gap_is_signed_without_clipping() -> None:
     assert streaming.DiarizationModeGap(offline, online).gap == -0.1
 
 
+def test_online_transcript_gap_is_zero_for_permuted_identity() -> None:
+    reference = {"a": "sito mava", "b": "noki"}
+    offline = {"x": "noki", "y": "sito mava"}
+    result = streaming.online_transcript_gap(reference, offline, offline)
+    assert result.offline.rate == result.online.rate == result.gap == 0.0
+
+
+def test_online_transcript_gap_counts_streaming_word_revision() -> None:
+    reference = {"a": "sito mava"}
+    result = streaming.online_transcript_gap(reference, reference, {"a": "sito noki"})
+    assert result.offline.rate == 0.0
+    assert result.online.errors == 1 and result.gap == 0.5
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
