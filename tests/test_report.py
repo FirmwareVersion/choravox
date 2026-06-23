@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from choravox import report
+from choravox.types import Segment
 
 
 def test_svg_document_is_accessible_and_deterministic() -> None:
@@ -54,5 +55,23 @@ def test_finite_helper_rejects_negative_and_nonfinite_values() -> None:
         report._finite_nonnegative(float("nan"), "score")
 
 
+def test_speaker_timeline_renders_named_rows_and_scaled_segments() -> None:
+    svg = report.speaker_timeline_svg(
+        (Segment(0.0, 1.0, "a"), Segment(1.0, 2.0, "b")), duration_s=2.0, width=400
+    )
+    assert ">a</text>" in svg and ">b</text>" in svg
+    assert svg.count("<rect x=") == 2
+    assert "0.000-1.000s" in svg and "1.000-2.000s" in svg
+
+
+def test_speaker_timeline_parallel_rows_expose_overlap() -> None:
+    svg = report.speaker_timeline_svg(
+        (Segment(0.0, 1.0, "a"), Segment(0.5, 1.0, "b")), duration_s=1.0
+    )
+    assert 'y="30"' in svg and 'y="58"' in svg
+    assert "parallel rows indicate overlap" in svg
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
