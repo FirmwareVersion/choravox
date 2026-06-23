@@ -26,4 +26,33 @@ def test_svg_document_validates_canvas_geometry() -> None:
         report.svg_document("", width=0, height=10, title="chart")
 
 
+def test_svg_wrapper_has_a_stable_golden_layout() -> None:
+    assert report.svg_document("<g/>", width=10, height=20, title="T", description="D") == (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20" '
+        'viewBox="0 0 10 20" role="img" aria-labelledby="title desc">'
+        '<title id="title">T</title><desc id="desc">D</desc>'
+        '<rect width="100%" height="100%" fill="#fff"/><g/></svg>'
+    )
+
+
+def test_svg_description_is_escaped_independently() -> None:
+    document = report.svg_document(
+        "", width=10, height=10, title="title", description="measured <offline> & online"
+    )
+    assert "measured &lt;offline&gt; &amp; online" in document
+
+
+def test_svg_body_is_treated_as_internal_markup() -> None:
+    document = report.svg_document('<path d="M0 0"/>', width=10, height=10, title="chart")
+    assert '<path d="M0 0"/>' in document
+
+
+def test_finite_helper_rejects_negative_and_nonfinite_values() -> None:
+    with pytest.raises(ValueError, match="score"):
+        report._finite_nonnegative(-1.0, "score")
+    with pytest.raises(ValueError, match="score"):
+        report._finite_nonnegative(float("nan"), "score")
+
+
+# -- extensions --
 # -- extensions --
