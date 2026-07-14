@@ -72,6 +72,32 @@ def test_speaker_timeline_parallel_rows_expose_overlap() -> None:
     assert "parallel rows indicate overlap" in svg
 
 
+def test_timeline_is_invariant_to_segment_input_order() -> None:
+    segments = (Segment(0.5, 1.0, "b"), Segment(0.0, 0.5, "a"))
+    assert report.speaker_timeline_svg(segments, duration_s=1.0) == report.speaker_timeline_svg(
+        tuple(reversed(segments)), duration_s=1.0
+    )
+
+
+def test_timeline_escapes_hostile_speaker_labels() -> None:
+    svg = report.speaker_timeline_svg((Segment(0.0, 1.0, "<host&ile>"),), duration_s=1.0)
+    assert "<host&ile>" not in svg
+    assert "&lt;host&amp;ile&gt;" in svg
+
+
+def test_empty_timeline_retains_a_valid_canvas() -> None:
+    svg = report.speaker_timeline_svg((), duration_s=1.0)
+    assert "Speaker timeline" in svg and 'height="68"' in svg
+
+
+def test_timeline_rejects_out_of_bounds_segments_and_small_width() -> None:
+    with pytest.raises(ValueError, match="invalid"):
+        report.speaker_timeline_svg((Segment(0.0, 2.0, "a"),), duration_s=1.0)
+    with pytest.raises(ValueError, match="invalid"):
+        report.speaker_timeline_svg((), duration_s=1.0, width=100)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
