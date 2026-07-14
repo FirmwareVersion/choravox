@@ -112,6 +112,29 @@ def test_der_chart_handles_perfect_result_without_zero_scale() -> None:
     assert svg.count('width="0.0"') == 3
 
 
+def test_largest_der_component_fills_available_plot_width() -> None:
+    svg = report.der_decomposition_svg(DiarizationError(2, 4, 1, 10, 10), width=500)
+    assert 'width="320.0"' in svg
+
+
+def test_der_component_widths_preserve_count_ratios() -> None:
+    svg = report.der_decomposition_svg(DiarizationError(1, 2, 4, 10, 10), width=500)
+    assert 'width="80.0"' in svg
+    assert 'width="160.0"' in svg
+    assert 'width="320.0"' in svg
+
+
+def test_der_chart_output_is_byte_deterministic() -> None:
+    result = DiarizationError(1, 2, 3, 20, 20)
+    assert report.der_decomposition_svg(result) == report.der_decomposition_svg(result)
+
+
+def test_der_chart_rejects_unreadable_canvas() -> None:
+    with pytest.raises(ValueError, match="canvas"):
+        report.der_decomposition_svg(DiarizationError(0, 0, 0, 1, 1), width=100)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
