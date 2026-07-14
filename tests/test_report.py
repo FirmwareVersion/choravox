@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from choravox import report
+from choravox.metrics import DiarizationError
 from choravox.types import Segment
 
 
@@ -97,6 +98,21 @@ def test_timeline_rejects_out_of_bounds_segments_and_small_width() -> None:
         report.speaker_timeline_svg((), duration_s=1.0, width=100)
 
 
+def test_der_chart_contains_each_measured_component() -> None:
+    result = DiarizationError(2, 3, 1, 20, 18)
+    svg = report.der_decomposition_svg(result)
+    assert all(label in svg for label in ("Miss", "False alarm", "Confusion"))
+    assert "Measured synthetic DER 0.300000" in svg
+    assert svg.count("<rect x=") == 3
+
+
+def test_der_chart_handles_perfect_result_without_zero_scale() -> None:
+    svg = report.der_decomposition_svg(DiarizationError(0, 0, 0, 10, 10))
+    assert "Measured synthetic DER 0.000000" in svg
+    assert svg.count('width="0.0"') == 3
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

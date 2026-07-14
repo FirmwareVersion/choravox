@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import math
 
+from choravox.metrics import DiarizationError
 from choravox.types import Segment
 
 
@@ -70,6 +71,38 @@ def speaker_timeline_svg(
         height=height,
         title="Speaker timeline",
         description="Synthetic meeting speaker activity; parallel rows indicate overlap.",
+    )
+
+
+def der_decomposition_svg(result: DiarizationError, *, width: int = 520, height: int = 190) -> str:
+    """Render measured miss, false-alarm, and confusion speaker-frame counts."""
+    if width < 240 or height < 140:
+        raise ValueError("DER chart canvas is too small")
+    components = (
+        ("Miss", result.miss, "#d95f59"),
+        ("False alarm", result.false_alarm, "#d18b2c"),
+        ("Confusion", result.confusion, "#9b6fc2"),
+    )
+    scale = max(1, max(value for _, value, _ in components))
+    plot_width = width - 180
+    elements = []
+    for index, (label, value, color) in enumerate(components):
+        y = 36 + index * 42
+        bar_width = round(value / scale * plot_width, 3)
+        elements.append(
+            f'<text x="10" y="{y + 15}" font-size="12">{label}</text>'
+            f'<rect x="110" y="{y}" width="{bar_width}" height="20" fill="{color}"/>'
+            f'<text x="{120 + bar_width}" y="{y + 15}" font-size="12">{value}</text>'
+        )
+    return svg_document(
+        "".join(elements),
+        width=width,
+        height=height,
+        title="DER decomposition",
+        description=(
+            f"Measured synthetic DER {result.rate:.6f} over "
+            f"{result.reference_speaker_frames} speaker frames."
+        ),
     )
 
 
