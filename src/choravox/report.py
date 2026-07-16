@@ -6,6 +6,7 @@ import html
 import math
 
 from choravox.metrics import DiarizationError
+from choravox.streaming import LatencyQualityPoint
 from choravox.types import Segment
 
 
@@ -160,6 +161,32 @@ def metric_curve_svg(
         f'text-anchor="middle">{escape_text(y_label)}</text>'
     )
     return svg_document(body, width=width, height=height, title=title)
+
+
+def latency_quality_svg(points: tuple[LatencyQualityPoint, ...], *, width: int = 600) -> str:
+    """Plot measured online DER and cpWER against total latency as two SVG series."""
+    if not points:
+        raise ValueError("latency-quality chart requires measured points")
+    ordered = tuple(sorted(points))
+    der = metric_curve_svg(
+        tuple((point.latency_s, point.der) for point in ordered),
+        title="Latency-quality tradeoff (DER)",
+        x_label="Latency (s)",
+        y_label="DER",
+        width=width,
+    )
+    cpwer = metric_curve_svg(
+        tuple((point.latency_s, point.cpwer) for point in ordered),
+        title="Latency-quality tradeoff (cpWER)",
+        x_label="Latency (s)",
+        y_label="cpWER",
+        width=width,
+    )
+    return (
+        '<div class="latency-quality" data-source="synthetic">'
+        f"<figure>{der}<figcaption>DER</figcaption></figure>"
+        f"<figure>{cpwer}<figcaption>cpWER</figcaption></figure></div>"
+    )
 
 
 # -- extensions --

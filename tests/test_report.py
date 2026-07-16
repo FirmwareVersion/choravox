@@ -4,6 +4,7 @@ import pytest
 
 from choravox import report
 from choravox.metrics import DiarizationError
+from choravox.streaming import LatencyQualityPoint
 from choravox.types import Segment
 
 
@@ -184,6 +185,24 @@ def test_metric_curve_rejects_empty_duplicate_and_nonfinite_points() -> None:
         report.metric_curve_svg(((0.0, float("nan")),), title="x", x_label="x", y_label="y")
 
 
+def test_latency_quality_chart_contains_der_and_cpwer_series() -> None:
+    points = (
+        LatencyQualityPoint(0.1, 0.2, 0.3, 0.05),
+        LatencyQualityPoint(0.2, 0.1, 0.2, 0.1),
+    )
+    markup = report.latency_quality_svg(points)
+    assert markup.count("<svg") == 2
+    assert "Latency-quality tradeoff (DER)" in markup
+    assert "Latency-quality tradeoff (cpWER)" in markup
+    assert 'data-source="synthetic"' in markup
+
+
+def test_latency_quality_chart_rejects_unmeasured_empty_curve() -> None:
+    with pytest.raises(ValueError, match="measured"):
+        report.latency_quality_svg(())
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
