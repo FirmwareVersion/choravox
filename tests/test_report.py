@@ -202,6 +202,35 @@ def test_latency_quality_chart_rejects_unmeasured_empty_curve() -> None:
         report.latency_quality_svg(())
 
 
+def test_latency_quality_chart_is_input_order_invariant() -> None:
+    points = (
+        LatencyQualityPoint(0.1, 0.3, 0.4, 0.05),
+        LatencyQualityPoint(0.2, 0.2, 0.3, 0.1),
+    )
+    assert report.latency_quality_svg(points) == report.latency_quality_svg(tuple(reversed(points)))
+
+
+def test_latency_quality_chart_preserves_measured_tooltips() -> None:
+    point = LatencyQualityPoint(0.125, 0.05, 0.1, 0.08)
+    markup = report.latency_quality_svg((point,))
+    assert "0.125, 0.050000" in markup
+    assert "0.125, 0.100000" in markup
+
+
+def test_latency_quality_chart_uses_requested_width_for_both_series() -> None:
+    point = LatencyQualityPoint(0.1, 0.1, 0.1, 0.05)
+    markup = report.latency_quality_svg((point,), width=640)
+    assert markup.count('width="640"') == 2
+
+
+def test_latency_quality_markup_is_self_contained() -> None:
+    point = LatencyQualityPoint(0.1, 0.1, 0.1, 0.05)
+    markup = report.latency_quality_svg((point,))
+    assert "http://" in markup
+    assert "<script" not in markup and "href=" not in markup
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
