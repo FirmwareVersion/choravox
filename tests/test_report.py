@@ -153,6 +153,38 @@ def test_constant_metric_curve_remains_finite() -> None:
     assert "nan" not in svg.lower() and "inf" not in svg.lower()
 
 
+def test_single_point_curve_is_centered_on_valid_axes() -> None:
+    svg = report.metric_curve_svg(
+        ((3.0, 0.25),), title="single", x_label="condition", y_label="score"
+    )
+    assert svg.count("<circle") == 1
+    assert "3.000, 0.250000" in svg
+
+
+def test_metric_curve_is_invariant_to_input_order() -> None:
+    points = ((0.0, 0.4), (1.0, 0.2), (2.0, 0.1))
+    first = report.metric_curve_svg(points, title="curve", x_label="x", y_label="y")
+    second = report.metric_curve_svg(
+        tuple(reversed(points)), title="curve", x_label="x", y_label="y"
+    )
+    assert first == second
+
+
+def test_metric_curve_escapes_axis_labels_and_title() -> None:
+    svg = report.metric_curve_svg(((0.0, 0.0),), title="<curve>", x_label="x&x", y_label='y"y')
+    assert "&lt;curve&gt;" in svg and "x&amp;x" in svg and "y&quot;y" in svg
+
+
+def test_metric_curve_rejects_empty_duplicate_and_nonfinite_points() -> None:
+    with pytest.raises(ValueError, match="requires"):
+        report.metric_curve_svg((), title="x", x_label="x", y_label="y")
+    with pytest.raises(ValueError, match="unique"):
+        report.metric_curve_svg(((0.0, 1.0), (0.0, 2.0)), title="x", x_label="x", y_label="y")
+    with pytest.raises(ValueError, match="finite"):
+        report.metric_curve_svg(((0.0, float("nan")),), title="x", x_label="x", y_label="y")
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
