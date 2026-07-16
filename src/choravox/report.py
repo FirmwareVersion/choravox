@@ -106,4 +106,60 @@ def der_decomposition_svg(result: DiarizationError, *, width: int = 520, height:
     )
 
 
+def metric_curve_svg(
+    points: tuple[tuple[float, float], ...],
+    *,
+    title: str,
+    x_label: str,
+    y_label: str,
+    width: int = 560,
+    height: int = 260,
+) -> str:
+    """Render a deterministic single-series curve from measured numeric points."""
+    if not points or width < 260 or height < 180:
+        raise ValueError("metric curve requires points and a readable canvas")
+    if any(not all(math.isfinite(value) for value in point) for point in points):
+        raise ValueError("metric curve points must be finite")
+    ordered = tuple(sorted(points))
+    if len({x for x, _ in ordered}) != len(ordered):
+        raise ValueError("metric curve x values must be unique")
+    left, top, plot_width, plot_height = 65, 30, width - 95, height - 80
+    xs = [point[0] for point in ordered]
+    ys = [point[1] for point in ordered]
+    x_min, x_max = min(xs), max(xs)
+    y_min, y_max = min(ys), max(ys)
+    x_span = x_max - x_min or 1.0
+    y_span = y_max - y_min or 1.0
+    coordinates = [
+        (
+            round(left + (x - x_min) / x_span * plot_width, 3),
+            round(top + (y_max - y) / y_span * plot_height, 3),
+        )
+        for x, y in ordered
+    ]
+    polyline = " ".join(f"{x},{y}" for x, y in coordinates)
+    circles = "".join(
+        (
+            f'<circle cx="{x}" cy="{y}" r="3" fill="#3568c0">'
+            f"<title>{source_x:.3f}, {source_y:.6f}</title></circle>"
+        )
+        for (x, y), (source_x, source_y) in zip(coordinates, ordered, strict=True)
+    )
+    bottom = top + plot_height
+    middle_x = left + plot_width / 2
+    middle_y = top + plot_height / 2
+    body = (
+        f'<line x1="{left}" y1="{top}" x2="{left}" y2="{bottom}" stroke="#333"/>'
+        f'<line x1="{left}" y1="{bottom}" x2="{left + plot_width}" '
+        f'y2="{bottom}" stroke="#333"/>'
+        f'<polyline points="{polyline}" fill="none" stroke="#3568c0" '
+        f'stroke-width="2"/>{circles}'
+        f'<text x="{middle_x}" y="{height - 12}" text-anchor="middle">'
+        f"{escape_text(x_label)}</text>"
+        f'<text x="14" y="{middle_y}" transform="rotate(-90 14 {middle_y})" '
+        f'text-anchor="middle">{escape_text(y_label)}</text>'
+    )
+    return svg_document(body, width=width, height=height, title=title)
+
+
 # -- extensions --

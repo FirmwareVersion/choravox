@@ -134,6 +134,26 @@ def test_der_chart_rejects_unreadable_canvas() -> None:
         report.der_decomposition_svg(DiarizationError(0, 0, 0, 1, 1), width=100)
 
 
+def test_metric_curve_sorts_points_and_labels_axes() -> None:
+    svg = report.metric_curve_svg(
+        ((10.0, 0.1), (0.0, 0.5), (5.0, 0.2)),
+        title="SNR slices",
+        x_label="SNR (dB)",
+        y_label="DER",
+    )
+    assert "SNR slices" in svg and "SNR (dB)" in svg and ">DER</text>" in svg
+    assert svg.count("<circle") == 3
+    assert svg.index("0.000, 0.500000") < svg.index("10.000, 0.100000")
+
+
+def test_constant_metric_curve_remains_finite() -> None:
+    svg = report.metric_curve_svg(
+        ((0.0, 0.2), (1.0, 0.2)), title="constant", x_label="x", y_label="y"
+    )
+    assert "nan" not in svg.lower() and "inf" not in svg.lower()
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
