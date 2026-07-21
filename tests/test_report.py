@@ -249,6 +249,45 @@ def test_run_metadata_rejects_bad_digest_and_seed() -> None:
         report.RunMetadata("0.1.0", 1, "not-a-digest", "3.13")
 
 
+def test_config_hash_is_key_order_invariant() -> None:
+    first = report.RunMetadata.from_config(
+        package_version="0.1.0", seed=1, config={"a": 1, "b": 2}, python_version="3.13"
+    )
+    second = report.RunMetadata.from_config(
+        package_version="0.1.0", seed=1, config={"b": 2, "a": 1}, python_version="3.13"
+    )
+    assert first.config_hash == second.config_hash
+
+
+def test_config_hash_changes_with_behavioral_configuration() -> None:
+    first = report.RunMetadata.from_config(
+        package_version="0.1.0", seed=1, config={"speakers": 2}, python_version="3.13"
+    )
+    second = report.RunMetadata.from_config(
+        package_version="0.1.0", seed=1, config={"speakers": 3}, python_version="3.13"
+    )
+    assert first.config_hash != second.config_hash
+
+
+def test_metadata_table_has_stable_row_order() -> None:
+    metadata = report.RunMetadata("0.1.0", 3, "a" * 64, "3.12")
+    assert [name for name, _ in report.metadata_table(metadata)] == [
+        "choravox",
+        "seed",
+        "config SHA-256",
+        "Python",
+        "data",
+    ]
+
+
+def test_metadata_config_must_be_json_serializable() -> None:
+    with pytest.raises(TypeError):
+        report.RunMetadata.from_config(
+            package_version="0.1.0", seed=1, config={1, 2}, python_version="3.13"
+        )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
