@@ -229,4 +229,33 @@ def metadata_table(metadata: RunMetadata) -> tuple[tuple[str, str], ...]:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class CoverageFacts:
+    """Facts about which synthetic evaluation paths actually ran."""
+
+    planted_timestamps: bool
+    overlap_scored: bool
+    streaming_scored: bool
+    torch_models_run: bool
+    real_corpus_run: bool = False
+
+
+def report_limitations(facts: CoverageFacts) -> tuple[str, ...]:
+    """Generate honest limitations directly from recorded coverage facts."""
+    limitations = [
+        "All audio, speakers, transcripts, timestamps, and reported metrics are synthetic."
+    ]
+    if not facts.real_corpus_run:
+        limitations.append("No real corpus or external speech recording was evaluated.")
+    if not facts.torch_models_run:
+        limitations.append("Optional trainable PyTorch models were not evaluated in this run.")
+    if not facts.overlap_scored:
+        limitations.append("Overlap-aware DER was not measured in this run.")
+    if not facts.streaming_scored:
+        limitations.append("Online latency and online/offline quality gaps were not measured.")
+    if not facts.planted_timestamps:
+        limitations.append("Forced-alignment output was not checked against planted timestamps.")
+    return tuple(limitations)
+
+
 # -- extensions --

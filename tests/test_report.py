@@ -287,6 +287,24 @@ def test_metadata_config_must_be_json_serializable() -> None:
         )
 
 
+def test_limitations_state_synthetic_only_scope() -> None:
+    facts = report.CoverageFacts(True, True, True, False)
+    limitations = report.report_limitations(facts)
+    assert limitations[0].startswith("All audio") and "synthetic" in limitations[0]
+    assert any("No real corpus" in item for item in limitations)
+    assert any("PyTorch" in item for item in limitations)
+    assert not any("Overlap-aware" in item for item in limitations)
+
+
+def test_unmeasured_paths_add_specific_limitations() -> None:
+    facts = report.CoverageFacts(False, False, False, False)
+    limitations = report.report_limitations(facts)
+    assert any("Overlap-aware DER" in item for item in limitations)
+    assert any("Online latency" in item for item in limitations)
+    assert any("planted timestamps" in item for item in limitations)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
