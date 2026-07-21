@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import html
 import math
+import re
+from dataclasses import dataclass
 
+from choravox.hashing import content_hash
 from choravox.metrics import DiarizationError
 from choravox.streaming import LatencyQualityPoint
 from choravox.types import Segment
@@ -186,6 +189,43 @@ def latency_quality_svg(points: tuple[LatencyQualityPoint, ...], *, width: int =
         '<div class="latency-quality" data-source="synthetic">'
         f"<figure>{der}<figcaption>DER</figcaption></figure>"
         f"<figure>{cpwer}<figcaption>cpWER</figcaption></figure></div>"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class RunMetadata:
+    """Reproducibility facts embedded in every synthesized meeting report."""
+
+    package_version: str
+    seed: int
+    config_hash: str
+    python_version: str
+
+    def __post_init__(self) -> None:
+        if (
+            not self.package_version
+            or self.seed < 0
+            or re.fullmatch(r"[0-9a-f]{64}", self.config_hash) is None
+            or not self.python_version
+        ):
+            raise ValueError("report run metadata is invalid")
+
+    @classmethod
+    def from_config(
+        cls, *, package_version: str, seed: int, config: object, python_version: str
+    ) -> RunMetadata:
+        """Hash a JSON-compatible configuration at the report production point."""
+        return cls(package_version, seed, content_hash(config), python_version)
+
+
+def metadata_table(metadata: RunMetadata) -> tuple[tuple[str, str], ...]:
+    """Expose stable display rows for Markdown and HTML renderers."""
+    return (
+        ("choravox", metadata.package_version),
+        ("seed", str(metadata.seed)),
+        ("config SHA-256", metadata.config_hash),
+        ("Python", metadata.python_version),
+        ("data", "deterministic synthetic meeting"),
     )
 
 

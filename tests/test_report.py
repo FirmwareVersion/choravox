@@ -230,6 +230,26 @@ def test_latency_quality_markup_is_self_contained() -> None:
     assert "<script" not in markup and "href=" not in markup
 
 
+def test_run_metadata_hashes_json_compatible_config() -> None:
+    metadata = report.RunMetadata.from_config(
+        package_version="0.1.0",
+        seed=7,
+        config={"sample_rate": 16000, "speakers": 2},
+        python_version="3.13.7",
+    )
+    assert len(metadata.config_hash) == 64
+    assert report.metadata_table(metadata)[1] == ("seed", "7")
+    assert report.metadata_table(metadata)[-1] == ("data", "deterministic synthetic meeting")
+
+
+def test_run_metadata_rejects_bad_digest_and_seed() -> None:
+    with pytest.raises(ValueError, match="metadata"):
+        report.RunMetadata("0.1.0", -1, "0" * 64, "3.13")
+    with pytest.raises(ValueError, match="metadata"):
+        report.RunMetadata("0.1.0", 1, "not-a-digest", "3.13")
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
