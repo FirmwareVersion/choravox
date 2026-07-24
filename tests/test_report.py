@@ -304,6 +304,42 @@ def test_unmeasured_paths_add_specific_limitations() -> None:
     assert any("planted timestamps" in item for item in limitations)
 
 
+def test_every_coverage_flag_only_removes_its_own_limitation() -> None:
+    baseline = set(report.report_limitations(report.CoverageFacts(False, False, False, False)))
+    cases = (
+        (report.CoverageFacts(True, False, False, False), "planted timestamps"),
+        (report.CoverageFacts(False, True, False, False), "Overlap-aware DER"),
+        (report.CoverageFacts(False, False, True, False), "Online latency"),
+        (report.CoverageFacts(False, False, False, True), "PyTorch"),
+    )
+    for facts, phrase in cases:
+        current = set(report.report_limitations(facts))
+        removed = baseline - current
+        assert len(removed) == 1
+        assert phrase in next(iter(removed))
+
+
+def test_real_corpus_fact_controls_only_real_corpus_disclosure() -> None:
+    without = report.report_limitations(report.CoverageFacts(True, True, True, True, False))
+    with_real = report.report_limitations(report.CoverageFacts(True, True, True, True, True))
+    assert len(without) == len(with_real) + 1
+    assert any("No real corpus" in item for item in without)
+
+
+def test_synthetic_scope_disclosure_is_always_present() -> None:
+    facts = report.CoverageFacts(True, True, True, True, True)
+    limitations = report.report_limitations(facts)
+    assert limitations == (
+        "All audio, speakers, transcripts, timestamps, and reported metrics are synthetic.",
+    )
+
+
+def test_limitations_are_deterministic_for_same_facts() -> None:
+    facts = report.CoverageFacts(True, False, True, False)
+    assert report.report_limitations(facts) == report.report_limitations(facts)
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
