@@ -5,7 +5,7 @@ import pytest
 from choravox import report
 from choravox.metrics import DiarizationError
 from choravox.streaming import LatencyQualityPoint
-from choravox.types import Segment
+from choravox.types import Segment, Transcript, Word
 
 
 def test_svg_document_is_accessible_and_deterministic() -> None:
@@ -339,6 +339,35 @@ def test_limitations_are_deterministic_for_same_facts() -> None:
     assert report.report_limitations(facts) == report.report_limitations(facts)
 
 
+def sample_meeting_report() -> report.MeetingReport:
+    metadata = report.RunMetadata("0.1.0", 7, "a" * 64, "3.13")
+    transcript = Transcript((Word("sito", 0.0, 0.2, "speaker-a", 0.9),))
+    return report.MeetingReport(
+        "合成会议",
+        metadata,
+        transcript,
+        DiarizationError(1, 0, 0, 10, 10),
+        0.2,
+        report.report_limitations(report.CoverageFacts(True, True, False, False)),
+        (("时间线", "<svg></svg>"),),
+    )
+
+
+def test_markdown_report_contains_measured_metrics_and_transcript() -> None:
+    markdown = report.markdown_report(sample_meeting_report())
+    assert markdown.startswith("# 合成会议\n")
+    assert "DER: 0.100000" in markdown and "cpWER: 0.200000" in markdown
+    assert "| 0.000 | 0.200 | speaker-a | sito | 0.900 |" in markdown
+    assert "<svg></svg>" in markdown
+
+
+def test_markdown_report_labels_synthetic_scope() -> None:
+    markdown = report.markdown_report(sample_meeting_report())
+    assert "确定性合成会议" in markdown
+    assert "不代表真实语料表现" in markdown
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --

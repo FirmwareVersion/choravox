@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from choravox.hashing import content_hash
 from choravox.metrics import DiarizationError
 from choravox.streaming import LatencyQualityPoint
-from choravox.types import Segment
+from choravox.types import Segment, Transcript
 
 
 def escape_text(value: str) -> str:
@@ -256,6 +256,74 @@ def report_limitations(facts: CoverageFacts) -> tuple[str, ...]:
     if not facts.planted_timestamps:
         limitations.append("Forced-alignment output was not checked against planted timestamps.")
     return tuple(limitations)
+
+
+@dataclass(frozen=True, slots=True)
+class MeetingReport:
+    title: str
+    metadata: RunMetadata
+    transcript: Transcript
+    diarization: DiarizationError
+    cpwer: float
+    limitations: tuple[str, ...]
+    charts: tuple[tuple[str, str], ...]
+
+    def __post_init__(self) -> None:
+        if not self.title or self.cpwer < 0.0 or not math.isfinite(self.cpwer):
+            raise ValueError("meeting report title and cpWER must be valid")
+        if len({name for name, _ in self.charts}) != len(self.charts):
+            raise ValueError("meeting report chart names must be unique")
+
+
+_MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]<>#|])")
+
+
+def escape_markdown(value: str) -> str:
+    """Escape report-controlled text in Markdown table and heading contexts."""
+    return _MARKDOWN_SPECIAL.sub(r"\\\1", value).replace("\n", " ")
+
+
+def markdown_report(meeting: MeetingReport) -> str:
+    """Render one deterministic Markdown report from measured outputs."""
+    lines = [
+        f"# {escape_markdown(meeting.title)}",
+        "",
+        "> 本报告仅使用确定性合成会议与 planted ground truth; 指标不代表真实语料表现。",
+        "",
+        "## 运行元数据",
+        "",
+        "| 字段 | 值 |",
+        "|---|---|",
+    ]
+    lines.extend(
+        f"| {escape_markdown(name)} | {escape_markdown(value)} |"
+        for name, value in metadata_table(meeting.metadata)
+    )
+    lines.extend(
+        [
+            "",
+            "## 测量结果",
+            "",
+            f"- DER: {meeting.diarization.rate:.6f}",
+            f"- cpWER: {meeting.cpwer:.6f}",
+            f"- 参考 speaker-frames: {meeting.diarization.reference_speaker_frames}",
+            "",
+            "## 说话人归属转写",
+            "",
+            "| 开始 (s) | 结束 (s) | 说话人 | 词 | 置信度 |",
+            "|---:|---:|---|---|---:|",
+        ]
+    )
+    lines.extend(
+        f"| {word.start:.3f} | {word.end:.3f} | {escape_markdown(word.speaker)} | "
+        f"{escape_markdown(word.text)} | {word.confidence:.3f} |"
+        for word in meeting.transcript.words
+    )
+    for name, chart in meeting.charts:
+        lines.extend(("", f"## {escape_markdown(name)}", "", chart))
+    lines.extend(("", "## 限制", ""))
+    lines.extend(f"- {escape_markdown(item)}" for item in meeting.limitations)
+    return "\n".join(lines) + "\n"
 
 
 # -- extensions --
