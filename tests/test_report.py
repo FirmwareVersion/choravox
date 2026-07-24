@@ -367,6 +367,48 @@ def test_markdown_report_labels_synthetic_scope() -> None:
     assert "不代表真实语料表现" in markdown
 
 
+def test_markdown_escapes_hostile_heading_and_table_text() -> None:
+    meeting = sample_meeting_report()
+    hostile = report.MeetingReport(
+        "bad # [title]",
+        meeting.metadata,
+        Transcript((Word("<tag>", 0.0, 0.1, "a|b"),)),
+        meeting.diarization,
+        meeting.cpwer,
+        meeting.limitations,
+        (),
+    )
+    markdown = report.markdown_report(hostile)
+    assert markdown.startswith(r"# bad \# \[title\]")
+    assert r"a\|b" in markdown and r"\<tag\>" in markdown
+
+
+def test_markdown_report_is_byte_deterministic() -> None:
+    meeting = sample_meeting_report()
+    assert report.markdown_report(meeting).encode() == report.markdown_report(meeting).encode()
+
+
+def test_markdown_metadata_includes_seed_and_config_digest() -> None:
+    markdown = report.markdown_report(sample_meeting_report())
+    assert "| seed | 7 |" in markdown
+    assert f"| config SHA-256 | {'a' * 64} |" in markdown
+
+
+def test_meeting_report_rejects_duplicate_chart_names() -> None:
+    meeting = sample_meeting_report()
+    with pytest.raises(ValueError, match="unique"):
+        report.MeetingReport(
+            meeting.title,
+            meeting.metadata,
+            meeting.transcript,
+            meeting.diarization,
+            meeting.cpwer,
+            meeting.limitations,
+            (("same", "<svg/>"), ("same", "<svg/>")),
+        )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
