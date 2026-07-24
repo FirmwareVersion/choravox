@@ -326,4 +326,41 @@ def markdown_report(meeting: MeetingReport) -> str:
     return "\n".join(lines) + "\n"
 
 
+def html_report(meeting: MeetingReport) -> str:
+    """Render a self-contained HTML report without scripts or external assets."""
+    metadata_rows = "".join(
+        f"<tr><th>{escape_text(name)}</th><td>{escape_text(value)}</td></tr>"
+        for name, value in metadata_table(meeting.metadata)
+    )
+    transcript_rows = "".join(
+        f"<tr><td>{word.start:.3f}</td><td>{word.end:.3f}</td>"
+        f"<td>{escape_text(word.speaker)}</td><td>{escape_text(word.text)}</td>"
+        f"<td>{word.confidence:.3f}</td></tr>"
+        for word in meeting.transcript.words
+    )
+    charts = "".join(
+        f"<section><h2>{escape_text(name)}</h2>{chart}</section>" for name, chart in meeting.charts
+    )
+    limitations = "".join(f"<li>{escape_text(item)}</li>" for item in meeting.limitations)
+    style = (
+        "body{font:15px system-ui,sans-serif;max-width:960px;margin:auto;padding:24px}"
+        "table{border-collapse:collapse;width:100%;margin:12px 0}"
+        "th,td{border:1px solid #bbb;padding:6px;text-align:left}"
+        "figure{margin:12px 0}svg{max-width:100%;height:auto}"
+    )
+    return (
+        '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
+        f'<meta name="viewport" content="width=device-width,initial-scale=1"><style>{style}</style>'
+        f"<title>{escape_text(meeting.title)}</title></head><body>"
+        f"<h1>{escape_text(meeting.title)}</h1>"
+        "<p><strong>范围:</strong> 确定性合成会议与 planted ground truth; 不代表真实语料表现。</p>"
+        f"<h2>运行元数据</h2><table><tbody>{metadata_rows}</tbody></table>"
+        f"<h2>测量结果</h2><ul><li>DER: {meeting.diarization.rate:.6f}</li>"
+        f"<li>cpWER: {meeting.cpwer:.6f}</li></ul>"
+        "<h2>说话人归属转写</h2><table><thead><tr><th>开始</th><th>结束</th>"
+        f"<th>说话人</th><th>词</th><th>置信度</th></tr></thead><tbody>{transcript_rows}</tbody></table>"
+        f"{charts}<h2>限制</h2><ul>{limitations}</ul></body></html>"
+    )
+
+
 # -- extensions --

@@ -408,6 +408,21 @@ def test_meeting_report_rejects_duplicate_chart_names() -> None:
         )
 
 
+def test_html_report_is_self_contained_and_has_measured_sections() -> None:
+    document = report.html_report(sample_meeting_report())
+    assert document.startswith("<!doctype html>") and document.endswith("</html>")
+    assert "DER: 0.100000" in document and "cpWER: 0.200000" in document
+    assert "speaker-a" in document and "sito" in document
+    assert "<style>" in document and "<script" not in document
+    assert "https://" not in document
+
+
+def test_html_report_embeds_svg_charts_inline() -> None:
+    document = report.html_report(sample_meeting_report())
+    assert "<section><h2>时间线</h2><svg></svg></section>" in document
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
