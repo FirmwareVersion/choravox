@@ -422,6 +422,50 @@ def test_html_report_embeds_svg_charts_inline() -> None:
     assert "<section><h2>时间线</h2><svg></svg></section>" in document
 
 
+def test_html_report_escapes_hostile_title_and_transcript() -> None:
+    meeting = sample_meeting_report()
+    hostile = report.MeetingReport(
+        "<img src=x>",
+        meeting.metadata,
+        Transcript((Word("<script>", 0.0, 0.1, 'speaker"x'),)),
+        meeting.diarization,
+        meeting.cpwer,
+        meeting.limitations,
+        (),
+    )
+    document = report.html_report(hostile)
+    assert "<img src=x>" not in document and "&lt;img src=x&gt;" in document
+    assert "<script>" not in document and "&lt;script&gt;" in document
+    assert "speaker&quot;x" in document
+
+
+def test_html_report_is_byte_deterministic() -> None:
+    meeting = sample_meeting_report()
+    assert report.html_report(meeting).encode() == report.html_report(meeting).encode()
+
+
+def test_html_report_has_no_external_resource_attributes() -> None:
+    document = report.html_report(sample_meeting_report())
+    assert " src=" not in document
+    assert " href=" not in document
+
+
+def test_empty_transcript_still_produces_valid_html_table() -> None:
+    meeting = sample_meeting_report()
+    empty = report.MeetingReport(
+        meeting.title,
+        meeting.metadata,
+        Transcript(()),
+        meeting.diarization,
+        meeting.cpwer,
+        meeting.limitations,
+        (),
+    )
+    document = report.html_report(empty)
+    assert "<tbody></tbody>" in document
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
