@@ -363,4 +363,60 @@ def html_report(meeting: MeetingReport) -> str:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class ReportArtifacts:
+    markdown: str
+    html: str
+    digest: str
+
+
+def synthesize_report(
+    *,
+    title: str,
+    metadata: RunMetadata,
+    transcript: Transcript,
+    diarization: DiarizationError,
+    cpwer: float,
+    facts: CoverageFacts,
+    charts: tuple[tuple[str, str], ...],
+) -> ReportArtifacts:
+    """Build both report formats and hash the exact deterministic inputs."""
+    meeting = MeetingReport(
+        title,
+        metadata,
+        transcript,
+        diarization,
+        cpwer,
+        report_limitations(facts),
+        charts,
+    )
+    markdown = markdown_report(meeting)
+    document = html_report(meeting)
+    digest = content_hash(
+        {
+            "charts": charts,
+            "cpwer": cpwer,
+            "der": {
+                "confusion": diarization.confusion,
+                "false_alarm": diarization.false_alarm,
+                "miss": diarization.miss,
+                "reference": diarization.reference_speaker_frames,
+            },
+            "metadata": metadata_table(metadata),
+            "title": title,
+            "transcript": [
+                {
+                    "confidence": word.confidence,
+                    "end": word.end,
+                    "speaker": word.speaker,
+                    "start": word.start,
+                    "text": word.text,
+                }
+                for word in transcript.words
+            ],
+        }
+    )
+    return ReportArtifacts(markdown, document, digest)
+
+
 # -- extensions --

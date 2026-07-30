@@ -465,6 +465,38 @@ def test_empty_transcript_still_produces_valid_html_table() -> None:
     assert "<tbody></tbody>" in document
 
 
+def test_report_synthesis_returns_both_formats_and_digest() -> None:
+    meeting = sample_meeting_report()
+    artifacts = report.synthesize_report(
+        title=meeting.title,
+        metadata=meeting.metadata,
+        transcript=meeting.transcript,
+        diarization=meeting.diarization,
+        cpwer=meeting.cpwer,
+        facts=report.CoverageFacts(True, True, False, False),
+        charts=meeting.charts,
+    )
+    assert artifacts.markdown.startswith("# 合成会议")
+    assert artifacts.html.startswith("<!doctype html>")
+    assert len(artifacts.digest) == 64
+
+
+def test_report_digest_changes_with_measured_metric() -> None:
+    meeting = sample_meeting_report()
+    common = {
+        "title": meeting.title,
+        "metadata": meeting.metadata,
+        "transcript": meeting.transcript,
+        "diarization": meeting.diarization,
+        "facts": report.CoverageFacts(True, True, False, False),
+        "charts": meeting.charts,
+    }
+    first = report.synthesize_report(cpwer=0.1, **common)
+    second = report.synthesize_report(cpwer=0.2, **common)
+    assert first.digest != second.digest
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
