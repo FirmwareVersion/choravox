@@ -273,6 +273,18 @@ class MeetingReport:
             raise ValueError("meeting report title and cpWER must be valid")
         if len({name for name, _ in self.charts}) != len(self.charts):
             raise ValueError("meeting report chart names must be unique")
+        if any(not name or not _safe_inline_chart(chart) for name, chart in self.charts):
+            raise ValueError("meeting report charts must contain safe inline markup")
+
+
+def _safe_inline_chart(markup: str) -> bool:
+    """Accept only chart markup emitted here while rejecting active content."""
+    lowered = markup.casefold()
+    allowed_root = markup.startswith(("<svg ", "<svg>")) or markup.startswith(
+        '<div class="latency-quality" data-source="synthetic">'
+    )
+    forbidden = ("<script", "javascript:", " href=", " src=", " onload=", " onclick=")
+    return allowed_root and not any(token in lowered for token in forbidden)
 
 
 _MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]<>#|])")

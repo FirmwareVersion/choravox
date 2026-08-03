@@ -408,6 +408,26 @@ def test_meeting_report_rejects_duplicate_chart_names() -> None:
         )
 
 
+def test_meeting_report_rejects_active_or_external_chart_markup() -> None:
+    meeting = sample_meeting_report()
+    markup_values = (
+        '<svg onload="bad()"></svg>',
+        "<script>bad()</script>",
+        '<svg href="x"></svg>',
+    )
+    for markup in markup_values:
+        with pytest.raises(ValueError, match="safe"):
+            report.MeetingReport(
+                meeting.title,
+                meeting.metadata,
+                meeting.transcript,
+                meeting.diarization,
+                meeting.cpwer,
+                meeting.limitations,
+                (("unsafe", markup),),
+            )
+
+
 def test_html_report_is_self_contained_and_has_measured_sections() -> None:
     document = report.html_report(sample_meeting_report())
     assert document.startswith("<!doctype html>") and document.endswith("</html>")
