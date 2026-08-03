@@ -496,6 +496,77 @@ def test_report_digest_changes_with_measured_metric() -> None:
     assert first.digest != second.digest
 
 
+def test_complete_report_artifacts_are_byte_deterministic() -> None:
+    meeting = sample_meeting_report()
+    arguments = {
+        "title": meeting.title,
+        "metadata": meeting.metadata,
+        "transcript": meeting.transcript,
+        "diarization": meeting.diarization,
+        "cpwer": meeting.cpwer,
+        "facts": report.CoverageFacts(True, True, True, False),
+        "charts": meeting.charts,
+    }
+    first = report.synthesize_report(**arguments)
+    second = report.synthesize_report(**arguments)
+    assert first == second
+    assert first.markdown.encode("utf-8") == second.markdown.encode("utf-8")
+    assert first.html.encode("utf-8") == second.html.encode("utf-8")
+
+
+def test_report_digest_changes_with_transcript_content() -> None:
+    meeting = sample_meeting_report()
+    base = report.synthesize_report(
+        title=meeting.title,
+        metadata=meeting.metadata,
+        transcript=meeting.transcript,
+        diarization=meeting.diarization,
+        cpwer=meeting.cpwer,
+        facts=report.CoverageFacts(True, True, False, False),
+        charts=meeting.charts,
+    )
+    changed = report.synthesize_report(
+        title=meeting.title,
+        metadata=meeting.metadata,
+        transcript=Transcript((Word("mava", 0.0, 0.2, "speaker-a", 0.9),)),
+        diarization=meeting.diarization,
+        cpwer=meeting.cpwer,
+        facts=report.CoverageFacts(True, True, False, False),
+        charts=meeting.charts,
+    )
+    assert base.digest != changed.digest
+
+
+def test_report_digest_is_fixed_length_lowercase_hex() -> None:
+    meeting = sample_meeting_report()
+    artifacts = report.synthesize_report(
+        title=meeting.title,
+        metadata=meeting.metadata,
+        transcript=meeting.transcript,
+        diarization=meeting.diarization,
+        cpwer=meeting.cpwer,
+        facts=report.CoverageFacts(True, True, False, False),
+        charts=meeting.charts,
+    )
+    assert len(artifacts.digest) == 64
+    assert set(artifacts.digest) <= set("0123456789abcdef")
+
+
+def test_complete_report_rejects_nonfinite_cpwer() -> None:
+    meeting = sample_meeting_report()
+    with pytest.raises(ValueError, match="cpWER"):
+        report.synthesize_report(
+            title=meeting.title,
+            metadata=meeting.metadata,
+            transcript=meeting.transcript,
+            diarization=meeting.diarization,
+            cpwer=float("nan"),
+            facts=report.CoverageFacts(True, True, False, False),
+            charts=(),
+        )
+
+
+# -- extensions --
 # -- extensions --
 # -- extensions --
 # -- extensions --
