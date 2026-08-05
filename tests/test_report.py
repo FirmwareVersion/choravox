@@ -554,6 +554,36 @@ def test_report_manifest_rejects_path_like_names() -> None:
         report.ReportFile("../report.md", "text/markdown", "a" * 64, 1)
 
 
+def test_report_manifest_encoding_is_byte_stable() -> None:
+    manifest = report.ReportManifest(
+        "b" * 64, (report.ReportFile("report.md", "text/markdown", "a" * 64, 12),)
+    )
+    encoded = report.report_manifest_to_json(manifest)
+    assert report.report_manifest_to_json(report.report_manifest_from_json(encoded)) == encoded
+    assert encoded.startswith('{"header":{"digest":"')
+
+
+def test_report_manifest_detects_payload_tampering() -> None:
+    manifest = report.ReportManifest(
+        "b" * 64, (report.ReportFile("report.md", "text/markdown", "a" * 64, 12),)
+    )
+    encoded = report.report_manifest_to_json(manifest).replace('"size":12', '"size":13')
+    with pytest.raises(ValueError, match="digest"):
+        report.report_manifest_from_json(encoded)
+
+
+def test_report_manifest_rejects_future_schema() -> None:
+    encoded = report.report_manifest_to_json(report.ReportManifest("b" * 64, ()))
+    with pytest.raises(ValueError, match="unsupported"):
+        report.report_manifest_from_json(encoded.replace("choravox.report-manifest", "future"))
+
+
+def test_report_file_digest_changes_with_rendered_bytes() -> None:
+    first = report.report_manifest(report.ReportArtifacts("a", "b", "c" * 64))
+    second = report.report_manifest(report.ReportArtifacts("changed", "b", "c" * 64))
+    assert first.files[0].digest != second.files[0].digest
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {
