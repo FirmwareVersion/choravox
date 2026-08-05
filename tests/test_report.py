@@ -428,6 +428,37 @@ def test_meeting_report_rejects_active_or_external_chart_markup() -> None:
             )
 
 
+def test_safe_chart_validator_accepts_module_outputs() -> None:
+    svg = report.metric_curve_svg(((0.0, 0.1),), title="x", x_label="x", y_label="y")
+    bundle = report.latency_quality_svg((LatencyQualityPoint(0.1, 0.1, 0.1, 0.05),))
+    assert report._safe_inline_chart(svg)
+    assert report._safe_inline_chart(bundle)
+
+
+def test_safe_chart_validator_rejects_nonchart_text() -> None:
+    assert not report._safe_inline_chart("plain text")
+    assert not report._safe_inline_chart("")
+
+
+def test_chart_names_must_be_nonempty() -> None:
+    meeting = sample_meeting_report()
+    chart = report.metric_curve_svg(((0.0, 0.0),), title="x", x_label="x", y_label="y")
+    with pytest.raises(ValueError, match="safe"):
+        report.MeetingReport(
+            meeting.title,
+            meeting.metadata,
+            meeting.transcript,
+            meeting.diarization,
+            meeting.cpwer,
+            meeting.limitations,
+            (("", chart),),
+        )
+
+
+def test_safe_chart_validation_is_case_insensitive() -> None:
+    assert not report._safe_inline_chart('<svg xmlns="x"><ScRiPt>bad()</ScRiPt></svg>')
+
+
 def test_html_report_is_self_contained_and_has_measured_sections() -> None:
     document = report.html_report(sample_meeting_report())
     assert document.startswith("<!doctype html>") and document.endswith("</html>")
