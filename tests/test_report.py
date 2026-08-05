@@ -532,6 +532,28 @@ def test_report_synthesis_returns_both_formats_and_digest() -> None:
     assert len(artifacts.digest) == 64
 
 
+def test_report_manifest_roundtrips_payload_descriptors() -> None:
+    meeting = sample_meeting_report()
+    artifacts = report.synthesize_report(
+        title=meeting.title,
+        metadata=meeting.metadata,
+        transcript=meeting.transcript,
+        diarization=meeting.diarization,
+        cpwer=meeting.cpwer,
+        facts=report.CoverageFacts(True, True, False, False),
+        charts=meeting.charts,
+    )
+    manifest = report.report_manifest(artifacts)
+    encoded = report.report_manifest_to_json(manifest)
+    assert report.report_manifest_from_json(encoded) == manifest
+    assert [item.name for item in manifest.files] == ["report.md", "report.html"]
+
+
+def test_report_manifest_rejects_path_like_names() -> None:
+    with pytest.raises(ValueError, match="invalid"):
+        report.ReportFile("../report.md", "text/markdown", "a" * 64, 1)
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {

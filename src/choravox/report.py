@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import html
+import json
 import math
 import re
 from dataclasses import dataclass
 
-from choravox.hashing import content_hash
+from choravox.hashing import canonical_json, content_hash
 from choravox.metrics import DiarizationError
 from choravox.streaming import LatencyQualityPoint
 from choravox.types import Segment, Transcript
@@ -380,6 +381,93 @@ class ReportArtifacts:
     markdown: str
     html: str
     digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReportFile:
+    name: str
+    media_type: str
+    digest: str
+    size: int
+
+    def __post_init__(self) -> None:
+        if (
+            not self.name
+            or "/" in self.name
+            or not self.media_type
+            or re.fullmatch(r"[0-9a-f]{64}", self.digest) is None
+            or self.size < 0
+        ):
+            raise ValueError("report file manifest entry is invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class ReportManifest:
+    report_digest: str
+    files: tuple[ReportFile, ...]
+
+
+REPORT_MANIFEST_SCHEMA = "choravox.report-manifest"
+REPORT_MANIFEST_VERSION = 1
+
+
+def report_manifest(artifacts: ReportArtifacts) -> ReportManifest:
+    """Describe deterministic Markdown and HTML report payloads."""
+    payloads = (
+        ("report.md", "text/markdown; charset=utf-8", artifacts.markdown.encode()),
+        ("report.html", "text/html; charset=utf-8", artifacts.html.encode()),
+    )
+    files = tuple(
+        ReportFile(name, media_type, content_hash({"bytes": data.hex()}), len(data))
+        for name, media_type, data in payloads
+    )
+    return ReportManifest(artifacts.digest, files)
+
+
+def report_manifest_to_json(manifest: ReportManifest) -> str:
+    """Encode a versioned manifest with a payload integrity digest."""
+    payload = {
+        "files": [
+            {
+                "digest": item.digest,
+                "media_type": item.media_type,
+                "name": item.name,
+                "size": item.size,
+            }
+            for item in manifest.files
+        ],
+        "report_digest": manifest.report_digest,
+    }
+    document = {
+        "header": {
+            "digest": content_hash(payload),
+            "schema": REPORT_MANIFEST_SCHEMA,
+            "version": REPORT_MANIFEST_VERSION,
+        },
+        "payload": payload,
+    }
+    return canonical_json(document).decode() + "\n"
+
+
+def report_manifest_from_json(text: str) -> ReportManifest:
+    """Decode and authenticate a report manifest."""
+    try:
+        document = json.loads(text)
+        header = document["header"]
+        payload = document["payload"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise ValueError("report manifest is malformed") from error
+    if header.get("schema") != REPORT_MANIFEST_SCHEMA or header.get("version") != 1:
+        raise ValueError("unsupported report manifest schema or version")
+    if header.get("digest") != content_hash(payload):
+        raise ValueError("report manifest digest mismatch")
+    try:
+        return ReportManifest(
+            str(payload["report_digest"]),
+            tuple(ReportFile(**item) for item in payload["files"]),
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("report manifest payload is invalid") from error
 
 
 def synthesize_report(
