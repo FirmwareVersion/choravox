@@ -673,6 +673,45 @@ def test_report_bundle_reader_preserves_unicode_bytes(tmp_path) -> None:
     assert report.read_report_artifacts(tmp_path) == artifacts
 
 
+def test_standard_report_charts_cover_required_measured_views() -> None:
+    charts = report.standard_report_charts(
+        segments=(Segment(0.0, 1.0, "a"),),
+        duration_s=1.0,
+        diarization=DiarizationError(1, 0, 0, 10, 10),
+        snr_points=((0.0, 0.2), (10.0, 0.05)),
+        latency_points=(LatencyQualityPoint(0.1, 0.1, 0.2, 0.05),),
+    )
+    assert [name for name, _ in charts] == [
+        "Speaker timeline",
+        "DER decomposition",
+        "SNR slices",
+        "Latency-quality",
+    ]
+    assert all(report._safe_inline_chart(markup) for _, markup in charts)
+
+
+def test_standard_charts_feed_complete_report() -> None:
+    meeting = sample_meeting_report()
+    charts = report.standard_report_charts(
+        segments=(Segment(0.0, 1.0, "a"),),
+        duration_s=1.0,
+        diarization=meeting.diarization,
+        snr_points=((5.0, 0.1),),
+        latency_points=(LatencyQualityPoint(0.1, 0.1, 0.2, 0.05),),
+    )
+    artifacts = report.synthesize_report(
+        title=meeting.title,
+        metadata=meeting.metadata,
+        transcript=meeting.transcript,
+        diarization=meeting.diarization,
+        cpwer=meeting.cpwer,
+        facts=report.CoverageFacts(True, True, True, False),
+        charts=charts,
+    )
+    assert all(name in artifacts.markdown for name, _ in charts)
+    assert artifacts.html.count("<svg") == 5
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {

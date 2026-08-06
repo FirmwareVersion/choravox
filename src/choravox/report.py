@@ -513,6 +513,31 @@ def read_report_artifacts(directory: str | Path) -> ReportArtifacts:
     return ReportArtifacts(payloads["report.md"], payloads["report.html"], manifest.report_digest)
 
 
+def standard_report_charts(
+    *,
+    segments: tuple[Segment, ...],
+    duration_s: float,
+    diarization: DiarizationError,
+    snr_points: tuple[tuple[float, float], ...],
+    latency_points: tuple[LatencyQualityPoint, ...],
+) -> tuple[tuple[str, str], ...]:
+    """Build the standard chart roster from measured synthetic outputs."""
+    return (
+        ("Speaker timeline", speaker_timeline_svg(segments, duration_s=duration_s)),
+        ("DER decomposition", der_decomposition_svg(diarization)),
+        (
+            "SNR slices",
+            metric_curve_svg(
+                snr_points,
+                title="DER by synthetic SNR",
+                x_label="SNR (dB)",
+                y_label="DER",
+            ),
+        ),
+        ("Latency-quality", latency_quality_svg(latency_points)),
+    )
+
+
 def synthesize_report(
     *,
     title: str,
