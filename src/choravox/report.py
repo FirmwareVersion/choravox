@@ -491,6 +491,28 @@ def write_report_artifacts(
     return manifest
 
 
+def read_report_artifacts(directory: str | Path) -> ReportArtifacts:
+    """Load a report bundle only after verifying sizes and content digests."""
+    source = Path(directory)
+    try:
+        manifest = report_manifest_from_json((source / "manifest.json").read_text())
+    except OSError as error:
+        raise ValueError("report bundle manifest is missing") from error
+    payloads: dict[str, str] = {}
+    for item in manifest.files:
+        try:
+            data = (source / item.name).read_bytes()
+        except OSError as error:
+            raise ValueError(f"report bundle file is missing: {item.name}") from error
+        digest = content_hash({"bytes": data.hex()})
+        if len(data) != item.size or digest != item.digest:
+            raise ValueError(f"report bundle file integrity failed: {item.name}")
+        payloads[item.name] = data.decode()
+    if set(payloads) != {"report.md", "report.html"}:
+        raise ValueError("report bundle file roster is incomplete")
+    return ReportArtifacts(payloads["report.md"], payloads["report.html"], manifest.report_digest)
+
+
 def synthesize_report(
     *,
     title: str,

@@ -629,6 +629,17 @@ def test_report_writer_returns_in_memory_manifest(tmp_path) -> None:
     assert report.write_report_artifacts(tmp_path, artifacts) == report.report_manifest(artifacts)
 
 
+def test_report_bundle_roundtrips_through_filesystem(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("# 合成\n", "<html>synthetic</html>", "a" * 64)
+    report.write_report_artifacts(tmp_path, artifacts)
+    assert report.read_report_artifacts(tmp_path) == artifacts
+
+
+def test_report_bundle_reader_requires_manifest(tmp_path) -> None:
+    with pytest.raises(ValueError, match="manifest"):
+        report.read_report_artifacts(tmp_path)
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {
