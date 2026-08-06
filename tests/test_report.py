@@ -640,6 +640,39 @@ def test_report_bundle_reader_requires_manifest(tmp_path) -> None:
         report.read_report_artifacts(tmp_path)
 
 
+def test_report_bundle_reader_detects_markdown_corruption(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("original", "html", "a" * 64)
+    report.write_report_artifacts(tmp_path, artifacts)
+    (tmp_path / "report.md").write_text("corrupted")
+    with pytest.raises(ValueError, match="integrity"):
+        report.read_report_artifacts(tmp_path)
+
+
+def test_report_bundle_reader_detects_missing_payload(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("md", "html", "a" * 64)
+    report.write_report_artifacts(tmp_path, artifacts)
+    (tmp_path / "report.html").unlink()
+    with pytest.raises(ValueError, match="missing"):
+        report.read_report_artifacts(tmp_path)
+
+
+def test_report_bundle_reader_rejects_incomplete_roster(tmp_path) -> None:
+    digest = report.content_hash({"bytes": b"md".hex()})
+    manifest = report.ReportManifest(
+        "a" * 64, (report.ReportFile("report.md", "text/markdown", digest, 2),)
+    )
+    (tmp_path / "manifest.json").write_text(report.report_manifest_to_json(manifest))
+    (tmp_path / "report.md").write_text("md")
+    with pytest.raises(ValueError, match="roster"):
+        report.read_report_artifacts(tmp_path)
+
+
+def test_report_bundle_reader_preserves_unicode_bytes(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("会议", "<html>合成</html>", "b" * 64)
+    report.write_report_artifacts(tmp_path, artifacts)
+    assert report.read_report_artifacts(tmp_path) == artifacts
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {
