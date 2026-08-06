@@ -712,6 +712,56 @@ def test_standard_charts_feed_complete_report() -> None:
     assert artifacts.html.count("<svg") == 5
 
 
+def test_standard_chart_roster_is_byte_deterministic() -> None:
+    arguments = {
+        "segments": (Segment(0.0, 1.0, "a"),),
+        "duration_s": 1.0,
+        "diarization": DiarizationError(1, 1, 0, 10, 10),
+        "snr_points": ((0.0, 0.2), (10.0, 0.1)),
+        "latency_points": (LatencyQualityPoint(0.1, 0.1, 0.2, 0.05),),
+    }
+    first = report.standard_report_charts(**arguments)
+    second = report.standard_report_charts(**arguments)
+    assert first == second
+    assert tuple(markup.encode() for _, markup in first) == tuple(
+        markup.encode() for _, markup in second
+    )
+
+
+def test_standard_charts_change_with_measured_der() -> None:
+    common = {
+        "segments": (Segment(0.0, 1.0, "a"),),
+        "duration_s": 1.0,
+        "snr_points": ((0.0, 0.2),),
+        "latency_points": (LatencyQualityPoint(0.1, 0.1, 0.2, 0.05),),
+    }
+    first = report.standard_report_charts(diarization=DiarizationError(0, 0, 0, 10, 10), **common)
+    second = report.standard_report_charts(diarization=DiarizationError(1, 0, 0, 10, 10), **common)
+    assert first[1][1] != second[1][1]
+
+
+def test_standard_charts_propagate_missing_measurements() -> None:
+    with pytest.raises(ValueError, match="points"):
+        report.standard_report_charts(
+            segments=(Segment(0.0, 1.0, "a"),),
+            duration_s=1.0,
+            diarization=DiarizationError(0, 0, 0, 10, 10),
+            snr_points=(),
+            latency_points=(LatencyQualityPoint(0.1, 0.1, 0.1, 0.05),),
+        )
+
+
+def test_standard_chart_names_are_unique() -> None:
+    charts = report.standard_report_charts(
+        segments=(Segment(0.0, 1.0, "a"),),
+        duration_s=1.0,
+        diarization=DiarizationError(0, 0, 0, 10, 10),
+        snr_points=((0.0, 0.0),),
+        latency_points=(LatencyQualityPoint(0.1, 0.0, 0.0, 0.05),),
+    )
+    assert len({name for name, _ in charts}) == len(charts)
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {
