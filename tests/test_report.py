@@ -602,6 +602,33 @@ def test_written_report_bytes_match_manifest_sizes(tmp_path) -> None:
     ]
 
 
+def test_report_writer_refuses_accidental_overwrite(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("first", "html", "a" * 64)
+    report.write_report_artifacts(tmp_path, artifacts)
+    with pytest.raises(FileExistsError, match="exists"):
+        report.write_report_artifacts(tmp_path, report.ReportArtifacts("second", "new", "b" * 64))
+    assert (tmp_path / "report.md").read_text() == "first"
+
+
+def test_report_writer_allows_explicit_overwrite(tmp_path) -> None:
+    report.write_report_artifacts(tmp_path, report.ReportArtifacts("first", "html", "a" * 64))
+    changed = report.ReportArtifacts("second", "new", "b" * 64)
+    manifest = report.write_report_artifacts(tmp_path, changed, overwrite=True)
+    assert (tmp_path / "report.md").read_text() == "second"
+    assert manifest.report_digest == "b" * 64
+
+
+def test_report_writer_detects_partial_existing_bundle(tmp_path) -> None:
+    (tmp_path / "report.html").write_text("existing")
+    with pytest.raises(FileExistsError, match="exists"):
+        report.write_report_artifacts(tmp_path, report.ReportArtifacts("md", "html", "a" * 64))
+
+
+def test_report_writer_returns_in_memory_manifest(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("md", "html", "a" * 64)
+    assert report.write_report_artifacts(tmp_path, artifacts) == report.report_manifest(artifacts)
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {
