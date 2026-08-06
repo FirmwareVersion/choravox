@@ -584,6 +584,24 @@ def test_report_file_digest_changes_with_rendered_bytes() -> None:
     assert first.files[0].digest != second.files[0].digest
 
 
+def test_write_report_artifacts_creates_formats_and_manifest(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("# report\n", "<!doctype html>", "a" * 64)
+    manifest = report.write_report_artifacts(tmp_path / "nested", artifacts)
+    assert (tmp_path / "nested" / "report.md").read_text() == artifacts.markdown
+    assert (tmp_path / "nested" / "report.html").read_text() == artifacts.html
+    decoded = report.report_manifest_from_json((tmp_path / "nested" / "manifest.json").read_text())
+    assert decoded == manifest
+
+
+def test_written_report_bytes_match_manifest_sizes(tmp_path) -> None:
+    artifacts = report.ReportArtifacts("合成\n", "<html>会议</html>", "b" * 64)
+    manifest = report.write_report_artifacts(tmp_path, artifacts)
+    assert [item.size for item in manifest.files] == [
+        (tmp_path / "report.md").stat().st_size,
+        (tmp_path / "report.html").stat().st_size,
+    ]
+
+
 def test_report_digest_changes_with_measured_metric() -> None:
     meeting = sample_meeting_report()
     common = {

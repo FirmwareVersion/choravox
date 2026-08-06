@@ -7,6 +7,7 @@ import json
 import math
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from choravox.hashing import canonical_json, content_hash
 from choravox.metrics import DiarizationError
@@ -468,6 +469,26 @@ def report_manifest_from_json(text: str) -> ReportManifest:
         )
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError("report manifest payload is invalid") from error
+
+
+def write_report_artifacts(
+    directory: str | Path, artifacts: ReportArtifacts, *, overwrite: bool = False
+) -> ReportManifest:
+    """Write both report formats and their manifest to one output directory."""
+    destination = Path(directory)
+    destination.mkdir(parents=True, exist_ok=True)
+    paths = tuple(destination / name for name in ("report.md", "report.html", "manifest.json"))
+    if not overwrite and any(path.exists() for path in paths):
+        raise FileExistsError("report output already exists")
+    manifest = report_manifest(artifacts)
+    payloads = (
+        artifacts.markdown.encode(),
+        artifacts.html.encode(),
+        report_manifest_to_json(manifest).encode(),
+    )
+    for path, payload in zip(paths, payloads, strict=True):
+        path.write_bytes(payload)
+    return manifest
 
 
 def synthesize_report(
