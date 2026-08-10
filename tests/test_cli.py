@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
+import pytest
+
 from choravox import cli
-from choravox.audio_io import read_wav
+from choravox.audio_io import read_wav, write_wav
 
 
 def test_cli_json_helpers_use_canonical_utf8(tmp_path) -> None:
@@ -67,3 +70,22 @@ def test_synthesize_command_is_byte_deterministic(tmp_path) -> None:
     assert cli.main(["synthesize", str(right), "--seed", "5", "--duration", "1.0"]) == 0
     for name in ("meeting.wav", "reference.rttm", "transcript.jsonl", "metadata.json"):
         assert (left / name).read_bytes() == (right / name).read_bytes()
+
+
+def test_vad_command_emits_frame_posteriors(tmp_path) -> None:
+    input_path, output_path = tmp_path / "audio.wav", tmp_path / "vad.json"
+    samples = np.concatenate((np.zeros(800), np.sin(np.linspace(0, 20, 1600)) * 0.2))
+    write_wav(input_path, samples, 8000)
+    assert cli.main(["vad", str(input_path), str(output_path)]) == 0
+    payload = json.loads(output_path.read_text())
+    assert len(payload["posterior"]) == len(payload["speech"])
+    assert 0.0 <= min(payload["posterior"]) <= max(payload["posterior"]) <= 1.0
+
+
+def test_embed_command_normalizes_statistics_vector(tmp_path) -> None:
+    input_path, output_path = tmp_path / "features.npy", tmp_path / "embedding.json"
+    np.save(input_path, np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.1, 0.9]]))
+    assert cli.main(["embed", str(input_path), str(output_path)]) == 0
+    payload = json.loads(output_path.read_text())
+    assert payload["dimension"] == len(payload["embedding"])
+    assert np.linalg.norm(payload["embedding"]) == pytest.approx(1.0)

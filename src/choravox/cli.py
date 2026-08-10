@@ -50,6 +50,36 @@ def _command_synthesize(args: argparse.Namespace) -> None:
     )
 
 
+def _command_vad(args: argparse.Namespace) -> None:
+    from choravox.audio_io import read_wav
+    from choravox.vad import VadConfig, detect_speech
+
+    audio = read_wav(args.input)
+    result = detect_speech(audio.samples, VadConfig(sample_rate=audio.sample_rate))
+    _write_json(
+        args.output,
+        {
+            "posterior": result.posterior.tolist(),
+            "speech": result.speech.astype(int).tolist(),
+            "synthetic_or_local_input": True,
+            "threshold_db": result.threshold_db,
+        },
+    )
+
+
+def _command_embed(args: argparse.Namespace) -> None:
+    import numpy as np
+
+    from choravox.embeddings import embed_features, initialize_gmm
+
+    features = np.load(args.input, allow_pickle=False)
+    if features.ndim != 2 or features.shape[0] < 2:
+        raise CliError("embedding input must contain at least two feature frames")
+    model = initialize_gmm(features, min(2, features.shape[0]), seed=0)
+    embedding = embed_features(features, model)
+    _write_json(args.output, {"dimension": embedding.size, "embedding": embedding.tolist()})
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -92,6 +122,8 @@ def build_parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name, help=help_text)
         command.add_argument("input", help="input WAV or NumPy .npy file")
         command.add_argument("output", help="output JSON file")
+    commands.choices["vad"].set_defaults(handler=_command_vad)
+    commands.choices["embed"].set_defaults(handler=_command_embed)
     commands.choices["diarize"].add_argument("--speakers", type=int)
     commands.choices["transcribe"].add_argument("--tokens", required=True)
     commands.choices["align"].add_argument("--tokens", required=True)
