@@ -3,6 +3,29 @@
 from __future__ import annotations
 
 import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from choravox.hashing import canonical_json
+
+
+class CliError(ValueError):
+    """A user-facing command failure without an internal traceback."""
+
+
+def _write_json(path: str | Path, value: Any) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(canonical_json(value) + b"\n")
+
+
+def _read_json(path: str | Path) -> Any:
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CliError(f"cannot read JSON input: {path}") from error
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,9 +39,16 @@ def main(argv: list[str] | None = None) -> int:
     """Run the command-line interface."""
     from choravox import __version__
 
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     if args.version:
         print(__version__)
+    elif handler := getattr(args, "handler", None):
+        try:
+            handler(args)
+        except (CliError, OSError, ValueError) as error:
+            print(f"choravox: error: {error}", file=sys.stderr)
+            return 2
     else:
-        build_parser().print_help()
+        parser.print_help()
     return 0
