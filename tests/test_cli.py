@@ -20,3 +20,29 @@ def test_cli_reports_invalid_json_without_traceback(tmp_path, capsys) -> None:
     else:
         raise AssertionError("invalid JSON was accepted")
     assert capsys.readouterr().err == ""
+
+
+def test_cli_parser_exposes_every_pipeline_command() -> None:
+    parser = cli.build_parser()
+    action = next(action for action in parser._actions if action.dest == "command")
+    assert set(action.choices) == {
+        "synthesize",
+        "vad",
+        "embed",
+        "diarize",
+        "overlap",
+        "transcribe",
+        "align",
+        "evaluate",
+        "compare",
+        "report",
+        "demo",
+        "stream-demo",
+    }
+
+
+def test_cli_root_help_and_version_return_success(capsys) -> None:
+    assert cli.main([]) == 0
+    assert "COMMAND" in capsys.readouterr().out
+    assert cli.main(["--version"]) == 0
+    assert capsys.readouterr().out.strip()
