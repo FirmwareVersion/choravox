@@ -11,6 +11,45 @@ from typing import Any
 from choravox.hashing import canonical_json
 
 
+def _command_synthesize(args: argparse.Namespace) -> None:
+    from choravox.annotations import (
+        rttm_to_text,
+        script_to_rttm,
+        transcript_to_jsonl,
+        words_to_transcript,
+    )
+    from choravox.audio_io import write_wav
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+
+    config = MeetingConfig(
+        speakers=args.speakers,
+        duration_s=args.duration,
+        overlap_ratio=args.overlap,
+        seed=args.seed,
+    )
+    meeting = MeetingFactory(config).build()
+    output = Path(args.output)
+    output.mkdir(parents=True, exist_ok=True)
+    write_wav(output / "meeting.wav", meeting.samples, meeting.sample_rate)
+    (output / "reference.rttm").write_text(
+        rttm_to_text(script_to_rttm(meeting.script, "synthetic-meeting"))
+    )
+    (output / "transcript.jsonl").write_text(
+        transcript_to_jsonl(words_to_transcript(meeting.words))
+    )
+    _write_json(
+        output / "metadata.json",
+        {
+            "duration_s": meeting.script.duration_s,
+            "sample_rate": meeting.sample_rate,
+            "seed": meeting.seed,
+            "speakers": meeting.script.speakers,
+            "synthetic": True,
+        },
+    )
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -40,6 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     synthesize.add_argument("--duration", type=float, default=2.0)
     synthesize.add_argument("--speakers", type=int, default=2)
     synthesize.add_argument("--overlap", type=float, default=0.1)
+    synthesize.set_defaults(handler=_command_synthesize)
 
     for name, help_text in (
         ("vad", "run energy/HMM voice activity detection"),
