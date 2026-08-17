@@ -183,3 +183,21 @@ def test_report_command_writes_self_contained_bundle(tmp_path) -> None:
     assert (output / "report.md").read_text().startswith("# 合成报告")
     assert (output / "report.html").read_text().startswith("<!doctype html>")
     assert (output / "manifest.json").exists()
+
+
+def test_demo_runs_offline_mechanics_and_prints_measured_metrics(tmp_path, capsys) -> None:
+    output = tmp_path / "demo"
+    assert cli.main(["demo", str(output), "--seed", "9"]) == 0
+    message = capsys.readouterr().out
+    assert "synthetic DER=" in message and "cpWER=" in message
+    assert (output / "report.html").exists()
+
+
+def test_stream_demo_reports_latency_and_is_deterministic(tmp_path, capsys) -> None:
+    left, right = tmp_path / "left", tmp_path / "right"
+    assert cli.main(["stream-demo", str(left), "--seed", "4"]) == 0
+    assert "latency=" in capsys.readouterr().out
+    assert cli.main(["stream-demo", str(right), "--seed", "4"]) == 0
+    capsys.readouterr()
+    for name in ("report.md", "report.html", "manifest.json"):
+        assert (left / name).read_bytes() == (right / name).read_bytes()

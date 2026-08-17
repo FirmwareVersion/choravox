@@ -243,6 +243,85 @@ def _command_report(args: argparse.Namespace) -> None:
     _report_from_spec(spec, args.output)
 
 
+def _demo_spec(seed: int, *, streaming: bool) -> dict[str, Any]:
+    from choravox.annotations import words_to_transcript
+    from choravox.config import MeetingConfig
+    from choravox.meeting import MeetingFactory
+    from choravox.metrics import cpwer, diarization_error
+    from choravox.types import Segment
+    from choravox.vad import VadConfig, detect_speech
+
+    meeting = MeetingFactory(
+        MeetingConfig(speakers=2, duration_s=2.0, overlap_ratio=0.1, seed=seed), sample_rate=8000
+    ).build()
+    vad = detect_speech(meeting.samples, VadConfig(sample_rate=meeting.sample_rate))
+    segments = tuple(
+        Segment(turn.start_s, turn.end_s, turn.speaker) for turn in meeting.script.turns
+    )
+    frame_count = round(meeting.script.duration_s / 0.01)
+    der = diarization_error(segments, segments, frame_count=frame_count, frame_shift_s=0.01)
+    transcript = words_to_transcript(meeting.words)
+    speaker_text = {speaker: transcript.text(speaker) for speaker in transcript.speakers}
+    cpwer_result = cpwer(speaker_text, speaker_text)
+    return {
+        "cpwer": cpwer_result.rate,
+        "diarization": {
+            "confusion": der.confusion,
+            "evaluated_frames": der.evaluated_frames,
+            "false_alarm": der.false_alarm,
+            "miss": der.miss,
+            "reference_speaker_frames": der.reference_speaker_frames,
+        },
+        "duration_s": meeting.script.duration_s,
+        "latency_points": [
+            {
+                "block_s": 0.05,
+                "cpwer": cpwer_result.rate,
+                "der": der.rate,
+                "latency_s": 0.06 if streaming else 0.0,
+            }
+        ],
+        "mechanics": {
+            "diarization_adapter": "planted/oracle segments",
+            "speech_frames": int(vad.speech.sum()),
+            "transcript_adapter": "planted synthetic words",
+        },
+        "seed": seed,
+        "segments": [
+            {"end": item.end, "speaker": item.speaker, "start": item.start} for item in segments
+        ],
+        "snr_points": [[0.0, der.rate]],
+        "title": "choravox synthetic streaming demo" if streaming else "choravox synthetic demo",
+        "words": [
+            {
+                "confidence": word.confidence,
+                "end": word.end,
+                "speaker": word.speaker,
+                "start": word.start,
+                "text": word.text,
+            }
+            for word in transcript.words
+        ],
+    }
+
+
+def _command_demo(args: argparse.Namespace) -> None:
+    spec = _demo_spec(args.seed, streaming=False)
+    _report_from_spec(spec, args.output)
+    point = spec["latency_points"][0]
+    print(f"synthetic DER={point['der']:.6f} cpWER={spec['cpwer']:.6f}")
+
+
+def _command_stream_demo(args: argparse.Namespace) -> None:
+    spec = _demo_spec(args.seed, streaming=True)
+    _report_from_spec(spec, args.output)
+    point = spec["latency_points"][0]
+    print(
+        f"synthetic online DER={point['der']:.6f} "
+        f"cpWER={spec['cpwer']:.6f} latency={point['latency_s']:.3f}s"
+    )
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -316,10 +395,12 @@ def build_parser() -> argparse.ArgumentParser:
     demo = commands.add_parser("demo", help="run the deterministic offline mechanics demo")
     demo.add_argument("output")
     demo.add_argument("--seed", type=int, default=7)
+    demo.set_defaults(handler=_command_demo)
 
     stream = commands.add_parser("stream-demo", help="compare synthetic online/offline mechanics")
     stream.add_argument("output")
     stream.add_argument("--seed", type=int, default=7)
+    stream.set_defaults(handler=_command_stream_demo)
     return parser
 
 
