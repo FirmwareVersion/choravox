@@ -194,6 +194,55 @@ def _command_compare(args: argparse.Namespace) -> None:
     )
 
 
+def _report_from_spec(spec: dict[str, Any], output: str | Path) -> None:
+    from choravox import __version__
+    from choravox.metrics import DiarizationError
+    from choravox.report import (
+        CoverageFacts,
+        RunMetadata,
+        standard_report_charts,
+        synthesize_report,
+        write_report_artifacts,
+    )
+    from choravox.streaming import LatencyQualityPoint
+    from choravox.types import Segment, Transcript, Word
+
+    segments = tuple(Segment(**item) for item in spec["segments"])
+    transcript = Transcript(tuple(Word(**item) for item in spec["words"]))
+    diarization = DiarizationError(**spec["diarization"])
+    latency = tuple(LatencyQualityPoint(**item) for item in spec["latency_points"])
+    metadata = RunMetadata.from_config(
+        package_version=__version__,
+        seed=int(spec["seed"]),
+        config=spec,
+        python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+    )
+    charts = standard_report_charts(
+        segments=segments,
+        duration_s=float(spec["duration_s"]),
+        diarization=diarization,
+        snr_points=tuple(tuple(item) for item in spec["snr_points"]),
+        latency_points=latency,
+    )
+    artifacts = synthesize_report(
+        title=str(spec["title"]),
+        metadata=metadata,
+        transcript=transcript,
+        diarization=diarization,
+        cpwer=float(spec["cpwer"]),
+        facts=CoverageFacts(True, True, True, False),
+        charts=charts,
+    )
+    write_report_artifacts(output, artifacts, overwrite=True)
+
+
+def _command_report(args: argparse.Namespace) -> None:
+    spec = _read_json(args.spec)
+    if not isinstance(spec, dict):
+        raise CliError("report specification must be a JSON object")
+    _report_from_spec(spec, args.output)
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -262,6 +311,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_command = commands.add_parser("report", help="render Markdown and HTML from JSON spec")
     report_command.add_argument("spec")
     report_command.add_argument("output")
+    report_command.set_defaults(handler=_command_report)
 
     demo = commands.add_parser("demo", help="run the deterministic offline mechanics demo")
     demo.add_argument("output")

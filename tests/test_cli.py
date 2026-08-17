@@ -146,3 +146,40 @@ def test_compare_command_reports_paired_improvements(tmp_path) -> None:
     assert cli.main(["compare", str(baseline), str(candidate), str(output)]) == 0
     payload = json.loads(output.read_text())
     assert payload["improvements"] == 1 and payload["ties"] == 1
+
+
+def report_spec() -> dict:
+    return {
+        "cpwer": 0.0,
+        "diarization": {
+            "confusion": 0,
+            "evaluated_frames": 10,
+            "false_alarm": 0,
+            "miss": 0,
+            "reference_speaker_frames": 10,
+        },
+        "duration_s": 1.0,
+        "latency_points": [{"block_s": 0.05, "cpwer": 0.0, "der": 0.0, "latency_s": 0.1}],
+        "seed": 3,
+        "segments": [{"end": 1.0, "speaker": "a", "start": 0.0}],
+        "snr_points": [[0.0, 0.0]],
+        "title": "合成报告",
+        "words": [
+            {
+                "confidence": 1.0,
+                "end": 0.2,
+                "speaker": "a",
+                "start": 0.0,
+                "text": "sito",
+            }
+        ],
+    }
+
+
+def test_report_command_writes_self_contained_bundle(tmp_path) -> None:
+    spec_path, output = tmp_path / "spec.json", tmp_path / "report"
+    cli._write_json(spec_path, report_spec())
+    assert cli.main(["report", str(spec_path), str(output)]) == 0
+    assert (output / "report.md").read_text().startswith("# 合成报告")
+    assert (output / "report.html").read_text().startswith("<!doctype html>")
+    assert (output / "manifest.json").exists()
