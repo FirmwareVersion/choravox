@@ -80,6 +80,33 @@ def _command_embed(args: argparse.Namespace) -> None:
     _write_json(args.output, {"dimension": embedding.size, "embedding": embedding.tolist()})
 
 
+def _command_diarize(args: argparse.Namespace) -> None:
+    import numpy as np
+
+    from choravox.diarization import DiarizationConfig, diarize_embeddings
+
+    embeddings = np.load(args.input, allow_pickle=False)
+    result = diarize_embeddings(embeddings, DiarizationConfig(speaker_count=args.speakers))
+    _write_json(
+        args.output,
+        {
+            "labels": result.labels.tolist(),
+            "posteriors": result.posteriors.tolist(),
+            "speaker_count": result.speaker_count,
+        },
+    )
+
+
+def _command_overlap(args: argparse.Namespace) -> None:
+    import numpy as np
+
+    from choravox.overlap import overlap_targets
+
+    activity = np.load(args.input, allow_pickle=False)
+    targets = overlap_targets(activity)
+    _write_json(args.output, {"overlap": targets.astype(int).tolist()})
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -125,6 +152,8 @@ def build_parser() -> argparse.ArgumentParser:
     commands.choices["vad"].set_defaults(handler=_command_vad)
     commands.choices["embed"].set_defaults(handler=_command_embed)
     commands.choices["diarize"].add_argument("--speakers", type=int)
+    commands.choices["diarize"].set_defaults(handler=_command_diarize)
+    commands.choices["overlap"].set_defaults(handler=_command_overlap)
     commands.choices["transcribe"].add_argument("--tokens", required=True)
     commands.choices["align"].add_argument("--tokens", required=True)
     commands.choices["align"].add_argument("--target", required=True)

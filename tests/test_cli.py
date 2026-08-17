@@ -89,3 +89,19 @@ def test_embed_command_normalizes_statistics_vector(tmp_path) -> None:
     payload = json.loads(output_path.read_text())
     assert payload["dimension"] == len(payload["embedding"])
     assert np.linalg.norm(payload["embedding"]) == pytest.approx(1.0)
+
+
+def test_diarize_command_recovers_clean_speaker_count(tmp_path) -> None:
+    input_path, output_path = tmp_path / "embeddings.npy", tmp_path / "diarization.json"
+    np.save(input_path, np.array([[1.0, 0.0], [0.98, 0.02], [0.0, 1.0], [0.02, 0.98]]))
+    assert cli.main(["diarize", str(input_path), str(output_path), "--speakers", "2"]) == 0
+    payload = json.loads(output_path.read_text())
+    assert payload["speaker_count"] == 2
+    assert payload["labels"][0] == payload["labels"][1]
+
+
+def test_overlap_command_reads_planted_activity_matrix(tmp_path) -> None:
+    input_path, output_path = tmp_path / "activity.npy", tmp_path / "overlap.json"
+    np.save(input_path, np.array([[1, 0], [1, 1], [0, 1]], dtype=bool))
+    assert cli.main(["overlap", str(input_path), str(output_path)]) == 0
+    assert json.loads(output_path.read_text())["overlap"] == [0, 1, 0]
