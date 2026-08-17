@@ -155,6 +155,45 @@ def _command_align(args: argparse.Namespace) -> None:
     )
 
 
+def _command_evaluate(args: argparse.Namespace) -> None:
+    from choravox.metrics import cpwer
+
+    reference = _read_json(args.reference)
+    hypothesis = _read_json(args.hypothesis)
+    if not isinstance(reference, dict) or not isinstance(hypothesis, dict):
+        raise CliError("evaluation inputs must be speaker-to-transcript objects")
+    result = cpwer(reference, hypothesis)
+    _write_json(
+        args.output,
+        {
+            "errors": result.errors,
+            "mapping": result.mapping,
+            "rate": result.rate,
+            "reference_words": result.reference_words,
+            "synthetic": True,
+        },
+    )
+
+
+def _command_compare(args: argparse.Namespace) -> None:
+    from choravox.evaluation import compare_scores
+
+    baseline = _read_json(args.baseline)
+    candidate = _read_json(args.candidate)
+    if not isinstance(baseline, dict) or not isinstance(candidate, dict):
+        raise CliError("comparison inputs must be recording-to-score objects")
+    result = compare_scores(baseline, candidate)
+    _write_json(
+        args.output,
+        {
+            "improvements": result.improvements,
+            "mean_difference": result.mean_difference,
+            "regressions": result.regressions,
+            "ties": result.ties,
+        },
+    )
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -212,11 +251,13 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("reference")
     evaluate.add_argument("hypothesis")
     evaluate.add_argument("output")
+    evaluate.set_defaults(handler=_command_evaluate)
 
     compare = commands.add_parser("compare", help="compare paired lower-is-better scores")
     compare.add_argument("baseline")
     compare.add_argument("candidate")
     compare.add_argument("output")
+    compare.set_defaults(handler=_command_compare)
 
     report_command = commands.add_parser("report", help="render Markdown and HTML from JSON spec")
     report_command.add_argument("spec")

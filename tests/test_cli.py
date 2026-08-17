@@ -125,3 +125,24 @@ def test_align_command_emits_token_frame_spans(tmp_path) -> None:
     )
     token = json.loads(output_path.read_text())["tokens"][0]
     assert (token["start_frame"], token["end_frame"]) == (0, 1)
+
+
+def test_evaluate_command_computes_permutation_invariant_cpwer(tmp_path) -> None:
+    reference = tmp_path / "ref.json"
+    hypothesis = tmp_path / "hyp.json"
+    output = tmp_path / "out.json"
+    cli._write_json(reference, {"a": "one two", "b": "three"})
+    cli._write_json(hypothesis, {"x": "three", "y": "one two"})
+    assert cli.main(["evaluate", str(reference), str(hypothesis), str(output)]) == 0
+    assert json.loads(output.read_text())["rate"] == 0.0
+
+
+def test_compare_command_reports_paired_improvements(tmp_path) -> None:
+    baseline = tmp_path / "base.json"
+    candidate = tmp_path / "new.json"
+    output = tmp_path / "out.json"
+    cli._write_json(baseline, {"a": 0.3, "b": 0.2})
+    cli._write_json(candidate, {"a": 0.1, "b": 0.2})
+    assert cli.main(["compare", str(baseline), str(candidate), str(output)]) == 0
+    payload = json.loads(output.read_text())
+    assert payload["improvements"] == 1 and payload["ties"] == 1
