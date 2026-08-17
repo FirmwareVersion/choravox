@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from choravox.ctc import CtcVocabulary
 from choravox.hashing import canonical_json
 
 
@@ -107,6 +108,53 @@ def _command_overlap(args: argparse.Namespace) -> None:
     _write_json(args.output, {"overlap": targets.astype(int).tolist()})
 
 
+def _vocabulary(text: str) -> CtcVocabulary:
+    tokens = tuple(token.strip() for token in text.split(",") if token.strip())
+    return CtcVocabulary(("<blank>", *tokens, "<spk>"))
+
+
+def _command_transcribe(args: argparse.Namespace) -> None:
+    import numpy as np
+
+    from choravox.ctc import greedy_decode
+
+    vocabulary = _vocabulary(args.tokens)
+    result = greedy_decode(np.load(args.input, allow_pickle=False))
+    _write_json(
+        args.output,
+        {
+            "score": result.score,
+            "token_ids": result.token_ids,
+            "tokens": vocabulary.decode(result.token_ids),
+        },
+    )
+
+
+def _command_align(args: argparse.Namespace) -> None:
+    import numpy as np
+
+    from choravox.ctc import forced_align
+
+    vocabulary = _vocabulary(args.tokens)
+    target = tuple(token.strip() for token in args.target.split(",") if token.strip())
+    result = forced_align(np.load(args.input, allow_pickle=False), vocabulary.encode(target))
+    _write_json(
+        args.output,
+        {
+            "score": result.score,
+            "tokens": [
+                {
+                    "confidence": item.confidence,
+                    "end_frame": item.end_frame,
+                    "start_frame": item.start_frame,
+                    "text": text,
+                }
+                for text, item in zip(target, result.tokens, strict=True)
+            ],
+        },
+    )
+
+
 class CliError(ValueError):
     """A user-facing command failure without an internal traceback."""
 
@@ -155,8 +203,10 @@ def build_parser() -> argparse.ArgumentParser:
     commands.choices["diarize"].set_defaults(handler=_command_diarize)
     commands.choices["overlap"].set_defaults(handler=_command_overlap)
     commands.choices["transcribe"].add_argument("--tokens", required=True)
+    commands.choices["transcribe"].set_defaults(handler=_command_transcribe)
     commands.choices["align"].add_argument("--tokens", required=True)
     commands.choices["align"].add_argument("--target", required=True)
+    commands.choices["align"].set_defaults(handler=_command_align)
 
     evaluate = commands.add_parser("evaluate", help="compute cpWER from transcript JSON")
     evaluate.add_argument("reference")

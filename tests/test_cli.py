@@ -105,3 +105,23 @@ def test_overlap_command_reads_planted_activity_matrix(tmp_path) -> None:
     np.save(input_path, np.array([[1, 0], [1, 1], [0, 1]], dtype=bool))
     assert cli.main(["overlap", str(input_path), str(output_path)]) == 0
     assert json.loads(output_path.read_text())["overlap"] == [0, 1, 0]
+
+
+def test_transcribe_command_collapses_ctc_path(tmp_path) -> None:
+    input_path, output_path = tmp_path / "scores.npy", tmp_path / "transcript.json"
+    np.save(input_path, np.log([[0.1, 0.8, 0.1, 1e-6], [0.8, 0.1, 0.1, 1e-6]]))
+    assert cli.main(["transcribe", str(input_path), str(output_path), "--tokens", "sito,mava"]) == 0
+    assert json.loads(output_path.read_text())["tokens"] == ["sito"]
+
+
+def test_align_command_emits_token_frame_spans(tmp_path) -> None:
+    input_path, output_path = tmp_path / "scores.npy", tmp_path / "alignment.json"
+    np.save(input_path, np.log([[0.1, 0.9, 1e-6], [0.9, 0.1, 1e-6]]))
+    assert (
+        cli.main(
+            ["align", str(input_path), str(output_path), "--tokens", "sito", "--target", "sito"]
+        )
+        == 0
+    )
+    token = json.loads(output_path.read_text())["tokens"][0]
+    assert (token["start_frame"], token["end_frame"]) == (0, 1)
