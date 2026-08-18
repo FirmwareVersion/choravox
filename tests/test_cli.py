@@ -201,3 +201,37 @@ def test_stream_demo_reports_latency_and_is_deterministic(tmp_path, capsys) -> N
     capsys.readouterr()
     for name in ("report.md", "report.html", "manifest.json"):
         assert (left / name).read_bytes() == (right / name).read_bytes()
+
+
+def test_cli_handler_errors_return_two_without_traceback(tmp_path, capsys) -> None:
+    missing = tmp_path / "missing.npy"
+    assert cli.main(["overlap", str(missing), str(tmp_path / "out.json")]) == 2
+    assert "choravox: error:" in capsys.readouterr().err
+
+
+def test_evaluate_rejects_non_mapping_inputs(tmp_path, capsys) -> None:
+    reference, hypothesis = tmp_path / "ref.json", tmp_path / "hyp.json"
+    cli._write_json(reference, ["sito"])
+    cli._write_json(hypothesis, {"speaker": "sito"})
+    assert cli.main(["evaluate", str(reference), str(hypothesis), str(tmp_path / "out.json")]) == 2
+    assert "speaker-to-transcript objects" in capsys.readouterr().err
+
+
+def test_align_rejects_unknown_target_token(tmp_path, capsys) -> None:
+    scores = tmp_path / "scores.npy"
+    np.save(scores, np.log([[0.1, 0.9, 1e-6], [0.9, 0.1, 1e-6]]))
+    assert (
+        cli.main(
+            [
+                "align",
+                str(scores),
+                str(tmp_path / "out.json"),
+                "--tokens",
+                "sito",
+                "--target",
+                "mava",
+            ]
+        )
+        == 2
+    )
+    assert "unknown CTC token" in capsys.readouterr().err
