@@ -26,3 +26,12 @@ def test_diarization_example_recovers_clean_oracle_speakers(tmp_path) -> None:
     assert summary["der"] == 0.0
     assert "synthetic DER=0.000000" in stdout
     assert (tmp_path / "run" / "speaker-timeline.svg").read_text().startswith("<svg")
+
+
+def test_asr_overlap_example_measures_monotone_synthetic_stress(tmp_path) -> None:
+    summary, stdout = run_example("asr_overlap_sweep", tmp_path / "run")
+    rates = [condition["cpwer"] for condition in summary["conditions"]]
+    assert rates[0] == 0.0
+    assert rates == sorted(rates)
+    assert "synthetic overlap conditions=3" in stdout
+    assert (tmp_path / "run" / "overlap-cpwer.svg").read_text().startswith("<svg")
