@@ -35,3 +35,17 @@ def test_asr_overlap_example_measures_monotone_synthetic_stress(tmp_path) -> Non
     assert rates == sorted(rates)
     assert "synthetic overlap conditions=3" in stdout
     assert (tmp_path / "run" / "overlap-cpwer.svg").read_text().startswith("<svg")
+
+
+def test_streaming_example_accounts_for_latency_and_quality_gaps(tmp_path) -> None:
+    summary, stdout = run_example("streaming_comparison", tmp_path / "run")
+    points = summary["comparisons"]
+    assert [point["latency_s"] for point in points] == sorted(
+        point["latency_s"] for point in points
+    )
+    assert all(point["der_gap"] >= 0.0 for point in points)
+    assert summary["offline_der"] == 0.0
+    assert "synthetic online points=3" in stdout
+    chart = (tmp_path / "run" / "latency-quality.html").read_text()
+    assert chart.startswith('<div class="latency-quality"')
+    assert chart.count("<svg") == 2
