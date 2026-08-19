@@ -49,3 +49,17 @@ def test_streaming_example_accounts_for_latency_and_quality_gaps(tmp_path) -> No
     chart = (tmp_path / "run" / "latency-quality.html").read_text()
     assert chart.startswith('<div class="latency-quality"')
     assert chart.count("<svg") == 2
+
+
+def test_mini_conference_example_writes_audio_annotations_and_report(tmp_path) -> None:
+    summary, stdout = run_example("mini_conference", tmp_path / "run")
+    assert summary["synthetic"] is True
+    assert summary["meeting_files"] == [
+        "meeting.wav",
+        "metadata.json",
+        "reference.rttm",
+        "transcript.jsonl",
+    ]
+    assert summary["report_files"] == ["manifest.json", "report.html", "report.md"]
+    assert len(summary["report_digest"]) == 64
+    assert "synthetic mini-conference digest=" in stdout
