@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Create project environment
+        run: uv venv --python "${{ matrix.python-version }}" .venv
+      - name: Install development and CPU model extras
+        run: >-
+          uv pip install --python .venv/bin/python
+          --extra-index-url https://download.pytorch.org/whl/cpu
+          --index-strategy unsafe-best-match
+          -e ".[dev,torch]"
+      - run: make build
+      - run: make test-all
+      - run: make format-check
+      - run: make lint
+      - run: make typecheck
