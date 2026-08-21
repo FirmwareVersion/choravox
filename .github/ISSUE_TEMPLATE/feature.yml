@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose a bounded offline speech-processing capability
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and use case
+    validations:
+      required: true
+  - type: textarea
+    id: mechanics
+    attributes:
+      label: Proposed mechanics
+      description: Explain synthetic validation, artifact schemas, and determinism needs.
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Offline boundaries
+      options:
+        - label: The default path needs no external dataset, paid service, GPU, or pretrained weight.
+          required: true

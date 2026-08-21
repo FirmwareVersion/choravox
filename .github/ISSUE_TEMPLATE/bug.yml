@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible defect in offline synthetic processing
+title: "bug: "
+labels: [bug]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Include the command, exception, or artifact mismatch.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Prefer a seed and synthetic configuration; do not attach private audio.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: choravox and Python versions
+    validations:
+      required: true
+  - type: dropdown
+    id: data
+    attributes:
+      label: Input kind
+      options:
+        - Deterministic synthetic fixture
+        - Local user-provided input
+    validations:
+      required: true
