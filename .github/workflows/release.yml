@@ -1,0 +1,31 @@
+name: Release artifacts
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.13 .venv
+      - name: Install development and CPU model extras
+        run: >-
+          uv pip install --python .venv/bin/python
+          --extra-index-url https://download.pytorch.org/whl/cpu
+          --index-strategy unsafe-best-match
+          -e ".[dev,torch]"
+      - run: make release
+      - run: .venv/bin/python scripts/check_package.py
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*.whl
