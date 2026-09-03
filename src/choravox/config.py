@@ -93,15 +93,17 @@ def config_from_json(text: str) -> AudioConfig | FeatureConfig | MeetingConfig:
         raise ValueError("configuration must be valid JSON") from error
     if not isinstance(payload, dict) or set(payload) != {"kind", "values"}:
         raise ValueError("configuration envelope must contain kind and values")
-    kinds = {
-        "AudioConfig": AudioConfig,
-        "FeatureConfig": FeatureConfig,
-        "MeetingConfig": MeetingConfig,
-    }
-    cls = kinds.get(payload["kind"])
-    if cls is None or not isinstance(payload["values"], dict):
+    kind = payload["kind"]
+    values = payload["values"]
+    if not isinstance(values, dict):
         raise ValueError("unknown configuration kind")
-    return cls(**payload["values"])
+    if kind == "AudioConfig":
+        return AudioConfig(**values)
+    if kind == "FeatureConfig":
+        return FeatureConfig(**values)
+    if kind == "MeetingConfig":
+        return MeetingConfig(**values)
+    raise ValueError("unknown configuration kind")
 
 
 # -- extensions --

@@ -55,7 +55,8 @@ def rms(samples: ArrayLike, *, axis: int | None = None) -> float | FloatArray:
     value = np.sqrt(np.mean(np.square(waveform), axis=axis))
     if np.ndim(value) == 0:
         return round(float(value), 12)
-    return np.round(np.asarray(value, dtype=np.float64), 12)
+    rounded: FloatArray = np.asarray(np.round(value, 12), dtype=np.float64)
+    return rounded
 
 
 def dbfs(samples: ArrayLike, *, floor_db: float = -120.0) -> float:
@@ -235,7 +236,8 @@ def duration_seconds(samples: ArrayLike, sample_rate: int) -> float:
     """Return sample-axis duration with input validation."""
     if sample_rate <= 0:
         raise ValueError("sample_rate must be positive")
-    return round(as_waveform(samples).shape[0] / sample_rate, 9)
+    duration: float = as_waveform(samples).shape[0] / sample_rate
+    return round(duration, 9)
 
 
 # -- extensions --
