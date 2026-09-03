@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
+
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
@@ -60,3 +63,72 @@ class CtcAcousticModel(nn.Module):
         logits: Tensor = self.output(encoded)
         probabilities: Tensor = F.log_softmax(logits, dim=-1)
         return probabilities
+
+
+@dataclass(frozen=True, slots=True)
+class TrainingTrace:
+    """Measured optimization losses from one deterministic synthetic run."""
+
+    task: str
+    losses: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            not self.task
+            or len(self.losses) < 2
+            or not all(math.isfinite(loss) and loss >= 0.0 for loss in self.losses)
+        ):
+            raise ValueError("training trace requires finite nonnegative losses")
+
+    @property
+    def decrease(self) -> float:
+        return round(self.losses[0] - self.losses[-1], 9)
+
+
+def synthetic_speaker_training_trace(*, steps: int = 20, seed: int = 0) -> TrainingTrace:
+    """Train the speaker encoder on two separable synthetic voice patterns."""
+    if steps < 2 or seed < 0:
+        raise ValueError("speaker training controls are invalid")
+    torch.manual_seed(seed)
+    labels = torch.arange(8, dtype=torch.long) % 2
+    features = torch.zeros(8, 10, 4)
+    features[:, :, 0] = torch.where(labels[:, None] == 0, 1.0, -1.0)
+    features[:, :, 1] = torch.where(labels[:, None] == 0, -0.4, 0.4)
+    features += torch.randn_like(features) * 0.03
+    encoder = SpeakerEncoder(4, embedding_dim=4, channels=6, hidden_size=6)
+    classifier = nn.Linear(4, 2)
+    optimizer = torch.optim.Adam((*encoder.parameters(), *classifier.parameters()), lr=0.03)
+    losses = []
+    for _ in range(steps):
+        optimizer.zero_grad()
+        loss: Tensor = F.cross_entropy(classifier(encoder(features)), labels)
+        losses.append(round(float(loss.detach()), 9))
+        loss.backward()
+        optimizer.step()
+    return TrainingTrace("speaker-classification", tuple(losses))
+
+
+def synthetic_ctc_training_trace(*, steps: int = 24, seed: int = 0) -> TrainingTrace:
+    """Train the CTC GRU on two deterministic single-token synthetic sequences."""
+    if steps < 2 or seed < 0:
+        raise ValueError("CTC training controls are invalid")
+    torch.manual_seed(seed)
+    features = torch.zeros(2, 7, 3)
+    features[0, :, 0] = 1.0
+    features[1, :, 1] = 1.0
+    features += torch.randn_like(features) * 0.02
+    targets = torch.tensor([1, 2], dtype=torch.long)
+    input_lengths = torch.full((2,), features.shape[1], dtype=torch.long)
+    target_lengths = torch.ones(2, dtype=torch.long)
+    model = CtcAcousticModel(3, 3, hidden_size=6)
+    criterion = nn.CTCLoss(blank=0, zero_infinity=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.03)
+    losses = []
+    for _ in range(steps):
+        optimizer.zero_grad()
+        frame_scores = model(features).transpose(0, 1)
+        loss: Tensor = criterion(frame_scores, targets, input_lengths, target_lengths)
+        losses.append(round(float(loss.detach()), 9))
+        loss.backward()
+        optimizer.step()
+    return TrainingTrace("ctc", tuple(losses))

@@ -6,6 +6,8 @@ torch = pytest.importorskip("torch")
 models = pytest.importorskip("choravox.torch_models")
 CtcAcousticModel = models.CtcAcousticModel
 SpeakerEncoder = models.SpeakerEncoder
+synthetic_ctc_training_trace = models.synthetic_ctc_training_trace
+synthetic_speaker_training_trace = models.synthetic_speaker_training_trace
 
 pytestmark = pytest.mark.model
 
@@ -32,3 +34,17 @@ def test_torch_models_validate_feature_geometry() -> None:
         SpeakerEncoder(4)(torch.zeros(2, 4))
     with pytest.raises(ValueError, match="batch-by-frame"):
         CtcAcousticModel(4, 3)(torch.zeros(2, 5, 3))
+
+
+@pytest.mark.slow
+def test_speaker_encoder_loss_decreases_on_synthetic_voices() -> None:
+    trace = synthetic_speaker_training_trace(seed=11)
+    assert trace.decrease > 0.2
+    assert trace.losses[-1] < trace.losses[0]
+
+
+@pytest.mark.slow
+def test_ctc_model_loss_decreases_on_synthetic_tokens() -> None:
+    trace = synthetic_ctc_training_trace(seed=13)
+    assert trace.decrease > 0.2
+    assert trace.losses[-1] < trace.losses[0]
