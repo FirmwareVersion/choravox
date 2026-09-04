@@ -41,7 +41,11 @@ class MicrophoneArray:
     def centroid_m(self) -> Point3D:
         """Return the arithmetic centre of all microphone positions."""
         values = np.mean(np.asarray(self.positions_m, dtype=np.float64), axis=0)
-        return tuple(round(float(value), 12) for value in values)
+        return (
+            round(float(values[0]), 12),
+            round(float(values[1]), 12),
+            round(float(values[2]), 12),
+        )
 
 
 def pairwise_baselines_m(array: MicrophoneArray) -> tuple[float, ...]:
@@ -121,7 +125,8 @@ def plane_wave_delays_s(
     direction = np.asarray(look_direction(azimuth_deg, elevation_deg), dtype=np.float64)
     centered = np.asarray(array.positions_m, dtype=np.float64) - np.asarray(array.centroid_m)
     delays = -(centered @ direction) / speed_of_sound(temperature_c)
-    return np.round(delays, 12)
+    rounded: FloatArray = np.asarray(np.round(delays, 12), dtype=np.float64)
+    return rounded
 
 
 def point_source_delays_s(
@@ -130,8 +135,14 @@ def point_source_delays_s(
     """Return nonnegative spherical-wave delays relative to the first arrival."""
     if not _finite_point(source_m):
         raise ValueError("source_m must have three finite coordinates")
-    distances = np.asarray([distance_m(source_m, point) for point in array.positions_m])
-    return np.round((distances - np.min(distances)) / speed_of_sound(temperature_c), 12)
+    distances = np.asarray(
+        [distance_m(source_m, point) for point in array.positions_m], dtype=np.float64
+    )
+    delays: FloatArray = np.asarray(
+        np.round((distances - np.min(distances)) / speed_of_sound(temperature_c), 12),
+        dtype=np.float64,
+    )
+    return delays
 
 
 def capture_point_source(

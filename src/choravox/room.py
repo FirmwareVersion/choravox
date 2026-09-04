@@ -77,7 +77,9 @@ def first_order_images(geometry: RoomGeometry) -> tuple[ImageSource, ...]:
         far = list(geometry.source_m)
         near[axis] = -geometry.source_m[axis]
         far[axis] = 2.0 * size - geometry.source_m[axis]
-        images.extend((ImageSource(tuple(near), 1), ImageSource(tuple(far), 1)))
+        near_point: Point3D = (near[0], near[1], near[2])
+        far_point: Point3D = (far[0], far[1], far[2])
+        images.extend((ImageSource(near_point, 1), ImageSource(far_point, 1)))
     return tuple(images)
 
 
@@ -160,11 +162,10 @@ def image_method_rir(
                 if reflection_count > order:
                     continue
                 orders = (x_order, y_order, z_order)
-                image = tuple(
-                    2.0 * axis_order * size + ((-1.0) ** axis_order) * coordinate
-                    for axis_order, size, coordinate in zip(
-                        orders, geometry.size_m, source, strict=True
-                    )
+                image: Point3D = (
+                    2.0 * orders[0] * geometry.size_m[0] + ((-1.0) ** orders[0]) * source[0],
+                    2.0 * orders[1] * geometry.size_m[1] + ((-1.0) ** orders[1]) * source[1],
+                    2.0 * orders[2] * geometry.size_m[2] + ((-1.0) ** orders[2]) * source[2],
                 )
                 distance = distance_m(image, geometry.microphone_m)
                 delay = distance / speed_of_sound(temperature_c) * sample_rate
