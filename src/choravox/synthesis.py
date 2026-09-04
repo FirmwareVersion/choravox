@@ -46,26 +46,26 @@ def apply_resonator(samples: ArrayLike, coefficients: Resonator) -> FloatArray:
     waveform = as_waveform(samples)
     output = np.empty_like(waveform)
     if waveform.ndim == 1:
-        previous_one = previous_two = 0.0
+        previous_one_scalar = previous_two_scalar = 0.0
         for index, sample in enumerate(waveform):
             value = (
                 coefficients.b0 * sample
-                + coefficients.a1 * previous_one
-                + coefficients.a2 * previous_two
+                + coefficients.a1 * previous_one_scalar
+                + coefficients.a2 * previous_two_scalar
             )
             output[index] = value
-            previous_two, previous_one = previous_one, value
+            previous_two_scalar, previous_one_scalar = previous_one_scalar, value
     else:
-        previous_one = np.zeros(waveform.shape[1], dtype=np.float64)
-        previous_two = np.zeros(waveform.shape[1], dtype=np.float64)
+        previous_one_vector = np.zeros(waveform.shape[1], dtype=np.float64)
+        previous_two_vector = np.zeros(waveform.shape[1], dtype=np.float64)
         for index, sample in enumerate(waveform):
             value = (
                 coefficients.b0 * sample
-                + coefficients.a1 * previous_one
-                + coefficients.a2 * previous_two
+                + coefficients.a1 * previous_one_vector
+                + coefficients.a2 * previous_two_vector
             )
             output[index] = value
-            previous_two, previous_one = previous_one, value
+            previous_two_vector, previous_one_vector = previous_one_vector, value
     return output
 
 

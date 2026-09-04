@@ -169,7 +169,8 @@ def unvoiced_source(
     noise = rng(seed, namespace).normal(size=sample_count + 1)
     shaped = noise[1:] - highpass * noise[:-1]
     level = np.sqrt(np.mean(shaped**2))
-    return np.round(shaped * (0.1 / level), 9)
+    output: FloatArray = np.asarray(np.round(shaped * (0.1 / level), 9), dtype=np.float64)
+    return output
 
 
 # -- extensions --
