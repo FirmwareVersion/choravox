@@ -137,7 +137,8 @@ def gmm_responsibilities(features: ArrayLike, model: DiagonalGmm) -> FloatArray:
     maximum = np.max(scores, axis=1, keepdims=True)
     probabilities = np.exp(scores - maximum)
     probabilities /= np.sum(probabilities, axis=1, keepdims=True)
-    return np.round(probabilities, 12)
+    rounded: FloatArray = np.asarray(np.round(probabilities, 12), dtype=np.float64)
+    return rounded
 
 
 def estimate_gmm(statistics: SufficientStatistics, *, variance_floor: float = 1e-4) -> DiagonalGmm:
@@ -225,7 +226,10 @@ def statistics_supervector(statistics: SufficientStatistics, model: DiagonalGmm)
     """Whiten and flatten UBM-centered statistics into a fixed-size vector."""
     centered = centered_statistics(statistics, model)
     scale = np.sqrt(np.maximum(statistics.counts[:, None], 1.0) * model.variances)
-    return np.round((centered / scale).reshape(-1), 9)
+    supervector: FloatArray = np.asarray(
+        np.round((centered / scale).reshape(-1), 9), dtype=np.float64
+    )
+    return supervector
 
 
 def normalize_embedding(values: ArrayLike) -> FloatArray:
@@ -268,7 +272,10 @@ def pairwise_cosine(enrollment: ArrayLike, probes: ArrayLike) -> FloatArray:
     right_norms = np.linalg.norm(right, axis=1, keepdims=True)
     if np.any(left_norms == 0.0) or np.any(right_norms == 0.0):
         raise ValueError("embedding rows must have positive norm")
-    return np.round((left / left_norms) @ (right / right_norms).T, 12)
+    scores: FloatArray = np.asarray(
+        np.round((left / left_norms) @ (right / right_norms).T, 12), dtype=np.float64
+    )
+    return scores
 
 
 def center_cohort(embeddings: ArrayLike) -> tuple[FloatArray, FloatArray]:
@@ -276,8 +283,10 @@ def center_cohort(embeddings: ArrayLike) -> tuple[FloatArray, FloatArray]:
     matrix = np.asarray(embeddings, dtype=np.float64)
     if matrix.ndim != 2 or matrix.shape[0] == 0 or not np.all(np.isfinite(matrix)):
         raise ValueError("cohort must be a nonempty finite matrix")
-    mean = np.mean(matrix, axis=0)
-    return np.round(matrix - mean, 12), np.round(mean, 12)
+    mean: FloatArray = np.asarray(np.mean(matrix, axis=0), dtype=np.float64)
+    centered: FloatArray = np.asarray(np.round(matrix - mean, 12), dtype=np.float64)
+    rounded_mean: FloatArray = np.asarray(np.round(mean, 12), dtype=np.float64)
+    return centered, rounded_mean
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,7 +348,7 @@ def fit_plda(
         raise ValueError("output_dimension must fit the embedding dimension")
     if regularization <= 0.0 or not np.isfinite(regularization):
         raise ValueError("regularization must be finite and positive")
-    mean = np.mean(matrix, axis=0)
+    mean: FloatArray = np.asarray(np.mean(matrix, axis=0), dtype=np.float64)
     within = np.zeros((dimension, dimension), dtype=np.float64)
     between = np.zeros_like(within)
     for speaker in speakers:
@@ -357,7 +366,9 @@ def fit_plda(
     values_between, vectors_between = np.linalg.eigh(discriminant)
     order = np.argsort(values_between)[::-1][:target]
     projection = _stable_eigen_signs(whitening @ vectors_between[:, order])
-    return PldaModel(np.round(mean, 12), np.round(projection, 12))
+    rounded_mean: FloatArray = np.asarray(np.round(mean, 12), dtype=np.float64)
+    rounded_projection: FloatArray = np.asarray(np.round(projection, 12), dtype=np.float64)
+    return PldaModel(rounded_mean, rounded_projection)
 
 
 def project_plda(values: ArrayLike, model: PldaModel, *, normalize: bool = True) -> FloatArray:
@@ -373,7 +384,8 @@ def project_plda(values: ArrayLike, model: PldaModel, *, normalize: bool = True)
         if np.any(norms == 0.0):
             raise ValueError("centered PLDA embeddings must have positive norm")
         projected = projected / norms
-    return np.round(np.asarray(projected, dtype=np.float64), 12)
+    output: FloatArray = np.asarray(np.round(projected, 12), dtype=np.float64)
+    return output
 
 
 def plda_scores(enrollment: ArrayLike, probes: ArrayLike, model: PldaModel) -> FloatArray:
