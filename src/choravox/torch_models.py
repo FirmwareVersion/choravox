@@ -103,7 +103,7 @@ def synthetic_speaker_training_trace(*, steps: int = 20, seed: int = 0) -> Train
         optimizer.zero_grad()
         loss: Tensor = F.cross_entropy(classifier(encoder(features)), labels)
         losses.append(round(float(loss.detach()), 9))
-        loss.backward()
+        torch.autograd.backward(loss)
         optimizer.step()
     return TrainingTrace("speaker-classification", tuple(losses))
 
@@ -129,6 +129,6 @@ def synthetic_ctc_training_trace(*, steps: int = 24, seed: int = 0) -> TrainingT
         frame_scores = model(features).transpose(0, 1)
         loss: Tensor = criterion(frame_scores, targets, input_lengths, target_lengths)
         losses.append(round(float(loss.detach()), 9))
-        loss.backward()
+        torch.autograd.backward(loss)
         optimizer.step()
     return TrainingTrace("ctc", tuple(losses))
