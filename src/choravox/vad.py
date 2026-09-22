@@ -394,9 +394,13 @@ def fit_gaussian_vad(
         raise ValueError("training labels must contain speech and silence")
 
     def statistics(selected: FloatArray) -> tuple[FloatArray, FloatArray]:
-        mean = np.mean(selected, axis=0)
-        variance = np.maximum(np.var(selected, axis=0), variance_floor)
-        return np.round(mean, 6), np.round(variance, 6)
+        mean: FloatArray = np.asarray(np.mean(selected, axis=0), dtype=np.float64)
+        variance: FloatArray = np.asarray(
+            np.maximum(np.var(selected, axis=0), variance_floor), dtype=np.float64
+        )
+        rounded_mean: FloatArray = np.asarray(np.round(mean, 6), dtype=np.float64)
+        rounded_variance: FloatArray = np.asarray(np.round(variance, 6), dtype=np.float64)
+        return rounded_mean, rounded_variance
 
     silence_mean, silence_variance = statistics(values[~labels])
     speech_mean, speech_variance = statistics(values[labels])
@@ -420,16 +424,25 @@ def gaussian_speech_posterior(features: ArrayLike, model: GaussianVadModel) -> F
         raise ValueError("inference features must be a finite matrix matching the model")
 
     def log_density(mean: FloatArray, variance: FloatArray) -> FloatArray:
-        return -0.5 * np.sum(
-            np.log(2.0 * np.pi * variance) + np.square(values - mean) / variance, axis=1
+        density: FloatArray = np.asarray(
+            -0.5
+            * np.sum(
+                np.log(2.0 * np.pi * variance) + np.square(values - mean) / variance,
+                axis=1,
+            ),
+            dtype=np.float64,
         )
+        return density
 
     silence = log_density(model.silence_mean, model.silence_variance) + math.log(
         1.0 - model.speech_prior
     )
     speech = log_density(model.speech_mean, model.speech_variance) + math.log(model.speech_prior)
     difference = np.clip(silence - speech, -60.0, 60.0)
-    return np.round(1.0 / (1.0 + np.exp(difference)), 9)
+    posterior: FloatArray = np.asarray(
+        np.round(1.0 / (1.0 + np.exp(difference)), 9), dtype=np.float64
+    )
+    return posterior
 
 
 def detect_statistical(

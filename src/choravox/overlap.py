@@ -20,7 +20,8 @@ def overlap_targets(activity: ArrayLike) -> BoolArray:
         raise ValueError("speaker activity must be a frame-by-speaker matrix")
     if not np.all((matrix == 0) | (matrix == 1)):
         raise ValueError("speaker activity must be binary")
-    return np.sum(matrix.astype(np.int64), axis=1) >= 2
+    targets: BoolArray = np.asarray(np.sum(matrix.astype(np.int64), axis=1) >= 2, dtype=np.bool_)
+    return targets
 
 
 def frame_overlap_features(
