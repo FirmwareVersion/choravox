@@ -123,7 +123,11 @@ def spectral_centroid(spectra: ArrayLike, frequencies: ArrayLike) -> FloatArray:
     values, axis = _validate_descriptor_inputs(spectra, frequencies)
     totals = np.sum(values, axis=1)
     weighted = np.sum(values * axis[None, :], axis=1)
-    return np.divide(weighted, totals, out=np.zeros_like(weighted), where=totals > 0.0)
+    centroid: FloatArray = np.asarray(
+        np.divide(weighted, totals, out=np.zeros_like(weighted), where=totals > 0.0),
+        dtype=np.float64,
+    )
+    return centroid
 
 
 def spectral_bandwidth(spectra: ArrayLike, frequencies: ArrayLike) -> FloatArray:
@@ -133,7 +137,8 @@ def spectral_bandwidth(spectra: ArrayLike, frequencies: ArrayLike) -> FloatArray
     totals = np.sum(values, axis=1)
     variance = np.sum(values * np.square(axis[None, :] - centers[:, None]), axis=1)
     variance = np.divide(variance, totals, out=np.zeros_like(variance), where=totals > 0.0)
-    return np.sqrt(variance)
+    bandwidth: FloatArray = np.asarray(np.sqrt(variance), dtype=np.float64)
+    return bandwidth
 
 
 def _validate_descriptor_inputs(

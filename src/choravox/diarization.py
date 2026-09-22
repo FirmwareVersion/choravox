@@ -84,7 +84,11 @@ def adjacent_change_scores(embeddings: ArrayLike) -> FloatArray:
     if np.any(norms == 0.0):
         raise ValueError("embedding rows must have positive norm")
     normalized = matrix / norms[:, None]
-    return np.round(1.0 - np.sum(normalized[:-1] * normalized[1:], axis=1), 12)
+    scores: FloatArray = np.asarray(
+        np.round(1.0 - np.sum(normalized[:-1] * normalized[1:], axis=1), 12),
+        dtype=np.float64,
+    )
+    return scores
 
 
 def detect_change_points(
@@ -235,7 +239,8 @@ def cosine_distance_matrix(values: ArrayLike) -> FloatArray:
     normalized = matrix / norms[:, None]
     distances = np.clip(1.0 - normalized @ normalized.T, 0.0, 2.0)
     np.fill_diagonal(distances, 0.0)
-    return np.round(distances, 12)
+    output: FloatArray = np.asarray(np.round(distances, 12), dtype=np.float64)
+    return output
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,7 +306,10 @@ def normalized_laplacian(affinity: ArrayLike) -> FloatArray:
     if np.any(degrees <= 0.0):
         raise ValueError("affinity graph must not contain isolated nodes")
     inverse = np.diag(1.0 / np.sqrt(degrees))
-    return np.round(np.eye(matrix.shape[0]) - inverse @ matrix @ inverse, 12)
+    laplacian: FloatArray = np.asarray(
+        np.round(np.eye(matrix.shape[0]) - inverse @ matrix @ inverse, 12), dtype=np.float64
+    )
+    return laplacian
 
 
 def estimate_speaker_count(affinity: ArrayLike, *, maximum: int | None = None) -> int:
@@ -478,7 +486,8 @@ def gaussian_responsibilities(
     logits -= np.max(logits, axis=1, keepdims=True)
     probabilities = np.exp(logits)
     probabilities /= np.sum(probabilities, axis=1, keepdims=True)
-    return np.round(probabilities, 12)
+    responsibilities: FloatArray = np.asarray(np.round(probabilities, 12), dtype=np.float64)
+    return responsibilities
 
 
 @dataclass(frozen=True, slots=True)
