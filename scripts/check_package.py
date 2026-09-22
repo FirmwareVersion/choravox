@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import site
 import subprocess
 import tempfile
 import venv
@@ -29,6 +31,8 @@ def smoke_wheel(wheel: Path) -> None:
             [python, "-m", "pip", "install", "--no-deps", str(wheel)],
             check=True,
         )
+        smoke_environment = os.environ.copy()
+        smoke_environment["PYTHONPATH"] = os.pathsep.join(site.getsitepackages())
         subprocess.run(
             [
                 python,
@@ -37,6 +41,7 @@ def smoke_wheel(wheel: Path) -> None:
                 "raise SystemExit(main(['--version']))",
             ],
             check=True,
+            env=smoke_environment,
         )
 
 
