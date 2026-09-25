@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "choravox"
-version = "0.1.0"
+version = "0.1.1"
 description = "Offline synthetic multi-speaker meeting speech toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -47,4 +47,3 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 [tool.mypy]
 strict = true
 packages = ["choravox"]
-
