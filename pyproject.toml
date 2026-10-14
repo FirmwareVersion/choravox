@@ -22,7 +22,7 @@ dev = [
   "pytest==8.4.2",
   "ruff==0.13.2",
 ]
-torch = ["torch==2.8.0"]
+torch = ["torch==2.14.1"]
 
 [project.scripts]
 choravox = "choravox.cli:main"
