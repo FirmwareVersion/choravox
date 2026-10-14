@@ -12,7 +12,7 @@ license = { file = "LICENSE" }
 authors = [
   { name = "Zhang San", email = "227249797+FirmwareVersion@users.noreply.github.com" },
 ]
-dependencies = ["numpy==2.3.3"]
+dependencies = ["numpy==2.4.6"]
 
 [project.optional-dependencies]
 dev = [
