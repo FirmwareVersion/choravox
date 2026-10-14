@@ -20,7 +20,7 @@ dev = [
   "hatchling==1.27.0",
   "mypy==1.18.2",
   "pytest==8.4.2",
-  "ruff==0.13.2",
+  "ruff==0.17.0",
 ]
 torch = ["torch==2.8.0"]
 
